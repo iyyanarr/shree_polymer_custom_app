@@ -1,0 +1,27 @@
+{
+ "add_total_row": 0,
+ "columns": [],
+ "creation": "2023-04-28 11:09:21.970064",
+ "disable_prepared_report": 0,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "Purchase Order",
+ "modified": "2023-08-28 19:38:20.477244",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Summary Report",
+ "owner": "Administrator",
+ "prepared_report": 1,
+ "ref_doctype": "Moulding Production Entry",
+ "report_name": "Summary Report",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ]
+}

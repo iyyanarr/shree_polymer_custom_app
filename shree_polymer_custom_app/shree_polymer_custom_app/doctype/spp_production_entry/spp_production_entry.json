@@ -1,0 +1,212 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "MFG-PR-.YYYY.-.#####",
+ "creation": "2022-12-17 21:22:35.967891",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "type",
+  "column_break_2",
+  "mixing_types",
+  "employee",
+  "warehouses_section",
+  "source_warehouse",
+  "column_break_8",
+  "target_warehouse",
+  "column_break_9",
+  "scan_location",
+  "item_section",
+  "item",
+  "item_name",
+  "column_break_13",
+  "qty",
+  "bom_no",
+  "final_batch_mixing_section",
+  "enter_manually",
+  "manual_scan_spp_batch_number",
+  "fbm_barcode",
+  "column_break_21",
+  "blanking_bins",
+  "items_section",
+  "required_items"
+ ],
+ "fields": [
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "Blanking\nMoulding\nDeflashing Internal\nDeflashing External\nTrimming\nPost Curing\nInspection",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Compound",
+   "depends_on": "eval:doc.type == \"Final Batch Mixing\"",
+   "fieldname": "mixing_types",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Mixing Types",
+   "options": "MasterBatch\nCurative MasterBatch\nCompound"
+  },
+  {
+   "depends_on": "eval:doc.type == \"Blanking\"",
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "mandatory_depends_on": "eval:doc.type == \"Blanking\"",
+   "options": "Employee"
+  },
+  {
+   "depends_on": "eval:doc.type!=\"Blanking\"",
+   "fieldname": "warehouses_section",
+   "fieldtype": "Section Break",
+   "label": "Warehouses",
+   "mandatory_depends_on": "eval:doc.type!=\"Blanking\""
+  },
+  {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Source Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Target Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.type==\"Blanking\"",
+   "fieldname": "scan_location",
+   "fieldtype": "Data",
+   "label": "Scan Location",
+   "options": "Barcode"
+  },
+  {
+   "depends_on": "eval:doc.type == \"Final Batch Mixing\"",
+   "fieldname": "item_section",
+   "fieldtype": "Section Break",
+   "label": "Item"
+  },
+  {
+   "depends_on": "eval:doc.type == \"Final Batch Mixing\"",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Compound",
+   "options": "Item"
+  },
+  {
+   "fetch_from": "item.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_13",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Quantity",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "item.default_bom",
+   "fieldname": "bom_no",
+   "fieldtype": "Link",
+   "label": "BOM No",
+   "options": "BOM",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:(doc.type==\"Final Batch Mixing\" && doc.item) || (doc.type==\"Blanking\")",
+   "fieldname": "final_batch_mixing_section",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "default": "0",
+   "fieldname": "enter_manually",
+   "fieldtype": "Check",
+   "label": "Enter Manually?"
+  },
+  {
+   "depends_on": "eval:doc.enter_manually==1",
+   "fieldname": "manual_scan_spp_batch_number",
+   "fieldtype": "Data",
+   "label": "Barcode"
+  },
+  {
+   "depends_on": "eval:doc.enter_manually==0",
+   "fieldname": "fbm_barcode",
+   "fieldtype": "Data",
+   "label": "Scan Barcode",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "column_break_21",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "blanking_bins",
+   "fieldtype": "Table MultiSelect",
+   "label": "Blanking Bins",
+   "options": "Bin Mapping"
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "required_items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Mixing Item",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2022-12-19 13:55:00.555513",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "SPP Production Entry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

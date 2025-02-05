@@ -1,0 +1,186 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "WRKP-.#####",
+ "creation": "2023-01-25 19:40:12.731150",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "date",
+  "scan_supervisor",
+  "column_break_3",
+  "shift_number",
+  "shift_type",
+  "shift_time",
+  "shift_series",
+  "supervisor_id",
+  "supervisor_name",
+  "blanking_entry_section",
+  "item_produced",
+  "work_station",
+  "mould",
+  "add",
+  "items_section",
+  "items",
+  "amended_from",
+  "job_card_wo"
+ ],
+ "fields": [
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "shift_number",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Shift Number",
+   "options": "1\n2\n3"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "blanking_entry_section",
+   "fieldtype": "Section Break",
+   "label": "Item Entry"
+  },
+  {
+   "fieldname": "item_produced",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "work_station",
+   "fieldtype": "Link",
+   "label": "Press",
+   "options": "Workstation"
+  },
+  {
+   "depends_on": "eval:doc.item_produced",
+   "fieldname": "mould",
+   "fieldtype": "Link",
+   "label": "Mould",
+   "options": "Item"
+  },
+  {
+   "fieldname": "add",
+   "fieldtype": "Button",
+   "label": "Add"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Work Planning",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Work Plan Item"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "job_card_wo",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Job Card / Work Order Created"
+  },
+  {
+   "fieldname": "scan_supervisor",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scan Supervisor",
+   "options": "Barcode",
+   "reqd": 1
+  },
+  {
+   "fieldname": "supervisor_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Supervisor ID",
+   "options": "Employee",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fetch_from": "supervisor_id.employee_name",
+   "fieldname": "supervisor_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Supervisor Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shift_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Shift Type",
+   "options": "Shift Type",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "shift_type.job_card_naming_series",
+   "fieldname": "shift_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Shift Series",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "shift_type.total_time",
+   "fieldname": "shift_time",
+   "fieldtype": "Time",
+   "hidden": 1,
+   "label": "Shift Time",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-08-04 17:50:25.559154",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Work Planning",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

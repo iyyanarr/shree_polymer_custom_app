@@ -1,0 +1,36 @@
+{
+ "add_total_row": 1,
+ "columns": [],
+ "creation": "2023-05-23 16:08:15.165261",
+ "disable_prepared_report": 0,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "Purchase Order",
+ "modified": "2023-08-28 19:41:56.150009",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Compound Consume Report",
+ "owner": "Administrator",
+ "prepared_report": 1,
+ "ref_doctype": "Work Planning",
+ "report_name": "Compound Consume Report",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ]
+}

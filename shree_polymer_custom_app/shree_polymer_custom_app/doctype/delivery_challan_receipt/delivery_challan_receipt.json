@@ -1,0 +1,221 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "MTDCR-.YYYY.-.MM.-.DD.-.#####",
+ "creation": "2022-10-17 16:52:52.842762",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "hold_receipt",
+  "section_break_2",
+  "is_internal_mixing",
+  "enter_manually",
+  "inward_material_type",
+  "manual_scan_spp_batch_number",
+  "scan_barcode",
+  "source_warehouse",
+  "column_break_6",
+  "dc_receipt_date",
+  "mixing_time",
+  "column_break_8",
+  "dc_number",
+  "items_section",
+  "dc_items",
+  "section_break_14",
+  "hld_item",
+  "hld_enter_manually",
+  "hld_barcode",
+  "hld_manual_barcode",
+  "hld_warehouse",
+  "hld_items",
+  "section_break_p7flb",
+  "stock_entry_reference",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "depends_on": "eval:doc.enter_manually==0",
+   "fieldname": "scan_barcode",
+   "fieldtype": "Data",
+   "label": "Scan Barcode",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "depends_on": "eval:doc.hold_receipt==0",
+   "fieldname": "dc_items",
+   "fieldtype": "Table",
+   "label": "DC Items",
+   "options": "DC Item"
+  },
+  {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Source Warehouse",
+   "mandatory_depends_on": "eval:doc.hold_receipt==0",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Delivery Challan Receipt",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_internal_mixing",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Internal Mixing?"
+  },
+  {
+   "default": "0",
+   "fieldname": "enter_manually",
+   "fieldtype": "Check",
+   "label": "Enter Barcode Manually?"
+  },
+  {
+   "depends_on": "eval:doc.enter_manually==1",
+   "fieldname": "manual_scan_spp_batch_number",
+   "fieldtype": "Data",
+   "label": "Barcode"
+  },
+  {
+   "fieldname": "column_break_6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "dc_receipt_date",
+   "fieldtype": "Date",
+   "label": "Mixing Date"
+  },
+  {
+   "fieldname": "column_break_8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "dc_number",
+   "fieldtype": "Data",
+   "label": "DC Number"
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "hold_receipt",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Hold Receipt"
+  },
+  {
+   "depends_on": "eval:doc.hold_receipt==0",
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.hold_receipt==1",
+   "fieldname": "section_break_14",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "hld_warehouse",
+   "fieldtype": "Link",
+   "label": "Source Warehouse",
+   "mandatory_depends_on": "eval:doc.hold_receipt==1",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "hld_item",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "hld_items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Mixing Center Holding Item"
+  },
+  {
+   "depends_on": "eval:doc.hld_enter_manually == 0",
+   "fieldname": "hld_barcode",
+   "fieldtype": "Data",
+   "label": "Scan Barcode",
+   "options": "Barcode"
+  },
+  {
+   "default": "0",
+   "fieldname": "hld_enter_manually",
+   "fieldtype": "Check",
+   "label": "Enter Manually"
+  },
+  {
+   "depends_on": "eval:doc.hld_enter_manually == 1",
+   "fieldname": "hld_manual_barcode",
+   "fieldtype": "Data",
+   "label": "Enter Barcode"
+  },
+  {
+   "fieldname": "section_break_p7flb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "inward_material_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Inward Material Type",
+   "options": "Master Batch\nCompound",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mixing_time",
+   "fieldtype": "Time",
+   "label": "Mixing Time"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-06-07 13:09:34.301472",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Delivery Challan Receipt",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,247 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "DPU-.#####",
+ "creation": "2023-02-20 17:41:15.951527",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "posting_date",
+  "column_break_wnfav",
+  "column_break_ylj57",
+  "scan_lot",
+  "scan_lot_number",
+  "vendor",
+  "add_html",
+  "column_break_2",
+  "date",
+  "product_ref",
+  "qty_nos",
+  "qty_uom",
+  "column_break_6",
+  "spp_batch_no",
+  "batch_no",
+  "lot_no",
+  "weight_kgs",
+  "section_break_11",
+  "items",
+  "section_break_13",
+  "total_lots",
+  "column_break_16",
+  "total_qty_kgs",
+  "column_break_18",
+  "total_qty_nos",
+  "stock_entry_reference",
+  "valuation_rate",
+  "amount",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "scan_lot_number",
+   "fieldtype": "Data",
+   "label": "Scan Lot Number",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Data",
+   "label": "Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "product_ref",
+   "fieldtype": "Link",
+   "label": "Product Ref.",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_nos",
+   "fieldtype": "Float",
+   "label": "Product Qty (No's)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "vendor",
+   "fieldtype": "Link",
+   "label": "Vendor",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lot_no",
+   "fieldtype": "Data",
+   "label": "Lot No.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weight_kgs",
+   "fieldtype": "Float",
+   "label": "Product Weight (kg's)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Despatch To U1 Entry",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Despatch To U1 Entry",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_11",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Despatch To U1 Entry Item"
+  },
+  {
+   "fieldname": "scan_lot",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_13",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_lots",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Lots",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_16",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_qty_kgs",
+   "fieldtype": "Float",
+   "label": "Total Product Qty (kg's)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_18",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_qty_nos",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Total Product Qty (No's)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_no",
+   "fieldtype": "Data",
+   "label": "Spp Batch No.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_uom",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Qty UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "label": "Batch No",
+   "options": "Batch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "add_html",
+   "fieldtype": "HTML",
+   "label": "Add"
+  },
+  {
+   "fieldname": "valuation_rate",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Valuation Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_wnfav",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ylj57",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-07-10 16:36:56.792022",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Despatch To U1 Entry",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

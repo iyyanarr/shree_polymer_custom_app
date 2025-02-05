@@ -1,0 +1,171 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2022-08-10 19:27:25.127679",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "compound_code",
+  "mixbatchno",
+  "mix_barcode",
+  "mixer_name",
+  "material",
+  "grn_no",
+  "lotno",
+  "supplier",
+  "formula_material_weight",
+  "actual_weight",
+  "weight_barcode",
+  "date",
+  "operator",
+  "mix_barcodeweight_barcode",
+  "batch_complete",
+  "dc_no",
+  "wo",
+  "jc",
+  "pe",
+  "sc_transfer",
+  "naming_series",
+  "data_import"
+ ],
+ "fields": [
+  {
+   "fieldname": "compound_code",
+   "fieldtype": "Data",
+   "label": "Compound Code"
+  },
+  {
+   "fieldname": "mixbatchno",
+   "fieldtype": "Data",
+   "label": "Mixbatchno"
+  },
+  {
+   "fieldname": "mix_barcode",
+   "fieldtype": "Data",
+   "label": "Mix Barcode"
+  },
+  {
+   "fieldname": "mixer_name",
+   "fieldtype": "Data",
+   "label": "Mixer Name"
+  },
+  {
+   "fieldname": "material",
+   "fieldtype": "Data",
+   "label": "Material"
+  },
+  {
+   "fieldname": "grn_no",
+   "fieldtype": "Data",
+   "label": "Grn no"
+  },
+  {
+   "fieldname": "lotno",
+   "fieldtype": "Data",
+   "label": "Lotno"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Data",
+   "label": "Supplier"
+  },
+  {
+   "fieldname": "formula_material_weight",
+   "fieldtype": "Data",
+   "label": " Formula Material weight"
+  },
+  {
+   "fieldname": "actual_weight",
+   "fieldtype": "Data",
+   "label": "Actual Weight"
+  },
+  {
+   "fieldname": "weight_barcode",
+   "fieldtype": "Data",
+   "label": "Weight Barcode"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "operator",
+   "fieldtype": "Data",
+   "label": "Operator"
+  },
+  {
+   "fieldname": "mix_barcodeweight_barcode",
+   "fieldtype": "Data",
+   "label": "Mix BarcodeWeight Barcode"
+  },
+  {
+   "fieldname": "batch_complete",
+   "fieldtype": "Data",
+   "label": "Batch_Complete"
+  },
+  {
+   "fieldname": "dc_no",
+   "fieldtype": "Data",
+   "label": "DC_No"
+  },
+  {
+   "fieldname": "wo",
+   "fieldtype": "Data",
+   "label": "WO"
+  },
+  {
+   "fieldname": "jc",
+   "fieldtype": "Data",
+   "label": "JC"
+  },
+  {
+   "fieldname": "pe",
+   "fieldtype": "Data",
+   "label": "PE"
+  },
+  {
+   "fieldname": "sc_transfer",
+   "fieldtype": "Data",
+   "label": "SC_Transfer"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "BI-"
+  },
+  {
+   "fieldname": "data_import",
+   "fieldtype": "Data",
+   "label": "Data import Id"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-01-27 16:34:05.232315",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Imported Batches",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

@@ -1,0 +1,75 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-05-17 17:02:31.667283",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "clip_name",
+  "compound",
+  "column_break_zqd3y",
+  "clip_barcode",
+  "spp_batch_number",
+  "item_clip_mapping_id"
+ ],
+ "fields": [
+  {
+   "fieldname": "compound",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Compound",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "clip_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Clip Name",
+   "options": "Sheeting Clip",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "SPP Batch Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_zqd3y",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "clip_barcode",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Clip Barcode",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_clip_mapping_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Item Clip Mapping ID",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-05-19 11:26:01.950883",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Clip Release Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

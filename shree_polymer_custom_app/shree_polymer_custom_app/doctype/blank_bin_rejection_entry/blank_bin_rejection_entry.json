@@ -1,0 +1,189 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "BBRE-.#####",
+ "creation": "2023-02-01 20:52:20.451524",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "scan_inspector",
+  "scan_bin",
+  "gross_weight",
+  "column_break_3",
+  "inspector_name",
+  "inspector_code",
+  "available_qty",
+  "quantity",
+  "column_break_7",
+  "bin_code",
+  "bin_name",
+  "bin_weight",
+  "batch_code",
+  "section_break_7",
+  "reason_for_rejection",
+  "stock_entry_reference",
+  "item",
+  "compound_code",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "scan_bin",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Scan Bin",
+   "options": "Barcode",
+   "reqd": 1
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Net Weight",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "reason_for_rejection",
+   "fieldtype": "Small Text",
+   "label": "Reason for Rejection",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Blank Bin Rejection Entry",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "compound_code",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Compound Code",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bin_code",
+   "fieldtype": "Link",
+   "label": "Bin Code",
+   "options": "Asset",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "gross_weight",
+   "fieldtype": "Float",
+   "label": "Gross Weight (Kgs)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "bin_weight",
+   "fieldtype": "Float",
+   "label": "Bin Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_7",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "scan_inspector",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scan inspector",
+   "options": "Barcode",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspector_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Inspector Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inspector_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Inspector ID",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bin_name",
+   "fieldtype": "Data",
+   "label": "Bin Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "available_qty",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Available Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "batch_code",
+   "fieldtype": "Link",
+   "label": "Batch ID",
+   "options": "Batch",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-05-02 19:44:45.503376",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Blank Bin Rejection Entry",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,149 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "CBT-.#####",
+ "creation": "2022-12-03 17:27:54.744620",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_1",
+  "transfer_from",
+  "source_warehouse",
+  "target_warehouse",
+  "section_break_2",
+  "enter_manually",
+  "manual_scan_spp_batch_number",
+  "scan_clip__bin",
+  "cut_bit_item",
+  "column_break_f7go2",
+  "employee",
+  "section_break_oz5xt",
+  "items",
+  "stock_entry_reference",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "transfer_from",
+   "fieldtype": "Select",
+   "label": "Transfer From",
+   "options": "Warming\nBlanking"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.enter_manually==0",
+   "fieldname": "scan_clip__bin",
+   "fieldtype": "Data",
+   "label": "Scan Clip / Bin",
+   "options": "Barcode"
+  },
+  {
+   "default": "0",
+   "fieldname": "enter_manually",
+   "fieldtype": "Check",
+   "label": "Enter Manually?"
+  },
+  {
+   "depends_on": "eval:doc.enter_manually==1",
+   "fieldname": "manual_scan_spp_batch_number",
+   "fieldtype": "Data",
+   "label": "Barcode"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Material Transfer Item"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cut Bit Transfer",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Source Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Target Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "cut_bit_item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cut Bit Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "hidden": 1
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_f7go2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_oz5xt",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-06-25 09:45:10.773824",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Cut Bit Transfer",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

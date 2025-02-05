@@ -1,0 +1,135 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "PCKGI-.#####",
+ "creation": "2023-04-05 19:30:09.140107",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item",
+  "lot_no",
+  "spp_batch_no",
+  "bom",
+  "qty__kgs",
+  "barcode_text",
+  "column_break_fvah4",
+  "product_ref",
+  "packing_type",
+  "qty_nos",
+  "batch_no",
+  "packing_serial_no_id",
+  "barcode"
+ ],
+ "fields": [
+  {
+   "fieldname": "lot_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Lot No.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_fvah4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty_nos",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Qty (No's)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "product_ref",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Product Ref",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_no",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "SPP Batch No.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Batch No.",
+   "options": "Batch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item To Produce",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bom",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "BOM",
+   "options": "BOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "packing_type",
+   "fieldtype": "Data",
+   "label": "Packing Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "packing_serial_no_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Packing Serial No ID"
+  },
+  {
+   "fieldname": "barcode_text",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Barcode Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "barcode",
+   "fieldtype": "Attach",
+   "hidden": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Barcode",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "qty__kgs",
+   "fieldtype": "Float",
+   "label": "Qty (Kg's)",
+   "non_negative": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-07-31 20:08:00.899523",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Packing Item",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

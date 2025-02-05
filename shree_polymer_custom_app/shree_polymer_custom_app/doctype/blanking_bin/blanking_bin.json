@@ -1,0 +1,74 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:bin_code",
+ "creation": "2022-12-17 19:24:45.444619",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "bin_code",
+  "bin_weight",
+  "barcode_text",
+  "barcode",
+  "display_barcode"
+ ],
+ "fields": [
+  {
+   "fieldname": "bin_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Bin Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "bin_weight",
+   "fieldtype": "Float",
+   "label": "Bin Weight (Kgs)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "barcode_text",
+   "fieldtype": "Data",
+   "label": "Barcode Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "display_barcode",
+   "fieldtype": "Image",
+   "label": "Display Barcode",
+   "options": "barcode"
+  },
+  {
+   "fieldname": "barcode",
+   "fieldtype": "Attach Image",
+   "label": "Barcode Image"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-02-17 16:16:12.245322",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Blanking Bin",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "bin_code,bin_weight",
+ "show_preview_popup": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

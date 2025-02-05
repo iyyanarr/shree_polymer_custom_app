@@ -1,0 +1,237 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "SUBL-.YYYY.-.#####",
+ "creation": "2023-04-29 16:11:11.196462",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "scan_lot_no",
+  "sub_lot_no",
+  "item_code",
+  "spp_batch_no",
+  "batch_no",
+  "column_break_snkdh",
+  "posting_date",
+  "available_qty",
+  "warehouse",
+  "qty",
+  "available_qty_kgs",
+  "stock_entry_reference",
+  "uom",
+  "first_parent_lot_no",
+  "deflashing_receipt_parent",
+  "lot_resource_tagging_parent",
+  "reference_doctype",
+  "material_receipt_parent",
+  "despatch_u1_parent",
+  "barcode_attach",
+  "amended_from",
+  "lrt_found",
+  "lrt_details"
+ ],
+ "fields": [
+  {
+   "fieldname": "sub_lot_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Sub Lot No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_snkdh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "* in Kgs",
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Qty",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "available_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Available Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_no",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "SPP Batch No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Item Code",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "UOM"
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "label": "Batch No",
+   "options": "Batch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scan_lot_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scan SPP Batch No",
+   "options": "Barcode",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Sub Lot Creation",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "first_parent_lot_no",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "First Parent Lot No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "available_qty_kgs",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Available Qty Kgs"
+  },
+  {
+   "fieldname": "deflashing_receipt_parent",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Deflashing Receipt Parent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lot_resource_tagging_parent",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Lot Resource Tagging Parent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Reference Doctype",
+   "read_only": 1
+  },
+  {
+   "fieldname": "material_receipt_parent",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Material Receipt Parent"
+  },
+  {
+   "fieldname": "barcode_attach",
+   "fieldtype": "Attach",
+   "hidden": 1,
+   "label": "Barcode Attach",
+   "read_only": 1
+  },
+  {
+   "fieldname": "despatch_u1_parent",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Despatch U1 Parent"
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "lrt_found",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "LRT Found",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lrt_details",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "LRT Details",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-08-17 20:00:49.796506",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Sub Lot Creation",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

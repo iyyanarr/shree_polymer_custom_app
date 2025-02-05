@@ -1,0 +1,326 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "PACKG-.#####",
+ "creation": "2023-04-05 19:24:24.357763",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "posting_date",
+  "scan_section",
+  "scan_lot_no",
+  "item",
+  "available_qty",
+  "qty_kgs",
+  "add",
+  "column_break_0byw9",
+  "packing_type",
+  "bom",
+  "product_ref",
+  "spp_batch_no",
+  "batch_no",
+  "qty_nos",
+  "items_section",
+  "items",
+  "section_break_ujicb",
+  "no_balance_lot",
+  "scan_balance_lot",
+  "add_balance_lot",
+  "exe_lot_bal_qty_kgs",
+  "exe_lot_bal_qty_nos",
+  "column_break_8p9ee",
+  "uom",
+  "balance_qty_kgs",
+  "balance_qty_nos",
+  "balance_lot_child_id",
+  "section_break_n2fie",
+  "balance_lot_items",
+  "total_qty_nos",
+  "total_qty_kgs",
+  "stock_entry_reference",
+  "packing_serial_no_id",
+  "barcode_text",
+  "barcode",
+  "customer_items",
+  "packing_types",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "product_ref",
+   "fieldtype": "Link",
+   "label": "Product Ref",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_nos",
+   "fieldtype": "Float",
+   "label": "Qty (No's)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scan_lot_no",
+   "fieldtype": "Data",
+   "label": "Scan Lot No",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Packing Item"
+  },
+  {
+   "fieldname": "column_break_0byw9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "label": "Batch No.",
+   "options": "Batch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_no",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "SPP Batch No.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scan_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "add",
+   "fieldtype": "Button",
+   "label": "Add"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Packing",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "available_qty",
+   "fieldtype": "Float",
+   "label": "Available Qty (No's)",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item To Produce",
+   "options": "Item"
+  },
+  {
+   "fieldname": "bom",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "BOM",
+   "options": "BOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "packing_type",
+   "fieldtype": "Select",
+   "label": "Packing Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "barcode_text",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Barcode Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "packing_serial_no_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Packing Serial No ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "barcode",
+   "fieldtype": "Attach",
+   "label": "Barcode Attach",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_qty_nos",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Total Qty(No's)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_qty_kgs",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Total Qty(Kg's)",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "qty_kgs",
+   "fieldtype": "Float",
+   "label": "Qty (Kg's)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "customer_items",
+   "fieldtype": "JSON",
+   "hidden": 1,
+   "label": "Customer Items",
+   "read_only": 1
+  },
+  {
+   "fieldname": "packing_types",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Packing Types",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:!doc.no_balance_lot && doc.scan_balance_lot && doc.uom == 'Kgs'",
+   "fieldname": "balance_qty_kgs",
+   "fieldtype": "Float",
+   "label": "Balance Qty (Kg's)",
+   "mandatory_depends_on": "eval:!doc.no_balance_lot && doc.scan_lot_no && doc.uom == 'Kgs'",
+   "non_negative": 1
+  },
+  {
+   "depends_on": "eval:!doc.no_balance_lot && doc.scan_balance_lot && doc.uom == 'Nos'",
+   "fieldname": "balance_qty_nos",
+   "fieldtype": "Float",
+   "label": "Balance Qty (No's)",
+   "non_negative": 1
+  },
+  {
+   "depends_on": "eval:!doc.no_balance_lot",
+   "fieldname": "balance_lot_items",
+   "fieldtype": "Table",
+   "label": "Balance Lot Items",
+   "mandatory_depends_on": "eval:!doc.no_balance_lot",
+   "options": "Packing Balance Lot"
+  },
+  {
+   "default": "0",
+   "fieldname": "no_balance_lot",
+   "fieldtype": "Check",
+   "label": "No Balance Lot"
+  },
+  {
+   "fieldname": "section_break_ujicb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_8p9ee",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_n2fie",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:!doc.no_balance_lot",
+   "fieldname": "scan_balance_lot",
+   "fieldtype": "Data",
+   "label": "Scan Balance Lot",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "add_balance_lot",
+   "fieldtype": "Button",
+   "label": "Add"
+  },
+  {
+   "fieldname": "balance_lot_child_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Balance Lot Child ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "exe_lot_bal_qty_kgs",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Existing Lot Balance Qty Kg's",
+   "read_only": 1
+  },
+  {
+   "fieldname": "exe_lot_bal_qty_nos",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Existing Lot Balance Qty No's",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:!doc.no_balance_lot && doc.scan_balance_lot",
+   "fieldname": "uom",
+   "fieldtype": "Select",
+   "label": "UOM",
+   "mandatory_depends_on": "eval:!doc.no_balance_lot && doc.scan_lot_no",
+   "options": "Kgs\nNos"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-09-19 18:26:19.757482",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Packing",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

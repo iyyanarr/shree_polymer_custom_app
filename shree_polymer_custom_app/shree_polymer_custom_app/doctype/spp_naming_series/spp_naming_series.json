@@ -1,0 +1,47 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-03-27 12:05:05.155074",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "stock_entry_type",
+  "column_break_4",
+  "spp_naming_series"
+ ],
+ "fields": [
+  {
+   "fieldname": "stock_entry_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Process",
+   "options": "Transfer Batches to Mixing Center\nDC Receipt (FB and MB) For External Mixing\nDC Receipt (FB and MB) For Internal Mixing\nDC Receipt (C) For Internal Mixing\nDC Receipt (C) For External Mixing\nTransfer Compound to Sheeting Warehouse\nCut Bit Entry\nMoulding Entry\nPatrol Inspection\nLine Inspection\nLot Inspection\nIncoming Inspection\nFinal Inspection\nDeflashing\nDeflashing Receipt (For Internal Vendor)\nDeflashing Receipt (For External Vendor)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "stock_entry_type.spp_naming_series",
+   "fieldname": "spp_naming_series",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Naming Series",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-04-06 11:31:20.519477",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "SPP Naming Series",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

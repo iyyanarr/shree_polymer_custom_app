@@ -1,0 +1,245 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "LRST-.YYYY.-.#####",
+ "creation": "2023-03-30 11:48:51.777823",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "operations",
+  "scan_lot_no",
+  "scan_operator",
+  "batch_no",
+  "workstation",
+  "bom_no",
+  "warehouse",
+  "available_qty",
+  "spp_batch_no",
+  "column_break_57ttn",
+  "posting_date",
+  "operation_type_html",
+  "employee_operations",
+  "operation_type",
+  "operator_id",
+  "operator_name",
+  "product_ref",
+  "job_card",
+  "qtynos",
+  "qty_after_rejection_nos",
+  "work_order_ref",
+  "stock_entry_ref",
+  "all_operations_completed",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "operation_type",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Operation Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scan_lot_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scan Lot No.",
+   "options": "Barcode",
+   "reqd": 1
+  },
+  {
+   "fieldname": "scan_operator",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scan Operator",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "column_break_57ttn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "operator_name",
+   "fieldtype": "Data",
+   "label": "Operator Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "operator_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Operator ID",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fieldname": "job_card",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Job Card",
+   "options": "Job Card",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Lot Resource Tagging",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "product_ref",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Product Ref.",
+   "options": "Item",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Batch No",
+   "options": "Batch",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "bom_no",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Bom No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qtynos",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty(No's)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "spp_batch_no",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "SPP Batch No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "available_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Available Qty",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "work_order_ref",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Work Order Ref",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "stock_entry_ref",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Stock Entry Ref.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "operation_type_html",
+   "fieldtype": "HTML"
+  },
+  {
+   "fieldname": "operations",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Operations"
+  },
+  {
+   "default": "0",
+   "fieldname": "all_operations_completed",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "All Operations Completed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "workstation",
+   "fieldtype": "Link",
+   "label": "Workstation",
+   "options": "Workstation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_after_rejection_nos",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Qty After Rejection(No's)"
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee_operations",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Employee Operations"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-07-12 12:25:35.932112",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Lot Resource Tagging",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

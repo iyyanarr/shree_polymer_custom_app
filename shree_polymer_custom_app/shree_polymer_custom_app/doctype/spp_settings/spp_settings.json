@@ -1,0 +1,554 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2022-08-16 19:45:02.655250",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "stock_enqueue_section",
+  "enable_enqueue",
+  "batch_entry_section",
+  "source_warehouse",
+  "workstation",
+  "validate_dn_cancellation",
+  "column_break_3",
+  "target_warehouse",
+  "employee",
+  "validate_stock_submission",
+  "column_break_5",
+  "wip_warehouse",
+  "cb_target_warehouse",
+  "auto_submit_job_cards",
+  "auto_submit_stock_entries",
+  "mixing_center_section",
+  "mixing_operations",
+  "target_warehouse_list",
+  "warming_section",
+  "default_sheeting_warehouse",
+  "warming_wareshouses",
+  "tolerance_band",
+  "blanking_section",
+  "default_cut_bit_warehouse",
+  "default_blanking_warehouse",
+  "column_break_20",
+  "unit_2_warehouse",
+  "bin_category",
+  "blanking_item_group",
+  "blanking_wareshouses",
+  "blanking_location_section",
+  "from_location",
+  "column_break_lp5z0",
+  "to_location",
+  "designation_mapping_section",
+  "work_plan_section",
+  "item_group",
+  "mould_item_group",
+  "production_tolerance",
+  "job_card_print_format",
+  "inspection_rejection_limit",
+  "mat_item_group",
+  "maximum__allowed_qty",
+  "extra__of_compound_required",
+  "column_break_30",
+  "target_qty",
+  "default_time",
+  "rejection_warehouse",
+  "sub_lot_source_warehouse",
+  "mat_percentage",
+  "section_break_33",
+  "work_station",
+  "designation_mapping",
+  "designation",
+  "deflashing_section",
+  "deflash_default_time",
+  "scrap_warehouse",
+  "scrap_item",
+  "column_break_39",
+  "deflash_workstation",
+  "deflashing_vendor",
+  "product_despatch_section",
+  "p_target_warehouse",
+  "column_break_j1jp8",
+  "pdir_visual_t__warehouse",
+  "lot_resource_tagging_workstations_section",
+  "workstation_mapping",
+  "packing_section",
+  "packing_type",
+  "column_break_6q8m8",
+  "packing_item_group",
+  "naming_series_section",
+  "spp_naming_series",
+  "subcontractor_tat_mapping",
+  "exclude_warehouses"
+ ],
+ "fields": [
+  {
+   "fieldname": "batch_entry_section",
+   "fieldtype": "Section Break",
+   "label": "Batching"
+  },
+  {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "label": "Source Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "label": "Target Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "workstation",
+   "fieldtype": "Link",
+   "label": "Workstation",
+   "options": "Workstation"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "wip_warehouse",
+   "fieldtype": "Link",
+   "label": "Work-in-Progress Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_submit_stock_entries",
+   "fieldtype": "Check",
+   "label": "Auto Submit Stock Entries"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_submit_job_cards",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Auto Submit Job Cards"
+  },
+  {
+   "fieldname": "mixing_center_section",
+   "fieldtype": "Section Break",
+   "label": "Mixing Center"
+  },
+  {
+   "fieldname": "target_warehouse_list",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Target Warehouse List",
+   "options": "Mixing Center Target Warehouse"
+  },
+  {
+   "fieldname": "blanking_section",
+   "fieldtype": "Section Break",
+   "label": "Blanking"
+  },
+  {
+   "fieldname": "default_cut_bit_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Cut Bit Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "designation_mapping",
+   "fieldtype": "Table",
+   "label": "Designation Mapping",
+   "options": "SPP Designation Mapping"
+  },
+  {
+   "fieldname": "blanking_wareshouses",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Target Warehouses",
+   "options": "Mixing Center Target Warehouse"
+  },
+  {
+   "fieldname": "warming_section",
+   "fieldtype": "Section Break",
+   "label": "Warming"
+  },
+  {
+   "fieldname": "warming_wareshouses",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Target Warehouses",
+   "options": "Mixing Center Target Warehouse"
+  },
+  {
+   "fieldname": "tolerance_band",
+   "fieldtype": "Float",
+   "label": "Tolerance Band (Kgs)"
+  },
+  {
+   "fieldname": "default_sheeting_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Sheeting Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "default_blanking_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Blanking Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "designation_mapping_section",
+   "fieldtype": "Section Break",
+   "label": "Designation Mapping"
+  },
+  {
+   "fieldname": "column_break_20",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "unit_2_warehouse",
+   "fieldtype": "Link",
+   "label": "Unit 2 Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "mixing_operations",
+   "fieldtype": "Table",
+   "label": "Mixing Operations",
+   "options": "Mixing Operation"
+  },
+  {
+   "fieldname": "blanking_item_group",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Blanking Item Group",
+   "options": "Item Group"
+  },
+  {
+   "description": "Filters to be apply in work plan",
+   "fieldname": "work_plan_section",
+   "fieldtype": "Section Break",
+   "label": "Moulding"
+  },
+  {
+   "fieldname": "mould_item_group",
+   "fieldtype": "Link",
+   "label": "Mould Item Group",
+   "options": "Item Group"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "label": "Item Group",
+   "options": "Item Group"
+  },
+  {
+   "fieldname": "work_station",
+   "fieldtype": "Table",
+   "label": "Work Station",
+   "options": "Work Plan Station"
+  },
+  {
+   "default": "2",
+   "description": "* No.of times to add qty",
+   "fieldname": "target_qty",
+   "fieldtype": "Int",
+   "label": "Target Qty"
+  },
+  {
+   "description": "In Minutes",
+   "fieldname": "default_time",
+   "fieldtype": "Float",
+   "label": "Default Time",
+   "precision": "2"
+  },
+  {
+   "fieldname": "column_break_30",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_33",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "5",
+   "fieldname": "production_tolerance",
+   "fieldtype": "Float",
+   "label": "Production Tolerance"
+  },
+  {
+   "fieldname": "rejection_warehouse",
+   "fieldtype": "Link",
+   "label": "Rejection Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "deflashing_section",
+   "fieldtype": "Section Break",
+   "label": "Deflashing"
+  },
+  {
+   "description": "In Minutes",
+   "fieldname": "deflash_default_time",
+   "fieldtype": "Float",
+   "label": "Default Time",
+   "precision": "2"
+  },
+  {
+   "fieldname": "column_break_39",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "deflash_workstation",
+   "fieldtype": "Link",
+   "label": "Workstation",
+   "options": "Workstation"
+  },
+  {
+   "fieldname": "scrap_warehouse",
+   "fieldtype": "Link",
+   "label": "Scrap Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "job_card_print_format",
+   "fieldtype": "Link",
+   "label": "Job Card Print Format",
+   "options": "Print Format"
+  },
+  {
+   "fieldname": "product_despatch_section",
+   "fieldtype": "Section Break",
+   "label": "Product Despatch"
+  },
+  {
+   "description": "* Used in <b>Despatch To U1</b> target warehouse.",
+   "fieldname": "p_target_warehouse",
+   "fieldtype": "Link",
+   "label": "Target Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "naming_series_section",
+   "fieldtype": "Section Break",
+   "label": "Naming Series"
+  },
+  {
+   "fieldname": "spp_naming_series",
+   "fieldtype": "Table",
+   "label": "Naming Series",
+   "options": "SPP Naming Series"
+  },
+  {
+   "fieldname": "bin_category",
+   "fieldtype": "Link",
+   "label": "Bin Category",
+   "options": "Asset Category"
+  },
+  {
+   "fieldname": "blanking_location_section",
+   "fieldtype": "Section Break",
+   "label": "Blanking Location"
+  },
+  {
+   "fieldname": "from_location",
+   "fieldtype": "Link",
+   "label": "From Location",
+   "options": "Location"
+  },
+  {
+   "fieldname": "column_break_lp5z0",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "to_location",
+   "fieldtype": "Link",
+   "label": "To Location",
+   "options": "Location"
+  },
+  {
+   "description": "* in %",
+   "fieldname": "inspection_rejection_limit",
+   "fieldtype": "Percent",
+   "hidden": 1,
+   "label": "Inspection Rejection Limit"
+  },
+  {
+   "description": "* Used to take print of particular designation from employee bulk print.",
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation"
+  },
+  {
+   "description": "* Used to Validate the Vendors in Deflshing Despatch",
+   "fieldname": "deflashing_vendor",
+   "fieldtype": "Table MultiSelect",
+   "label": "Deflashing Vendor",
+   "options": "Deflashing Vendor"
+  },
+  {
+   "fieldname": "sub_lot_source_warehouse",
+   "fieldtype": "Table MultiSelect",
+   "label": "Sub Lot Source Warehouse",
+   "options": "Sub Lot Warehouse"
+  },
+  {
+   "fieldname": "column_break_6q8m8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "packing_item_group",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Packing Item Group",
+   "options": "Item Group"
+  },
+  {
+   "fieldname": "packing_section",
+   "fieldtype": "Section Break",
+   "label": "Packing"
+  },
+  {
+   "description": "* Enter each packing type in comma(,) separate.",
+   "fieldname": "packing_type",
+   "fieldtype": "Small Text",
+   "label": "Packing Type"
+  },
+  {
+   "description": "*(DC) Select CB & CMB item target warehouse.",
+   "fieldname": "cb_target_warehouse",
+   "fieldtype": "Link",
+   "label": "Target Warehouse ",
+   "options": "Warehouse"
+  },
+  {
+   "description": "* Which is used to filter the item in <b>Blanking DC Entry</b>",
+   "fieldname": "mat_item_group",
+   "fieldtype": "Link",
+   "label": "Mat Item Group",
+   "options": "Item Group"
+  },
+  {
+   "fieldname": "column_break_j1jp8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "* Select <b>PDIR &amp; Visual Inspection</b> rejection warehouse.",
+   "fieldname": "pdir_visual_t__warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "PDIR & Visual Target Warehouse ",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lot_resource_tagging_workstations_section",
+   "fieldtype": "Section Break",
+   "label": "Lot Resource Tagging Workstations"
+  },
+  {
+   "fieldname": "workstation_mapping",
+   "fieldtype": "Table",
+   "options": "Workstation Mapping"
+  },
+  {
+   "description": "* Minimum % of Compound Consumption in Mat Production. ",
+   "fieldname": "mat_percentage",
+   "fieldtype": "Percent",
+   "label": "Mat % in Compound Consumption",
+   "reqd": 1
+  },
+  {
+   "description": "* % of excess qty allowed (no.of.lifts * no.of.cavities)",
+   "fieldname": "maximum__allowed_qty",
+   "fieldtype": "Percent",
+   "label": "Maximum % Of Allowed Qty ",
+   "reqd": 1
+  },
+  {
+   "fieldname": "subcontractor_tat_mapping",
+   "fieldtype": "Table",
+   "label": "Subcontractor TAT Mapping",
+   "options": "Subcontractor TAT Mapping Item"
+  },
+  {
+   "default": "0",
+   "description": "* Submission of Compound,Mould..etc ",
+   "fieldname": "validate_stock_submission",
+   "fieldtype": "Check",
+   "label": "Validate Stock Submission"
+  },
+  {
+   "description": "* Warehouse filter applied in reports",
+   "fieldname": "exclude_warehouses",
+   "fieldtype": "Table MultiSelect",
+   "label": "Exclude warehouses",
+   "options": "Exclude Warehouse"
+  },
+  {
+   "description": "* Deflashing Scrap Item",
+   "fieldname": "scrap_item",
+   "fieldtype": "Link",
+   "label": "Scrap Item",
+   "options": "Item"
+  },
+  {
+   "default": "0",
+   "description": "* Validate the associated document cancellation when cancel Delivery Note and Stock Entry.",
+   "fieldname": "validate_dn_cancellation",
+   "fieldtype": "Check",
+   "label": "Validate Cancellation"
+  },
+  {
+   "fieldname": "stock_enqueue_section",
+   "fieldtype": "Section Break",
+   "label": "Stock Enqueue",
+   "permlevel": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_enqueue",
+   "fieldtype": "Check",
+   "label": "Enable Enqueue",
+   "permlevel": 1
+  },
+  {
+   "description": "* Used in Compound Consume Report",
+   "fieldname": "extra__of_compound_required",
+   "fieldtype": "Percent",
+   "label": "Extra % Of Compound Required"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2023-10-19 15:05:40.073264",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "SPP Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,270 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "BDCE-.#####",
+ "creation": "2022-12-20 21:48:17.289960",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "from_blank_bin_inward",
+  "employee",
+  "item_produced",
+  "column_break_didkn",
+  "posting_date",
+  "blanking_entry_section",
+  "enter_manually",
+  "manual_clip_code",
+  "scan_clip",
+  "enter_bin_manually",
+  "manual_bin_code",
+  "scan_bin",
+  "item_to_produce",
+  "add_html",
+  "column_break_5",
+  "sheeting_clip",
+  "scanned_item",
+  "available_quantity",
+  "spp_batch_number",
+  "batch_no",
+  "column_break_2",
+  "mix_barcode",
+  "t_item_to_produce",
+  "bin_code",
+  "asset_name",
+  "bin_weight",
+  "gross_weight_kgs",
+  "net_weight_kgs",
+  "section_break_4",
+  "items",
+  "stock_entry_reference",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "description": "* Please choose mat item before scan clip and bin.",
+   "fieldname": "item_produced",
+   "fieldtype": "Link",
+   "label": "Item Produced",
+   "options": "Item"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.enter_manually == 0",
+   "fieldname": "scan_clip",
+   "fieldtype": "Data",
+   "label": "Scan Clip",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "section_break_4",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.enter_bin_manually==0",
+   "fieldname": "scan_bin",
+   "fieldtype": "Data",
+   "label": "Scan Bin",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Blanking DC Item"
+  },
+  {
+   "default": "0",
+   "fieldname": "enter_manually",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Enter Manually?"
+  },
+  {
+   "default": "0",
+   "fieldname": "enter_bin_manually",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Enter Manually?"
+  },
+  {
+   "depends_on": "eval:doc.enter_manually==1",
+   "fieldname": "manual_clip_code",
+   "fieldtype": "Data",
+   "label": "Manual Clip Code"
+  },
+  {
+   "depends_on": "eval:doc.enter_bin_manually==1",
+   "fieldname": "manual_bin_code",
+   "fieldtype": "Data",
+   "label": "Bin Code"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "scanned_item",
+   "fieldtype": "Data",
+   "label": "Scanned Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "available_quantity",
+   "fieldtype": "Float",
+   "label": "Available Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Blanking DC Entry",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_number",
+   "fieldtype": "Data",
+   "label": "SPP Batch Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "blanking_entry_section",
+   "fieldtype": "Section Break",
+   "label": "Blanking Entry"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bin_code",
+   "fieldtype": "Data",
+   "label": "Bin Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bin_weight",
+   "fieldtype": "Float",
+   "label": "Bin Weight ( Kgs)",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.bin_weight",
+   "fieldname": "gross_weight_kgs",
+   "fieldtype": "Float",
+   "label": "Gross Weight (Kgs)"
+  },
+  {
+   "depends_on": "eval:doc.bin_code",
+   "fieldname": "net_weight_kgs",
+   "fieldtype": "Float",
+   "label": "Net Weight (Kgs)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sheeting_clip",
+   "fieldtype": "Data",
+   "label": "Sheeting Clip",
+   "read_only": 1
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Data",
+   "label": "Batch No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "add_html",
+   "fieldtype": "HTML",
+   "label": "Add"
+  },
+  {
+   "fieldname": "mix_barcode",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Mix Barcode",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "asset_name",
+   "fieldtype": "Data",
+   "label": "Bin Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "t_item_to_produce",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Item To Produce",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_didkn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "from_blank_bin_inward",
+   "fieldtype": "Check",
+   "label": "From Blank Bin Inward "
+  },
+  {
+   "fieldname": "item_to_produce",
+   "fieldtype": "Data",
+   "label": "Item To Produce",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-10-18 17:53:09.375388",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Blanking DC Entry",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

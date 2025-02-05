@@ -1,0 +1,78 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-02-18 11:59:19.569469",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item",
+  "work_station",
+  "bom",
+  "column_break_3",
+  "mould",
+  "job_card",
+  "lot_number"
+ ],
+ "fields": [
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "work_station",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Work Station",
+   "options": "Workstation"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "mould",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Mould",
+   "options": "Item"
+  },
+  {
+   "fieldname": "job_card",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Job Card"
+  },
+  {
+   "fieldname": "lot_number",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Lot Number"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.docstatus == 1;",
+   "fieldname": "bom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Bom",
+   "options": "BOM"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-05-17 15:59:57.847791",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Add On Work Plan Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

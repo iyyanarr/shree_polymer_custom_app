@@ -1,0 +1,190 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "ILOIE-.#####",
+ "creation": "2023-02-10 12:27:14.298720",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "scan_inspector",
+  "scan_production_lot",
+  "machine_no",
+  "inspected_qty",
+  "batch_no",
+  "column_break_5",
+  "lot_no",
+  "product_ref_no",
+  "operator_name",
+  "inspector_name",
+  "inspector_code",
+  "defect_section",
+  "type_of_defect",
+  "rejected_qty",
+  "add",
+  "items",
+  "total_rejected_qty",
+  "total_rejected_qty_in_percentage",
+  "stock_entry_reference",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "scan_production_lot",
+   "fieldtype": "Data",
+   "label": "Scan Production Lot",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "machine_no",
+   "fieldtype": "Data",
+   "label": "Machine No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inspected_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Inspected No",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Data",
+   "label": "Batch No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lot_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Lot No",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "product_ref_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Product Ref No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "operator_name",
+   "fieldtype": "Data",
+   "label": "Operator Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inspector_name",
+   "fieldtype": "Data",
+   "label": "Inspector Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "defect_section",
+   "fieldtype": "Section Break",
+   "label": "Defect"
+  },
+  {
+   "fieldname": "type_of_defect",
+   "fieldtype": "Select",
+   "label": "Type Of Defect",
+   "options": "Flow\nBubble\nCutmark\nDeflash\nRib\nForeign Particular\nUnder Fill\nDipression\nUnder Cure\nSurface Defect\nOver Cure/Fast\nBurst/Tear\nBlack Mark\nBlister\nBend"
+  },
+  {
+   "fieldname": "rejected_qty",
+   "fieldtype": "Int",
+   "label": "Rejected No"
+  },
+  {
+   "fieldname": "add",
+   "fieldtype": "Button",
+   "label": "Add"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Incoming Lot Inspection Entry Item"
+  },
+  {
+   "fieldname": "total_rejected_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Rejected Qty",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_rejected_qty_in_percentage",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Total Rejected Qty In %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Data",
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Incoming Lot Inspection Entry",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "scan_inspector",
+   "fieldtype": "Data",
+   "label": "Scan inspector",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "inspector_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Inspector ID",
+   "options": "Employee",
+   "read_only": 1,
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-02-24 12:19:38.943769",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Incoming Lot Inspection Entry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

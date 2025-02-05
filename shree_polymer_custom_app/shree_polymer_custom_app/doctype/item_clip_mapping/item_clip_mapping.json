@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2022-11-07 15:00:05.719828",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "compound",
+  "sheeting_clip",
+  "is_retired",
+  "spp_batch_number",
+  "qty"
+ ],
+ "fields": [
+  {
+   "fieldname": "compound",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Compound",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sheeting_clip",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sheeting Clip",
+   "options": "Sheeting Clip",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_retired",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Released",
+   "reqd": 1
+  },
+  {
+   "fieldname": "spp_batch_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "SPP Batch Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2022-11-18 14:59:31.012642",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Item Clip Mapping",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

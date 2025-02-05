@@ -1,0 +1,84 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-02-14 13:45:37.838101",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "posted_date",
+  "compound_code",
+  "serial_no",
+  "shift_no",
+  "shift_series",
+  "job_card_reference"
+ ],
+ "fields": [
+  {
+   "fieldname": "posted_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Posted Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "compound_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Compound Code",
+   "reqd": 1
+  },
+  {
+   "fieldname": "serial_no",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Serial No",
+   "reqd": 1
+  },
+  {
+   "fieldname": "shift_no",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Shift No",
+   "options": "1\n2\n3"
+  },
+  {
+   "fieldname": "job_card_reference",
+   "fieldtype": "Data",
+   "label": "Job Card Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shift_series",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Shift Series",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-07-17 15:29:00.097021",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Moulding Serial No",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

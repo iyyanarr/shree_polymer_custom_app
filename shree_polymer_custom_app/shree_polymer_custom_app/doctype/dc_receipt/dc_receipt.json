@@ -1,0 +1,146 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "DCR-.YYYY.-.MM.-.DD.-.#####",
+ "creation": "2022-09-02 14:53:02.527606",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "continue_without_dc",
+  "dc_no",
+  "column_break_2",
+  "source_warehouse",
+  "column_break_4",
+  "target_warehouse",
+  "column_break_6",
+  "operation",
+  "section_break_2",
+  "compound",
+  "scan_mixbarcode",
+  "batches",
+  "stock_entry_reference",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "depends_on": "eval:doc.continue_without_dc==0",
+   "fieldname": "dc_no",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "DC No",
+   "mandatory_depends_on": "eval:doc.continue_without_dc==0",
+   "options": "SPP Delivery Challan"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "scan_mixbarcode",
+   "fieldtype": "Data",
+   "label": "Scan Barcode",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "batches",
+   "fieldtype": "Table",
+   "label": "Batches",
+   "options": "Mixing Center Items"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "DC Receipt",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "dc_no.target_warehouse",
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Source Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "dc_no.source_warehouse",
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Target Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "dc_no.operation",
+   "fieldname": "operation",
+   "fieldtype": "Link",
+   "label": "Operation",
+   "options": "Operation",
+   "read_only_depends_on": "eval:doc.continue_without_dc==0"
+  },
+  {
+   "default": "0",
+   "fieldname": "continue_without_dc",
+   "fieldtype": "Check",
+   "label": "Is Internal Mixing?"
+  },
+  {
+   "depends_on": "eval:doc.continue_without_dc==1",
+   "fieldname": "compound",
+   "fieldtype": "Link",
+   "label": "Product To Manufacture",
+   "mandatory_depends_on": "eval:doc.continue_without_dc==1",
+   "options": "Item"
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-04-27 19:22:25.134716",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "DC Receipt",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

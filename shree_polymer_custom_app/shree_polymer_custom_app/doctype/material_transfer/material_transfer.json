@@ -1,0 +1,329 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "MT-.YYYY.-.MM.-.DD.-.#####",
+ "creation": "2022-08-22 16:21:09.506410",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "transfer_date",
+  "cl2",
+  "material_transfer_type",
+  "c1",
+  "employee",
+  "section_break_2",
+  "source_warehouse",
+  "column_break_4",
+  "target_warehouse",
+  "column_break_6",
+  "vehicle_number",
+  "scan_location",
+  "column_break_uqia7",
+  "driver_name",
+  "item_section",
+  "item",
+  "item_name",
+  "column_break_15",
+  "qty",
+  "bom_no",
+  "batches_section",
+  "enter_manually",
+  "manual_scan_spp_batch_number",
+  "scan_spp_batch_number",
+  "column_break_21",
+  "cutbit_qty",
+  "section_break_23",
+  "batches",
+  "clip_mapping_section",
+  "scan_clip",
+  "column_break_24",
+  "sheeting_clip",
+  "cut_bits_section",
+  "use_cut_bit",
+  "cut_bit_items",
+  "amended_from",
+  "more_info_section",
+  "dc_no",
+  "stock_entry_ref"
+ ],
+ "fields": [
+  {
+   "fieldname": "material_transfer_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Material Transfer Type",
+   "options": "Transfer Batches to Mixing Center\nTransfer Compound to Sheeting Warehouse"
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type!=\"Transfer Batches to Mixing Center\"",
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "U3-Store - SPP INDIA",
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "label": "Source Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "batches_section",
+   "fieldtype": "Section Break",
+   "label": "Batches"
+  },
+  {
+   "fieldname": "batches",
+   "fieldtype": "Table",
+   "label": "Batches",
+   "options": "Material Transfer Item"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Material Transfer",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.enter_manually==0",
+   "fieldname": "scan_spp_batch_number",
+   "fieldtype": "Data",
+   "label": "Scan Barcode",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "label": "Target Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type!=\"Transfer Compound to Sheeting Warehouse\"",
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type!=\"Transfer Batches to Mixing Center\" && doc.material_transfer_type!=\"Final Batch Mixing\"",
+   "fieldname": "scan_location",
+   "fieldtype": "Data",
+   "label": "Scan Location"
+  },
+  {
+   "fieldname": "c1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type==\"Transfer Compound to Sheeting Warehouse\"",
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "mandatory_depends_on": "eval:doc.material_transfer_type==\"Transfer Compound to Sheeting Warehouse\"",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "dc_no",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "DC No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry_ref",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Stock Entry Ref",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type==\"Transfer Compound to Sheeting Warehouse\"",
+   "fieldname": "cut_bits_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Cut Bits"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.material_transfer_type==\"Transfer Compound to Sheeting Warehouse\"",
+   "fieldname": "use_cut_bit",
+   "fieldtype": "Check",
+   "label": "Use Cut Bit"
+  },
+  {
+   "depends_on": "eval:doc.use_cut_bit==1",
+   "fieldname": "cut_bit_items",
+   "fieldtype": "Table",
+   "label": "Cut Bit Items",
+   "options": "Cut Bit Item"
+  },
+  {
+   "fieldname": "more_info_section",
+   "fieldtype": "Section Break",
+   "label": "More Info"
+  },
+  {
+   "fieldname": "cl2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type==\"Transfer Compound to Sheeting Warehouse\"",
+   "fieldname": "sheeting_clip",
+   "fieldtype": "Table MultiSelect",
+   "label": "Sheeting Clips",
+   "options": "Sheeting Clip Mapping"
+  },
+  {
+   "default": "0",
+   "fieldname": "enter_manually",
+   "fieldtype": "Check",
+   "label": "Enter Manually?"
+  },
+  {
+   "depends_on": "eval:doc.enter_manually==1",
+   "fieldname": "manual_scan_spp_batch_number",
+   "fieldtype": "Data",
+   "label": "Barcode"
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type == \"Final Batch Mixing\"",
+   "fieldname": "item_section",
+   "fieldtype": "Section Break",
+   "label": "Item"
+  },
+  {
+   "fetch_from": "item.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_15",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Quantity",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "item.default_bom",
+   "fieldname": "bom_no",
+   "fieldtype": "Data",
+   "label": "BOM No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Compound",
+   "options": "Item"
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type==\"Transfer Compound to Sheeting Warehouse\"",
+   "fieldname": "scan_clip",
+   "fieldtype": "Data",
+   "label": "Scan Clip",
+   "options": "Barcode"
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type==\"Transfer Compound to Sheeting Warehouse\"",
+   "fieldname": "clip_mapping_section",
+   "fieldtype": "Section Break",
+   "label": "Clip Mapping"
+  },
+  {
+   "fieldname": "column_break_24",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_21",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type==\"Transfer Compound to Sheeting Warehouse\"",
+   "fieldname": "cutbit_qty",
+   "fieldtype": "Float",
+   "label": "Cutbit Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_23",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type == \"Transfer Batches to Mixing Center\"",
+   "fieldname": "vehicle_number",
+   "fieldtype": "Link",
+   "label": "Vehicle Number",
+   "options": "Vehicle No"
+  },
+  {
+   "fieldname": "column_break_uqia7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.material_transfer_type == \"Transfer Batches to Mixing Center\"",
+   "fieldname": "driver_name",
+   "fieldtype": "Data",
+   "label": "Driver Name"
+  },
+  {
+   "fieldname": "transfer_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-07-10 15:34:21.912479",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Material Transfer",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

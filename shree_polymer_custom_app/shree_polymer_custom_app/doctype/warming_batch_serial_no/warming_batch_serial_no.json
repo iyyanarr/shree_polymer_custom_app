@@ -1,0 +1,74 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2022-12-02 20:10:11.007583",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "posting_date",
+  "compound",
+  "spp_batch_number",
+  "serial_no",
+  "sheeting_clips"
+ ],
+ "fields": [
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "compound",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Compound",
+   "reqd": 1
+  },
+  {
+   "fieldname": "spp_batch_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "SPP Batch Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "serial_no",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Serial No",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sheeting_clips",
+   "fieldtype": "Table MultiSelect",
+   "label": "Sheeting Clips",
+   "options": "Sheeting Clip Mapping"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2022-12-02 20:12:21.242137",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Warming Batch Serial No",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

@@ -1,0 +1,99 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2022-12-19 19:08:46.379616",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "compound",
+  "mat",
+  "blanking_bin",
+  "blanking__bin",
+  "is_retired",
+  "spp_batch_number",
+  "qty",
+  "job_card"
+ ],
+ "fields": [
+  {
+   "fieldname": "compound",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Compound",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "blanking_bin",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Blanking Bin",
+   "options": "Blanking Bin"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_retired",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Released",
+   "reqd": 1
+  },
+  {
+   "fieldname": "spp_batch_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "SPP Batch Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty"
+  },
+  {
+   "fieldname": "job_card",
+   "fieldtype": "Data",
+   "label": "Job Card",
+   "read_only": 1
+  },
+  {
+   "fieldname": "blanking__bin",
+   "fieldtype": "Link",
+   "label": "Blanking Bin",
+   "options": "Asset",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mat",
+   "fieldtype": "Link",
+   "label": "Mat",
+   "options": "Item",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-10-25 14:43:05.874988",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Item Bin Mapping",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

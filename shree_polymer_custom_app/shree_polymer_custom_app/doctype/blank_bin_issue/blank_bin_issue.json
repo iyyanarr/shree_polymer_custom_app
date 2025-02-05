@@ -1,0 +1,189 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "PE-.#####",
+ "creation": "2023-01-30 15:26:15.640493",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "scan_section",
+  "scan_production_lot",
+  "scan_bin",
+  "add_html",
+  "column_break_5",
+  "job_card",
+  "production_item",
+  "qty_to_manufacture",
+  "press",
+  "mould",
+  "spp_batch_number",
+  "column_break_7",
+  "bin",
+  "asset_name",
+  "bin_weight",
+  "compound",
+  "qty",
+  "amended_from",
+  "items_section",
+  "items"
+ ],
+ "fields": [
+  {
+   "fieldname": "scan_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "scan_production_lot",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Scan Job Card",
+   "options": "Barcode",
+   "reqd": 1
+  },
+  {
+   "fieldname": "scan_bin",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Scan Bin",
+   "options": "Barcode",
+   "reqd": 1
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Blank Bin Issue Item"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "job_card",
+   "fieldtype": "Link",
+   "label": "Job Card",
+   "options": "Job Card",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bin",
+   "fieldtype": "Link",
+   "label": "Bin",
+   "options": "Asset",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Blank Bin Issue",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "add_html",
+   "fieldtype": "HTML",
+   "hidden": 1,
+   "label": "Add"
+  },
+  {
+   "fieldname": "bin_weight",
+   "fieldtype": "Float",
+   "label": "Bin Weight",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "production_item",
+   "fieldtype": "Link",
+   "label": "Production Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_to_manufacture",
+   "fieldtype": "Float",
+   "label": "Qty To Manufacture",
+   "read_only": 1
+  },
+  {
+   "fieldname": "press",
+   "fieldtype": "Link",
+   "label": "Press",
+   "options": "Workstation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "mould",
+   "fieldtype": "Link",
+   "label": "Mould",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "compound",
+   "fieldtype": "Link",
+   "label": "Compound",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_number",
+   "fieldtype": "Data",
+   "label": "SPP Batch Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "asset_name",
+   "fieldtype": "Data",
+   "label": "Bin Name",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-05-26 12:55:16.634721",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Blank Bin Issue",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

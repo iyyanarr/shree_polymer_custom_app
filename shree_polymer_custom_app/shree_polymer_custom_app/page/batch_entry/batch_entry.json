@@ -1,0 +1,20 @@
+{
+ "content": null,
+ "creation": "2022-08-10 17:13:41.116648",
+ "docstatus": 0,
+ "doctype": "Page",
+ "icon": "fa fa-list",
+ "idx": 0,
+ "modified": "2022-08-10 17:13:41.116648",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "batch-entry",
+ "owner": "Administrator",
+ "page_name": "batch-entry",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Batch ERP Entry"
+}

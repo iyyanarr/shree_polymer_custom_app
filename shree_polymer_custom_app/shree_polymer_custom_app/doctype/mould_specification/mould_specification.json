@@ -1,0 +1,211 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:naming_id",
+ "creation": "2023-02-11 20:10:50.943216",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "mould_ref",
+  "compound_code",
+  "no_of_cavity_per_blank",
+  "avg_blank_wtproduct_gms",
+  "part_no",
+  "blank_length",
+  "wtpiece_max_gms",
+  "column_break_7",
+  "mould_status",
+  "noof_cavities",
+  "shell_weight",
+  "wtpiece_avg_gms",
+  "blank_width",
+  "column_break_13",
+  "spp_ref",
+  "no_of_piece",
+  "blank_type",
+  "blank_thickness",
+  "wtpiece_min_gms",
+  "wtlift_avg_gms",
+  "section_break_qqh3w",
+  "blank_specifications",
+  "naming_id",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "mould_ref",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Mould Ref",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "part_no",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Part No"
+  },
+  {
+   "fieldname": "blank_length",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Blank Length"
+  },
+  {
+   "fieldname": "noof_cavities",
+   "fieldtype": "Data",
+   "label": "No.Of Cavities"
+  },
+  {
+   "fieldname": "wtpiece_max_gms",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Wt/Piece (Max) (Gms)"
+  },
+  {
+   "fieldname": "avg_blank_wtproduct_gms",
+   "fieldtype": "Data",
+   "label": "Avg Blank wt/Product (Gms)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "mould_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Mould Status",
+   "options": "SPARE\nACTIVE\nINACTIVE\nDEV",
+   "reqd": 1
+  },
+  {
+   "fieldname": "compound_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Compound Code",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "blank_width",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Blank Width"
+  },
+  {
+   "fieldname": "no_of_piece",
+   "fieldtype": "Data",
+   "label": "No of Piece"
+  },
+  {
+   "fieldname": "wtpiece_avg_gms",
+   "fieldtype": "Data",
+   "label": "Wt/Piece (Avg) (Gms)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_13",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "spp_ref",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "SPP Ref",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "blank_type",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Blank Type"
+  },
+  {
+   "fieldname": "blank_thickness",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Blank Thickness "
+  },
+  {
+   "fieldname": "wtpiece_min_gms",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Wt/Piece (Min) (Gms)"
+  },
+  {
+   "fieldname": "wtlift_avg_gms",
+   "fieldtype": "Data",
+   "label": "Wt/Lift (Avg) (Gms)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_qqh3w",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "blank_specifications",
+   "fieldtype": "Table",
+   "label": "Blank Specifications",
+   "options": "Blank Specification"
+  },
+  {
+   "fieldname": "no_of_cavity_per_blank",
+   "fieldtype": "Float",
+   "label": "No of Cavity per Blank",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shell_weight",
+   "fieldtype": "Float",
+   "label": "Shell Weight (Gms)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "naming_id",
+   "fieldtype": "Data",
+   "label": "Naming (ID)",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Mould Specification",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-07-04 12:35:29.520016",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Mould Specification",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

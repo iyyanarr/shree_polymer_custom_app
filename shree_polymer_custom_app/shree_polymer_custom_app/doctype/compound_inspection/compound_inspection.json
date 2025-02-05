@@ -1,0 +1,455 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "CM-INSP-.#####",
+ "creation": "2023-07-12 13:36:42.121089",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "scan_employee",
+  "scan_compound",
+  "scan_approver",
+  "m_remarks",
+  "batch_no",
+  "qty",
+  "stock_id",
+  "column_break_lgcv8",
+  "posting_date",
+  "cavity_no",
+  "operator_id",
+  "operator_name",
+  "compound_ref",
+  "approver_id",
+  "approver_name",
+  "dc_receipt_id",
+  "no_enough_aging",
+  "quality_approver",
+  "scan_quality_approver",
+  "q_remarks",
+  "column_break_1qe4k",
+  "quality_approver_id",
+  "column_break_t1arp",
+  "quality_approver_name",
+  "parameter_section",
+  "inspector_readings",
+  "hardness_observed",
+  "sg_observed",
+  "ts2_observed",
+  "tc_90_observed",
+  "column_break_wthdq",
+  "quality_approver_readings",
+  "q_hardness_observed",
+  "q_sg_observed",
+  "q_ts2_observed",
+  "q_tc_90_observed",
+  "section_break_kcfql",
+  "min_hardness",
+  "sg_min",
+  "ts2_min",
+  "tc_90_min",
+  "column_break_szi9y",
+  "max_hardness",
+  "sg_max",
+  "ts2_max",
+  "tc_90_max",
+  "column_break_ai8op",
+  "no_enough_hardness",
+  "no_enough_sg",
+  "no_enough_ts2",
+  "no_enough_tc90",
+  "section_break_zwce9",
+  "qc_inspection_ref",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "scan_compound",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scan Compound Barcode",
+   "options": "Barcode",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Compound Inspection",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_lgcv8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "scan_employee",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scan Employee ID",
+   "options": "Barcode",
+   "reqd": 1
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "SPP Batch No",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "compound_ref",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Compound Ref",
+   "options": "Item",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Qty",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "operator_id",
+   "fieldtype": "Link",
+   "label": "Operator ID",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fieldname": "operator_name",
+   "fieldtype": "Data",
+   "label": "Operator Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Stock ID"
+  },
+  {
+   "fieldname": "dc_receipt_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "DC Receipt ID"
+  },
+  {
+   "default": "0",
+   "fieldname": "no_enough_aging",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "No Enough Aging"
+  },
+  {
+   "depends_on": "eval:doc.no_enough_aging == 1",
+   "description": "* Compound Maturation Approver",
+   "fieldname": "scan_approver",
+   "fieldtype": "Data",
+   "label": "Scan Approver ID",
+   "options": "Barcode"
+  },
+  {
+   "depends_on": "eval:doc.no_enough_aging == 1",
+   "description": "* Compound Maturation Approver ID",
+   "fieldname": "approver_id",
+   "fieldtype": "Data",
+   "label": "Approver ID",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.no_enough_aging == 1",
+   "description": "* Compound Maturation Approver Name",
+   "fieldname": "approver_name",
+   "fieldtype": "Data",
+   "label": "Approver Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cavity_no",
+   "fieldtype": "Int",
+   "label": "Cavity No",
+   "reqd": 1
+  },
+  {
+   "fieldname": "min_hardness",
+   "fieldtype": "Float",
+   "label": "Hardness Min",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "sg_min",
+   "fieldtype": "Float",
+   "label": "SG Min",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "ts2_min",
+   "fieldtype": "Float",
+   "label": "TS2 Min",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_szi9y",
+   "fieldtype": "Column Break",
+   "hidden": 1
+  },
+  {
+   "fieldname": "max_hardness",
+   "fieldtype": "Float",
+   "label": "Hardness Max",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "sg_max",
+   "fieldtype": "Float",
+   "label": "SG Max",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "ts2_max",
+   "fieldtype": "Float",
+   "label": "TS2 Max",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_ai8op",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "hardness_observed",
+   "fieldtype": "Float",
+   "label": "Hardness Observed",
+   "read_only_depends_on": "eval:!doc.__islocal  && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sg_observed",
+   "fieldtype": "Float",
+   "label": "SG Observed",
+   "read_only_depends_on": "eval:!doc.__islocal  && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ts2_observed",
+   "fieldtype": "Float",
+   "label": "TS2 Observed",
+   "read_only_depends_on": "eval:!doc.__islocal  && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tc_90_min",
+   "fieldtype": "Data",
+   "label": "TC 90 Min",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "tc_90_max",
+   "fieldtype": "Float",
+   "label": "TC 90 Max",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "tc_90_observed",
+   "fieldtype": "Float",
+   "label": "TC 90 Observed",
+   "read_only_depends_on": "eval:!doc.__islocal  && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "no_enough_sg",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "No Enough SG"
+  },
+  {
+   "default": "0",
+   "fieldname": "no_enough_ts2",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "No Enough TS2"
+  },
+  {
+   "default": "0",
+   "fieldname": "no_enough_tc90",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "No Enough TC90"
+  },
+  {
+   "depends_on": "eval:doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg || doc.no_enough_hardness",
+   "fieldname": "scan_quality_approver",
+   "fieldtype": "Data",
+   "label": "Scan Quality Approver ID",
+   "options": "Barcode"
+  },
+  {
+   "depends_on": "eval:doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness",
+   "fieldname": "quality_approver_id",
+   "fieldtype": "Link",
+   "label": "Quality Approver ID",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness",
+   "fieldname": "quality_approver_name",
+   "fieldtype": "Data",
+   "label": "Quality Approver Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "parameter_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "no_enough_hardness",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "No Enough Hardness"
+  },
+  {
+   "fieldname": "quality_approver",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_1qe4k",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_t1arp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_wthdq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_kcfql",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_zwce9",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.scan_quality_approver && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)",
+   "fieldname": "q_sg_observed",
+   "fieldtype": "Float",
+   "label": "SG Observed",
+   "mandatory_depends_on": "eval:doc.scan_quality_approver && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)"
+  },
+  {
+   "depends_on": "eval:doc.scan_quality_approver && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)",
+   "fieldname": "q_ts2_observed",
+   "fieldtype": "Float",
+   "label": "TS2 Observed",
+   "mandatory_depends_on": "eval:doc.scan_quality_approver && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)"
+  },
+  {
+   "depends_on": "eval:doc.scan_quality_approver && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)",
+   "fieldname": "q_tc_90_observed",
+   "fieldtype": "Float",
+   "label": "TC 90 Observed",
+   "mandatory_depends_on": "eval:doc.scan_quality_approver && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "inspector_readings",
+   "fieldtype": "Heading",
+   "label": "Inspector Readings"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.scan_quality_approver && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)",
+   "fieldname": "quality_approver_readings",
+   "fieldtype": "Heading",
+   "label": "Quality Approver Readings"
+  },
+  {
+   "depends_on": "eval:doc.scan_quality_approver && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)",
+   "fieldname": "q_hardness_observed",
+   "fieldtype": "Float",
+   "label": "Hardness Observed",
+   "mandatory_depends_on": "eval:doc.scan_quality_approver && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)"
+  },
+  {
+   "depends_on": "eval:doc.no_enough_aging == 1 && doc.scan_approver",
+   "fieldname": "m_remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "depends_on": "eval:doc.scan_quality_approver && (doc.no_enough_tc90 || doc.no_enough_ts2 || doc.no_enough_sg ||  doc.no_enough_hardness)",
+   "fieldname": "q_remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "qc_inspection_ref",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "QC Inspection Ref",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-07-28 12:10:37.830791",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Compound Inspection",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

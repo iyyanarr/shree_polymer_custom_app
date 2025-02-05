@@ -1,0 +1,156 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "DEMRE-.YYYY.-.#####",
+ "creation": "2023-10-19 16:10:48.519314",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "posting_date",
+  "scan_section",
+  "scan_lotmixbarcode",
+  "target_warehouse",
+  "add",
+  "column_break_ri37k",
+  "item",
+  "batch_no",
+  "source_warehouse_id",
+  "column_break_21sn7",
+  "spp_batch_no",
+  "qty",
+  "uom",
+  "section_break_kvs6f",
+  "items",
+  "stock_entry_reference",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "scan_lotmixbarcode",
+   "fieldtype": "Data",
+   "label": "Scan Lot/Mixbarcode",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "column_break_ri37k",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Despatched Material Return Entry",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "scan_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "label": "Target Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "add",
+   "fieldtype": "HTML",
+   "label": "Add"
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Data",
+   "label": "Batch No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_no",
+   "fieldtype": "Data",
+   "label": "SPP Batch No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Data",
+   "label": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_warehouse_id",
+   "fieldtype": "Data",
+   "label": "Source Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_kvs6f",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Despatched Material Return Entry Item"
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Stock Entry Reference"
+  },
+  {
+   "fieldname": "column_break_21sn7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Data",
+   "label": "UOM",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-10-19 20:02:29.647171",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Despatched Material Return Entry",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

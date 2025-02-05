@@ -1,0 +1,102 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-02-02 16:44:13.973455",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "type_of_defect",
+  "inspector_code",
+  "product_ref_no",
+  "batch_no",
+  "lot_no",
+  "column_break_5",
+  "operator_name",
+  "inspector_name",
+  "machine_no",
+  "rejected_qty"
+ ],
+ "fields": [
+  {
+   "fieldname": "product_ref_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Ref No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Data",
+   "label": "Batch No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lot_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Lot No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "type_of_defect",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Type Of Defect",
+   "options": "FLOW-(FL)\nBUBBLE-(BU) / BLISTER-(BL)\nCUTMARK-(CU)\nDEFLASH-(DF)\nRIB\nFOREIGN PARTICLE-(FP)\nUNDER FILL-( UF )\nDIPRESSION-(DP)\nUNDER CURE-(UC)\nSURFACE DEFECT-(SD)\nOVER CURE-(OC) /FAST CURE\nBURST / TEAR\nBLACK MARK",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "operator_name",
+   "fieldtype": "Data",
+   "label": "Operator Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inspector_name",
+   "fieldtype": "Data",
+   "label": "Inspector Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "machine_no",
+   "fieldtype": "Data",
+   "label": "Machine No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejected_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Rejected Qty",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "inspector_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Inspector ID",
+   "options": "Employee",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-02-24 12:09:23.915614",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Line Inspection Entry Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

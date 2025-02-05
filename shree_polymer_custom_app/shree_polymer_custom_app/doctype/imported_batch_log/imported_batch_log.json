@@ -1,0 +1,81 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2022-08-11 13:16:10.335591",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "data_import",
+  "docname",
+  "row_indexes",
+  "success",
+  "messages",
+  "log_index",
+  "exception"
+ ],
+ "fields": [
+  {
+   "fieldname": "data_import",
+   "fieldtype": "Link",
+   "label": "Data Import",
+   "options": "Batch ERP Entry"
+  },
+  {
+   "fieldname": "docname",
+   "fieldtype": "Data",
+   "label": "Reference Name"
+  },
+  {
+   "fieldname": "row_indexes",
+   "fieldtype": "Code",
+   "label": "Row Indexes",
+   "options": "JSON"
+  },
+  {
+   "default": "0",
+   "fieldname": "success",
+   "fieldtype": "Check",
+   "label": "Success"
+  },
+  {
+   "fieldname": "messages",
+   "fieldtype": "Code",
+   "label": "Messages",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "log_index",
+   "fieldtype": "Int",
+   "label": "Log Index"
+  },
+  {
+   "fieldname": "exception",
+   "fieldtype": "Text",
+   "label": "Exception"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2022-08-11 13:16:47.132888",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Imported Batch Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

@@ -1,0 +1,205 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "BBIE-.#####",
+ "creation": "2023-01-28 11:12:10.988604",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "bin_scan_section",
+  "move_to_cut_bit_warehouse",
+  "blank_bin",
+  "scan_cut_bit_batch",
+  "cut_bit_batch",
+  "add",
+  "ibm_id",
+  "bin_com_col",
+  "item",
+  "compound_code",
+  "spp_batch_number",
+  "batch_no",
+  "available_qty",
+  "weight_col",
+  "bin_code",
+  "bin_name",
+  "bin_weight_kgs",
+  "gross_weight_kgs",
+  "net_weight_kgs",
+  "section_break_10",
+  "items",
+  "stock_entry_reference",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "blank_bin",
+   "fieldtype": "Data",
+   "label": "Scan Bin",
+   "options": "Barcode"
+  },
+  {
+   "default": "0",
+   "fieldname": "move_to_cut_bit_warehouse",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Move To Cut Bit Warehouse",
+   "read_only_depends_on": "eval:doc.items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Blank Bin Inward Item"
+  },
+  {
+   "fieldname": "add",
+   "fieldtype": "Button",
+   "label": "Add"
+  },
+  {
+   "fieldname": "bin_weight_kgs",
+   "fieldtype": "Float",
+   "label": "Bin Weight (Kgs)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gross_weight_kgs",
+   "fieldtype": "Float",
+   "label": "Gross Weight (Kgs)"
+  },
+  {
+   "fieldname": "net_weight_kgs",
+   "fieldtype": "Float",
+   "label": "Net Weight (Kgs)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_10",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Blank Bin Inward Entry",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "bin_code",
+   "fieldtype": "Link",
+   "label": "Bin Code",
+   "options": "Asset",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "compound_code",
+   "fieldtype": "Link",
+   "label": "Compound Code",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bin_scan_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "bin_com_col",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "weight_col",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "spp_batch_number",
+   "fieldtype": "Data",
+   "label": "Spp Batch Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "label": "Batch No",
+   "options": "Batch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bin_name",
+   "fieldtype": "Data",
+   "label": "Bin Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "available_qty",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Available Qty",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.move_to_cut_bit_warehouse",
+   "fieldname": "scan_cut_bit_batch",
+   "fieldtype": "Data",
+   "label": "Scan Cut Bit Batch",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "ibm_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "IBM ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cut_bit_batch",
+   "fieldtype": "Link",
+   "label": "Cut Bit Batch",
+   "options": "Batch",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-08-17 17:34:10.128641",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Blank Bin Inward Entry",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

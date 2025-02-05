@@ -1,0 +1,101 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-02-11 20:51:35.235185",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "press",
+  "column_break_2",
+  "mould",
+  "specifications_section",
+  "bottom_plate_temp",
+  "low_pressure_setting",
+  "column_break_7",
+  "top_plate_temp",
+  "high_pressure_setting"
+ ],
+ "fields": [
+  {
+   "fieldname": "press",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Press",
+   "options": "Workstation",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "mould",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Mould",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "specifications_section",
+   "fieldtype": "Section Break",
+   "label": "Specifications"
+  },
+  {
+   "fieldname": "bottom_plate_temp",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Bottom Plate Temp",
+   "reqd": 1
+  },
+  {
+   "fieldname": "low_pressure_setting",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Low Pressure Setting",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "top_plate_temp",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Top Plate Temp",
+   "reqd": 1
+  },
+  {
+   "fieldname": "high_pressure_setting",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "High Pressure Setting",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-02-11 20:58:26.168095",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Press Mould Specification",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

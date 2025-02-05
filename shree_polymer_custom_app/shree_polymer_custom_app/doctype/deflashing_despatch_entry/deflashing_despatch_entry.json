@@ -1,0 +1,204 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "DDE-.#####",
+ "creation": "2023-02-07 13:28:16.330142",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "posting_date",
+  "column_break_bubfq",
+  "column_break_2bi5d",
+  "scan_section",
+  "scan_lot_number",
+  "scan_deflashing_vendor",
+  "warehouse",
+  "warehouse_id",
+  "add",
+  "column_break_4",
+  "lot_number",
+  "batch_no",
+  "spp_batch_no",
+  "column_break_9",
+  "job_card",
+  "item",
+  "qty",
+  "source_warehouse_id",
+  "items_section",
+  "items",
+  "stock_entry_reference",
+  "valuation_rate",
+  "amount",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "scan_lot_number",
+   "fieldtype": "Data",
+   "label": "Scan Lot Number",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "scan_deflashing_vendor",
+   "fieldtype": "Data",
+   "label": "Scan Deflashing Vendor",
+   "options": "Barcode"
+  },
+  {
+   "fieldname": "add",
+   "fieldtype": "HTML",
+   "label": "Add"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lot_number",
+   "fieldtype": "Data",
+   "label": "Lot Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Data",
+   "label": "Batch No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_no",
+   "fieldtype": "Data",
+   "label": "SPP Batch No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Data",
+   "label": "Target Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "job_card",
+   "fieldtype": "Data",
+   "label": "Job Card",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Data",
+   "label": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "scan_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Deflashing Despatch Entry Item"
+  },
+  {
+   "fieldname": "warehouse_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Target Warehouse ID"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Deflashing Despatch Entry",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_warehouse_id",
+   "fieldtype": "Data",
+   "label": "Source Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "valuation_rate",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Valuation Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_bubfq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_2bi5d",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-07-10 16:29:40.350993",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Deflashing Despatch Entry",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

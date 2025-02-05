@@ -1,0 +1,215 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "DRE-.#####",
+ "creation": "2023-02-08 11:27:47.058872",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "scan_section",
+  "posting_date",
+  "scan_deflashing_vendor",
+  "scan_lot_number",
+  "stock_entry_reference",
+  "scrap_stock_entry_ref",
+  "work_order_ref",
+  "warehouse_id",
+  "add",
+  "column_break_4",
+  "batch_no",
+  "from_warehouse_id",
+  "warehouse",
+  "lot_number",
+  "product_weight",
+  "column_break_9",
+  "spp_batch_no",
+  "item",
+  "qty",
+  "qty_without_scrap_weight",
+  "scrap_weight",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "scan_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "scan_deflashing_vendor",
+   "fieldtype": "Data",
+   "label": "Scan Deflashing Vendor",
+   "options": "Barcode",
+   "reqd": 1
+  },
+  {
+   "fieldname": "scan_lot_number",
+   "fieldtype": "Data",
+   "label": "Scan Lot Number",
+   "options": "Barcode",
+   "reqd": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "warehouse_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "To Warehouse ID"
+  },
+  {
+   "fieldname": "add",
+   "fieldtype": "Button",
+   "hidden": 1,
+   "label": "Add"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lot_number",
+   "fieldtype": "Data",
+   "label": "Lot Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Deflashing Receipt Entry",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "product_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Product Weight",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "scrap_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scrap Weight",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "from_warehouse_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Batch No",
+   "options": "Batch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Spp Batch No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scrap_stock_entry_ref",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Scrap Stock Entry Ref",
+   "read_only": 1
+  },
+  {
+   "fieldname": "work_order_ref",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Work Order Ref"
+  },
+  {
+   "fieldname": "qty_without_scrap_weight",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Qty Without Scrap Weight",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-07-07 19:16:50.018333",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Deflashing Receipt Entry",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

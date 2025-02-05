@@ -1,0 +1,82 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-09-15 20:16:33.005759",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "doc_name",
+  "type_to_check",
+  "column_break_hyr6r",
+  "linked_doc",
+  "is_having_chlld_table",
+  "column_break_2egf8",
+  "child_table_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "column_break_hyr6r",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "doc_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Doctype",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_2egf8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_having_chlld_table",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Is having Chlld Table"
+  },
+  {
+   "depends_on": "eval:doc.is_having_chlld_table",
+   "fieldname": "child_table_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Child Table Name",
+   "mandatory_depends_on": "eval:doc.is_having_chlld_table",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "type_to_check",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Type To Check"
+  },
+  {
+   "fieldname": "linked_doc",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Linked Doc",
+   "options": "DocType"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-09-15 20:42:18.477025",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Rollback Configs",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

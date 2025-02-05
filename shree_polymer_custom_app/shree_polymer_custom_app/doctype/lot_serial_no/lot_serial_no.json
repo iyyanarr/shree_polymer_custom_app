@@ -1,0 +1,60 @@
+{
+ "actions": [],
+ "creation": "2023-04-29 11:26:15.242229",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "source_lot_no",
+  "generated_lot_no",
+  "column_break_zymz4",
+  "serial_no"
+ ],
+ "fields": [
+  {
+   "fieldname": "source_lot_no",
+   "fieldtype": "Data",
+   "label": "Source Lot No"
+  },
+  {
+   "fieldname": "column_break_zymz4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "generated_lot_no",
+   "fieldtype": "Data",
+   "label": "Generated Lot No"
+  },
+  {
+   "fieldname": "serial_no",
+   "fieldtype": "Int",
+   "label": "Serial No"
+  }
+ ],
+ "in_create": 1,
+ "links": [],
+ "modified": "2023-04-29 17:43:59.685087",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Lot Serial No",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

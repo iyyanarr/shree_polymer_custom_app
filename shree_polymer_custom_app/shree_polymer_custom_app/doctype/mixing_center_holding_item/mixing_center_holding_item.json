@@ -1,0 +1,88 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-01-05 19:48:41.589879",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "item_name",
+  "spp_batch_no",
+  "batch_no",
+  "qty",
+  "qty_uom",
+  "mix_barcode",
+  "work_order_ref"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "read_only": 1,
+   "read_only_depends_on": "eval:doc.parenttype==\"SPP Delivery Challan\"",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "SPP Batch No",
+   "read_only_depends_on": "eval:doc.parenttype==\"SPP Delivery Challan\""
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Data",
+   "label": "Batch No",
+   "read_only_depends_on": "eval:doc.parenttype==\"SPP Delivery Challan\""
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty",
+   "read_only_depends_on": "eval:doc.parenttype==\"SPP Delivery Challan\"",
+   "reqd": 1
+  },
+  {
+   "fieldname": "qty_uom",
+   "fieldtype": "Link",
+   "label": "Qty UOM",
+   "options": "UOM",
+   "read_only_depends_on": "eval:doc.parenttype==\"SPP Delivery Challan\""
+  },
+  {
+   "fieldname": "mix_barcode",
+   "fieldtype": "Data",
+   "label": "Mix Barcode"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "work_order_ref",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Work Order Ref"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-04-11 19:22:56.021384",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Mixing Center Holding Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

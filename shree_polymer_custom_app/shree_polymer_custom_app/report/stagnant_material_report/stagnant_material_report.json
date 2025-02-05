@@ -1,0 +1,27 @@
+{
+ "add_total_row": 1,
+ "columns": [],
+ "creation": "2023-07-18 12:21:24.218117",
+ "disable_prepared_report": 0,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "Purchase Order",
+ "modified": "2023-08-28 19:41:10.854182",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Stagnant Material Report",
+ "owner": "Administrator",
+ "prepared_report": 1,
+ "ref_doctype": "Deflashing Receipt Entry",
+ "report_name": "Stagnant Material Report",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ]
+}

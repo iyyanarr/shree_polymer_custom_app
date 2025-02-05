@@ -1,0 +1,129 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-01-28 11:23:16.303396",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "bin_code",
+  "bin_name",
+  "item",
+  "compound_code",
+  "spp_batch_number",
+  "cut_bit_batch",
+  "column_break_4",
+  "bin_weight_kgs",
+  "bin_gross_weight",
+  "bin_net_weight",
+  "batch_no",
+  "ibm_id",
+  "available_qty"
+ ],
+ "fields": [
+  {
+   "fieldname": "compound_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Compound Code",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bin_gross_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Gross Weight (Kgs)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bin_net_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Net Weight (Kgs)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bin_weight_kgs",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Bin Weight (Kgs)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bin_code",
+   "fieldtype": "Link",
+   "label": "Bin Code",
+   "options": "Asset",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_number",
+   "fieldtype": "Data",
+   "label": "Spp Batch Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "label": "Batch No",
+   "options": "Batch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bin_name",
+   "fieldtype": "Data",
+   "label": "Bin Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ibm_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "IBM ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cut_bit_batch",
+   "fieldtype": "Link",
+   "label": "Cut Bit Batch",
+   "options": "Batch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "available_qty",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Available Qty",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-08-17 16:37:46.740802",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Blank Bin Inward Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

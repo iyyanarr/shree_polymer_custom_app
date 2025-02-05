@@ -1,0 +1,130 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-05-08 15:24:24.274264",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "asset_movement",
+  "bin_barcode",
+  "compound",
+  "bin_id",
+  "current_location",
+  "column_break_e7xwa",
+  "bin_released",
+  "bin_name",
+  "spp_batch_number",
+  "qty",
+  "job_card",
+  "ibm_id"
+ ],
+ "fields": [
+  {
+   "fieldname": "bin_barcode",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Bin Barcode",
+   "read_only": 1
+  },
+  {
+   "fieldname": "compound",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Compound",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bin_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Bin ID",
+   "options": "Asset",
+   "read_only": 1
+  },
+  {
+   "fieldname": "current_location",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Current Location",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_e7xwa",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bin_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Bin Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "job_card",
+   "fieldtype": "Link",
+   "label": "Job Card",
+   "options": "Job Card",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "SPP Batch No.",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "asset_movement",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Asset Movement",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "bin_released",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Bin Released",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ibm_id",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "IBM ID"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-05-08 17:21:54.944216",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Bin Movement Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
