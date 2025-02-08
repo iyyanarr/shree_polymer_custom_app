@@ -288,47 +288,102 @@ def validate_barcode(batch_no,warehouse=None,is_internal_mixing=0,batch_type=Non
 		return {"status":"Failed","message":"Somthing Went Wrong."}
 
 def update_job_cards(wo_name, actual_weight, employee, spp_settings):
+    # 🎯 Debug 1: Initial parameters check
+    print(f"\n🔥🔥🔥 DEBUG START [Work Order: {wo_name}] 🔥🔥🔥")
+    print(f"🔸 SPP Settings WIP Warehouse: {getattr(spp_settings, 'wip_warehouse', 'NOT CONFIGURED!')}")
+    print(f"🔸 Actual Weight: {actual_weight}, Employee: {employee}")
 
-    
-    print('******',wo_name,wo_name, actual_weight, employee, spp_settings)
     job_cards = frappe.get_all("Job Card", filters={"work_order": wo_name})
     operations = frappe.get_all("Work Order Operation", filters={"parent": wo_name}, fields=["time_in_mins"])
 
+    # 🎯 Debug 2: Job card status
+    print(f"\n🔎 Found {len(job_cards)} Job Cards")
+    print(f"🔹 Job Card IDs: {[jc['name'] for jc in job_cards]}")
+
+    # 📦 Process each Job Card
     for job_card_dict in job_cards:
         jc = frappe.get_doc("Job Card", job_card_dict.name)
+        
+        # ⚠️ Mandatory: Create time logs if missing
+        if not jc.time_logs:
+            print(f"\n🚩 No Time Logs Found - Creating New Time Log")
+            jc.append('time_logs', {
+                'employee': employee,
+                'completed_qty': actual_weight,
+                'from_time': now(),
+                'to_time': add_to_date(now(), minutes=0),
+                'time_in_mins': 0
+            })
+            print("✅ Created new time log entry")
 
-        # Log current state of the Job Card
-        print(f"Job Card before setting fields: {jc.as_dict()}")
-
-        # Ensure 'wip_warehouse' is set
-        if not jc.wip_warehouse:
-            wo_doc = frappe.get_doc("Work Order", wo_name)
-            if wo_doc and wo_doc.wip_warehouse:
-                jc.wip_warehouse = wo_doc.wip_warehouse
-                print(f"Setting 'wip_warehouse' to {wo_doc.wip_warehouse}")
-            else:
-                print(f"Work Order {wo_name} has no 'wip_warehouse' set.")
-
-        for time_log in jc.time_logs:
+        # 🎯 Time Log Updates 
+        print(f"\n⏳ Updating {len(jc.time_logs)} Time Log Entries")
+        for idx, time_log in enumerate(jc.time_logs):
+            print(f"🔧 Updating Time Log #{idx + 1}")
             time_log.employee = employee
-            time_log.completed_qty = flt("{:.3f}".format(actual_weight))
+            time_log.completed_qty = flt(actual_weight, precision=3)
+            
             if operations:
-                time_log.from_time = now()
-                time_log.to_time = add_to_date(now(), minutes=0, as_datetime=True)
                 time_log.time_in_mins = 0
+                time_log.from_time = now()
+                time_log.to_time = add_to_date(now(), minutes=0)
+                print(f"🕒 Reset timing for Operation #{idx + 1}")
+            
+            print(f"⏲️ Completed Qty: {time_log.completed_qty} | Employee: {time_log.employee}")
 
-        # Final logs before saving
-        print(f"Job Card before saving: {jc.as_dict()}")
-        jc.total_completed_qty = flt("{:.3f}".format(actual_weight))
-        jc.docstatus = 1
+        # 🔄 WIP Warehouse Resolution
+        print(f"\n🏗️ Checking WIP Warehouse for {jc.name}")
+        if not jc.wip_warehouse:
+            print("⚠️ Missing WIP - Starting resolution process")
+            try:
+                wo_doc = frappe.get_doc("Work Order", wo_name)
+                if wo_doc and wo_doc.wip_warehouse:
+                    jc.wip_warehouse = wo_doc.wip_warehouse
+                    print(f"✅ Set WIP from Work Order: {jc.wip_warehouse}")
+                else:
+                    jc.wip_warehouse = spp_settings.wip_warehouse
+                    print(f"✅ Fallback to SPP Settings: {jc.wip_warehouse}")
+            except Exception as e:
+                print(f"🚨 Error fetching Work Order: {str(e)}")
+                frappe.log_error(title="WIP Resolution Error", message=f"{e}\n\n{jc.as_dict()}")
 
+        # 🛡️ Pre-Save Validation
+        print(f"\n📋 Validation Checks:")
+        validation_errors = []
+        
+        if not jc.wip_warehouse:
+            validation_errors.append("❌ Missing WIP Warehouse")
+            
+        if not jc.time_logs:
+            validation_errors.append("❌ No Time Log Entries")
+            
+        if validation_errors:
+            error_msg = " | ".join(validation_errors)
+            frappe.throw(f"Job Card {jc.name} save blocked: {error_msg}")
+            
+        print("✅ All validations passed")
+
+        # 💾 Save Attempt
         try:
-            jc.save(ignore_permissions=True)  # Attempt to save
-            print(f"Job Card saved successfully: {job_card_dict.name}")
+            print(f"\n💾 Saving Job Card {jc.name}...")
+            jc.total_completed_qty = flt(actual_weight, precision=3)
+            jc.docstatus = 1
+            jc.save(ignore_permissions=True)
+            print(f"✅✅✅ Successfully saved {jc.name}")
         except Exception as e:
-            # Catch and log any errors during the save operation
-            print(f"Error saving Job Card {job_card_dict.name}: {e}")
-            frappe.log_error(message=f"Error saving Job Card {job_card_dict.name}: {frappe.get_traceback()}", title="Job Card Save Error")
+            print(f"\n❌❌❌ Critical Save Error:")
+            print(f"🔴 Error Type: {type(e).__name__}")
+            print(f"🔴 Error Message: {str(e)}")
+            print(f"🔴 Current WIP: {jc.wip_warehouse}")
+            print(f"🔴 Time Logs Count: {len(jc.time_logs) if jc.time_logs else 0}")
+            
+            frappe.log_error(
+                title="Job Card Save Error",
+                message=f"""Error saving {jc.name}:
+                - WIP Warehouse: {jc.wip_warehouse}
+                - Time Logs: {len(jc.time_logs)}
+                - Error: {frappe.get_traceback()}"""
+            )
 
 @frappe.whitelist()
 def create_wo(dc_rec):
