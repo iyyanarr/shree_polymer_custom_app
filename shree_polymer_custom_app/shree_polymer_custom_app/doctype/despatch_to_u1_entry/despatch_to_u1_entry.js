@@ -7,12 +7,12 @@ frappe.ui.form.on('Despatch To U1 Entry', {
 	},
 	view_stock_entry:(frm) =>{
 		if(frm.doc.docstatus == 1 && frm.doc.stock_entry_reference){
-			frm.add_custom_button(__("View DC"), function(){
-				frappe.set_route("Form", "Delivery Note", frm.doc.stock_entry_reference);
+			frm.add_custom_button(__("View Stock Entry"), function(){
+				frappe.set_route("Form", "Stock Entry", frm.doc.stock_entry_reference);
 			  });
 		}
 		else{
-			frm.remove_custom_button('View DC');
+			frm.remove_custom_button('Stock Entry');
 		}
 		if(!frm.doc.posting_date){
 			frm.set_value('posting_date',frappe.datetime.now_date())
