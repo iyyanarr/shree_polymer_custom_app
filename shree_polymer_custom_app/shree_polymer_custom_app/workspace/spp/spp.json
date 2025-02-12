@@ -1,103 +1,22 @@
 {
- "category": "Modules",
  "charts": [],
- "creation": "2022-08-31 16:33:01.273372",
- "developer_mode_only": 0,
- "disable_user_customization": 0,
+ "content": "[{\"id\":\"IpL9OG3hfP\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">SPP</span>\",\"col\":12}},{\"id\":\"M4T_Zcshfc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Batch ERP Entry\",\"col\":3}},{\"id\":\"si0a7aRFsD\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Transfer\",\"col\":3}},{\"id\":\"Bd6mSKVVOQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cut Bit Transfer\",\"col\":3}},{\"id\":\"IbhKj3wXSj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Blanking DC Entry\",\"col\":3}},{\"id\":\"M-UL84W2Tv\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Blank Bin Inward Entry\",\"col\":3}},{\"id\":\"vmv00pf09m\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Weight MT\",\"col\":3}},{\"id\":\"gqIviEO6iJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Notes\",\"col\":3}},{\"id\":\"21P4P5_Pr8\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC Receipts\",\"col\":3}},{\"id\":\"NIDGBMni_p\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inspection Entry\",\"col\":3}},{\"id\":\"wHbKSE2GZP\",\"type\":\"card\",\"data\":{\"card_name\":\"Moulding\",\"col\":3}},{\"id\":\"oOgxlGEaOD\",\"type\":\"card\",\"data\":{\"card_name\":\"Deflashing\",\"col\":3}},{\"id\":\"bIiXIphFyA\",\"type\":\"card\",\"data\":{\"card_name\":\"Manufacturing/Lot\",\"col\":3}},{\"id\":\"mN97w-k3vC\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters/Settings\",\"col\":3}},{\"id\":\"w1CZxkao3v\",\"type\":\"card\",\"data\":{\"card_name\":\"Despatch/Packing\",\"col\":4}},{\"id\":\"Azn8h5zkBT\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"4qrrdMgyKV\",\"type\":\"card\",\"data\":{\"card_name\":\"Inspection Entries\",\"col\":4}}]",
+ "creation": "2023-02-20 16:53:28.849027",
+ "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
- "extends_another_page": 0,
+ "for_user": "",
  "hide_custom": 0,
+ "icon": "organization",
  "idx": 0,
- "is_default": 0,
- "is_standard": 1,
+ "is_hidden": 0,
  "label": "SPP",
  "links": [
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Moulding",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Work Planning",
-   "link_to": "Work Planning",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Add On Work Planning",
-   "link_to": "Add On Work Planning",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Blank Bin issue",
-   "link_to": "Blank Bin Issue",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Production Entry",
-   "link_to": "Moulding Production Entry",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Blank Bin Rejection Entry",
-   "link_to": "Blank Bin Rejection Entry",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Line Inspection Entry",
-   "link_to": "Line Inspection Entry",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Lot Inspection Entry",
-   "link_to": "Lot Inspection Entry",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Blank Bin Inward Entry",
-   "link_to": "Blank Bin Inward Entry",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Deflashing",
-   "link_type": "DocType",
+   "link_count": 3,
    "onboard": 0,
    "type": "Card Break"
   },
@@ -105,6 +24,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Deflashing Despatch Entries",
+   "link_count": 0,
    "link_to": "Deflashing Despatch Entry",
    "link_type": "DocType",
    "onboard": 0,
@@ -114,6 +34,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Deflashing Receipt Entries",
+   "link_count": 0,
    "link_to": "Deflashing Receipt Entry",
    "link_type": "DocType",
    "onboard": 0,
@@ -122,8 +43,18 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Manufacturing",
+   "label": "Lot Resource Tagging",
+   "link_count": 0,
+   "link_to": "Lot Resource Tagging",
    "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Manufacturing/Lot",
+   "link_count": 4,
    "onboard": 0,
    "type": "Card Break"
   },
@@ -131,6 +62,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Work Orders",
+   "link_count": 0,
    "link_to": "Work Order",
    "link_type": "DocType",
    "onboard": 0,
@@ -140,6 +72,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Job Cards",
+   "link_count": 0,
    "link_to": "Job Card",
    "link_type": "DocType",
    "onboard": 0,
@@ -149,6 +82,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Stock Entries",
+   "link_count": 0,
    "link_to": "Stock Entry",
    "link_type": "DocType",
    "onboard": 0,
@@ -157,8 +91,106 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Masters/Settings",
+   "label": "Sub Lot Creation",
+   "link_count": 0,
+   "link_to": "Sub Lot Creation",
    "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Moulding",
+   "link_count": 8,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Work Planning",
+   "link_count": 0,
+   "link_to": "Work Planning",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Add On Work Planning",
+   "link_count": 0,
+   "link_to": "Add On Work Planning",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Blank Bin issue",
+   "link_count": 0,
+   "link_to": "Blank Bin Issue",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Production Entry",
+   "link_count": 0,
+   "link_to": "Moulding Production Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Blank Bin Rejection Entry",
+   "link_count": 0,
+   "link_to": "Blank Bin Rejection Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Blank Bin Inward Entry",
+   "link_count": 0,
+   "link_to": "Blank Bin Inward Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bulk Bin Movement",
+   "link_count": 0,
+   "link_to": "Bin Movement",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bulk Clip Release",
+   "link_count": 0,
+   "link_to": "Bulk Clip Release",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Masters/Settings",
+   "link_count": 7,
    "onboard": 0,
    "type": "Card Break"
   },
@@ -166,6 +198,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "SPP Setting",
+   "link_count": 0,
    "link_to": "SPP Settings",
    "link_type": "DocType",
    "onboard": 0,
@@ -175,6 +208,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Sheeting Clips",
+   "link_count": 0,
    "link_to": "Sheeting Clip",
    "link_type": "DocType",
    "onboard": 0,
@@ -183,16 +217,8 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Blanking Bins",
-   "link_to": "Blanking Bin",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Work Plan Item Target",
+   "link_count": 0,
    "link_to": "Work Plan Item Target",
    "link_type": "DocType",
    "onboard": 0,
@@ -202,6 +228,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Mould Specifications",
+   "link_count": 0,
    "link_to": "Mould Specification",
    "link_type": "DocType",
    "onboard": 0,
@@ -211,61 +238,314 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Press Mould Specifications",
+   "link_count": 0,
    "link_to": "Press Mould Specification",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vehicles",
+   "link_count": 0,
+   "link_to": "Vehicle No",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Blanking Bins",
+   "link_count": 0,
+   "link_to": "Asset",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Inspection Entries",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Compound Inspection Entry",
+   "link_count": 0,
+   "link_to": "Compound Inspection",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Inspection Entry",
+   "link_count": 0,
+   "link_to": "Inspection Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports",
+   "link_count": 12,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Production Report",
+   "link_count": 0,
+   "link_to": "Production Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Production Summary Report",
+   "link_count": 0,
+   "link_to": "Summary Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Compound Consume Report",
+   "link_count": 0,
+   "link_to": "Compound Consume Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "DC Reconciliation",
+   "link_count": 0,
+   "link_to": "DC Reconciliation",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Rejection Report",
+   "link_count": 0,
+   "link_to": "Rejection Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Stock Report",
+   "link_count": 0,
+   "link_to": "Stock Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Vendor Payment Report",
+   "link_count": 0,
+   "link_to": "Vendor Payment Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Stock Summary Report",
+   "link_count": 0,
+   "link_to": "Stock Summary Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Compound Inspection Report",
+   "link_count": 0,
+   "link_to": "Compound Inspection Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Material Delayed Report",
+   "link_count": 0,
+   "link_to": "Material Delayed Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Stagnant Material Report",
+   "link_count": 0,
+   "link_to": "Stagnant Material Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Compound Consume Summary Report",
+   "link_count": 0,
+   "link_to": "Compound Consume Summary Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Work Planning",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Despatch/Packing",
+   "link_count": 4,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Despatch to U1",
+   "link_count": 0,
+   "link_to": "Despatch To U1 Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Packing",
+   "link_count": 0,
+   "link_to": "Packing",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Billing",
+   "link_count": 0,
+   "link_to": "Billing",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Material Return Entry",
+   "link_count": 0,
+   "link_to": "Despatched Material Return Entry",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2023-02-20 13:11:31.260348",
+ "modified": "2025-02-12 14:31:18.598506",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "SPP",
+ "number_cards": [],
  "owner": "Administrator",
- "pin_to_bottom": 0,
- "pin_to_top": 1,
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 1.0,
  "shortcuts": [
   {
+   "color": "Grey",
    "doc_view": "List",
-   "label": "Batch ERP Entry",
-   "link_to": "Batch ERP Entry",
+   "label": "Inspection Entry",
+   "link_to": "Inspection Entry",
    "type": "DocType"
   },
   {
-   "doc_view": "List",
-   "label": "Material Transfer",
-   "link_to": "Material Transfer",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "",
-   "label": "Cut Bit Transfer",
-   "link_to": "Cut Bit Transfer",
-   "type": "DocType"
-  },
-  {
-   "doc_view": "",
-   "label": "Blanking DC Entry",
-   "link_to": "Blanking DC Entry",
-   "type": "DocType"
-  },
-  {
+   "color": "Grey",
    "doc_view": "List",
    "label": "Blank Bin Inward Entry",
    "link_to": "Blank Bin Inward Entry",
    "type": "DocType"
   },
   {
+   "color": "Grey",
    "doc_view": "List",
-   "label": "Delivery Challans",
-   "link_to": "SPP Delivery Challan",
+   "label": "Delivery Notes",
+   "link_to": "Delivery Note",
    "type": "DocType"
   },
   {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Batch ERP Entry",
+   "link_to": "Batch ERP Entry",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Weight MT",
+   "link_to": "Weight Mismatch Tracker",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
    "doc_view": "List",
    "label": "DC Receipts",
    "link_to": "Delivery Challan Receipt",
    "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Blanking DC Entry",
+   "link_to": "Blanking DC Entry",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Cut Bit Transfer",
+   "link_to": "Cut Bit Transfer",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Material Transfer",
+   "link_to": "Material Transfer",
+   "type": "DocType"
   }
- ]
+ ],
+ "title": "SPP"
 }

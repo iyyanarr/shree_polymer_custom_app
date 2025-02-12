@@ -7,21 +7,21 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
 	},
 	view_stock_entry:(frm) =>{
 		if(frm.doc.docstatus == 1 && frm.doc.stock_entry_reference){
-			frm.add_custom_button(__("View Delivery Note"), function(){
+			frm.add_custom_button(__("View Stock Transfer"), function(){
 				let dc_ids = frm.doc.stock_entry_reference.split(',')
 				if(dc_ids.length > 1){
 					frappe.route_options = {
 						"name": ["in",dc_ids]
 					};
-					frappe.set_route("List", "Delivery Note");
+					frappe.set_route("List", "Stock Entry");
 				}
 				else{
-					frappe.set_route("Form", "Delivery Note", dc_ids[0]);
+					frappe.set_route("Form", "Stock Entry", dc_ids[0]);
 				}
 			  });
 		}
 		else{
-			frm.remove_custom_button('View Delivery Note');
+			frm.remove_custom_button('View Stock Transfer');
 		}
 		if(!frm.doc.posting_date){
 			frm.set_value('posting_date',frappe.datetime.now_date())
