@@ -1,0 +1,54 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-11 15:59:50.590182",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "deflashing_de",
+  "section_break_ltwk",
+  "items"
+ ],
+ "fields": [
+  {
+   "fieldname": "deflashing_de",
+   "fieldtype": "Link",
+   "label": " Deflashing Dispatch Entry ",
+   "options": "Deflashing Despatch Entry"
+  },
+  {
+   "fieldname": "section_break_ltwk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Weight Mismatch Tracker Item"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-02-11 16:16:57.613987",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Weight Mismatch Tracker",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

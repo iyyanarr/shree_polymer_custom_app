@@ -9,6 +9,7 @@
  "field_order": [
   "posting_date",
   "column_break_wnfav",
+  "vehicle_no",
   "column_break_ylj57",
   "scan_lot",
   "scan_lot_number",
@@ -215,12 +216,18 @@
   {
    "fieldname": "column_break_ylj57",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "vehicle_no",
+   "fieldtype": "Data",
+   "label": "Vehicle No",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-07-10 16:36:56.792022",
+ "modified": "2025-02-12 11:59:50.977845",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Despatch To U1 Entry",

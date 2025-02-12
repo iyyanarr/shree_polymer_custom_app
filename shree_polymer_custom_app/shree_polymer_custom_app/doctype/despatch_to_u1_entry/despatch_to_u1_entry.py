@@ -5,6 +5,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import flt,getdate,add_to_date,now
 from shree_polymer_custom_app.shree_polymer_custom_app.api import get_details_by_lot_no,get_parent_lot
+from frappe.utils import get_datetime, nowtime
+from frappe import throw, logger
 
 class DespatchToU1Entry(Document):
 	def validate(self):
@@ -32,58 +34,137 @@ class DespatchToU1Entry(Document):
 			# res = make_material_transfer(self)	
 			# if not res:
 			# 	frappe.throw("Stock Entry creation error.")	
-			create_delivery_note(self)	
+			create_stock_entry(self)	
 
-def create_delivery_note(self):
-	try:
-		spp_dc = frappe.new_doc("Delivery Note")
-		""" Ref """
-		spp_dc.reference_document = self.doctype
-		spp_dc.reference_name = self.name
-		""" End """
-		spp_settings = frappe.get_single("SPP Settings")
-		if not spp_settings.p_target_warehouse:
-			frappe.throw("Value not found for Target Warehouse in SPP Settings")
-		spp_dc.posting_date = self.posting_date if self.posting_date else getdate()
-		spp_dc.set_warehouse = spp_settings.unit_2_warehouse
-		spp_dc.set_target_warehouse = spp_settings.p_target_warehouse
-		customer = frappe.db.get_value("Warehouse",spp_settings.p_target_warehouse,"customer")
-		if customer:
-			# if frappe.db.get_value("Customer",customer,"is_internal_customer"):
-				spp_dc.customer = customer
-				spp_dc.operation = "Material Transfer"
-				for x in self.items:
-					spp_dc.append("items",{
-						"scan_barcode":x.lot_no,
-						"item_code":x.product_ref,
-						"item_name":frappe.db.get_value("Item",x.product_ref,"item_name"),
-						"spp_batch_no":x.spp_batch_no,
-						"batch_no":x.batch_no,
-						"qty":x.qty_nos,
-						"uom":x.qty_uom,
-						"target_warehouse":spp_settings.p_target_warehouse,
-						"rate":x.valuation_rate,
-						"amount":x.amount
-						})
-				spp_dc.insert(ignore_permissions = True)
-				spp_dc = frappe.get_doc("Delivery Note",spp_dc.name)
-				spp_dc.docstatus = 1
-				spp_dc.save(ignore_permissions=True)
-				""" Update posting date and time """
-				frappe.db.sql(f" UPDATE `tabDelivery Note` SET posting_date = '{self.posting_date}' WHERE name = '{spp_dc.name}' ")
-				""" End """
-				frappe.db.set_value(self.doctype,self.name,"stock_entry_reference",spp_dc.name)
-				frappe.db.commit()
-			# else:
-			# 	frappe.throw("Customer is not internal customer")
-		else:
-			frappe.throw("Customer not found for the wareshouse <b>"+spp_settings.p_target_warehouse+"</b>")
-		self.reload()
-	except Exception as e:
-		frappe.db.rollback()
-		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.despatch_to_u1_entry.despatch_to_u1_entry.create_delivery_note")
-		self.reload()
-		frappe.msgprint("Something went wrong...!")
+def create_stock_entry(self):
+    try:
+        logger().debug("Starting stock entry creation process...")
+        logger().debug(f"Original document: {self.doctype} {self.name}")
+
+        # Create new Stock Entry
+        stock_entry = frappe.new_doc("Stock Entry")
+        logger().debug("New Stock Entry document created")
+
+        # Set basic fields
+        stock_entry.stock_entry_type = "Material Transfer"
+        posting_datetime = get_datetime(self.posting_date) if self.posting_date else get_datetime()
+        stock_entry.posting_date = posting_datetime.date()
+        stock_entry.posting_time = posting_datetime.time().strftime("%H:%M:%S")
+        logger().debug(f"Set basic fields: Type={stock_entry.stock_entry_type}, Date={stock_entry.posting_date}")
+
+        # Get warehouse settings from SPP Settings
+        spp_settings = frappe.get_single("SPP Settings")
+        logger().debug("Retrieved SPP Settings")
+
+        # Validate warehouses exist
+        if not spp_settings.unit_2_warehouse:
+            logger().error("Source Warehouse not configured in SPP Settings")
+            throw("Source Warehouse not configured in SPP Settings")
+
+        if not spp_settings.p_target_warehouse:
+            logger().error("Target Warehouse not configured in SPP Settings")
+            throw("Target Warehouse not configured in SPP Settings")
+
+        source_warehouse = spp_settings.unit_2_warehouse
+        target_warehouse = spp_settings.p_target_warehouse
+        logger().debug(f"Warehouses configured - Source: {source_warehouse}, Target: {target_warehouse}")
+
+        # Dynamic address assignment
+        bill_from_address = frappe.db.get_value("Address", {"address_title": "Shree Polymer Products - Factory 1"}, "name")
+        bill_to_address = frappe.db.get_value("Address", {"address_title": "Shree Polymer Products - Factory 2"}, "name")
+        ship_from_address = frappe.db.get_value("Address", {"address_title": "Shree Polymer Products - Factory 1"}, "name")
+        ship_to_address = frappe.db.get_value("Address", {"address_title": "Shree Polymer Products - Factory 2"}, "name")
+
+        # Validate addresses
+        if not bill_from_address or not bill_to_address:
+            throw("One or both billing addresses are not found.")
+        if not ship_from_address or not ship_to_address:
+            throw("One or both shipping addresses are not found.")
+
+        # Assign addresses to Stock Entry
+        stock_entry.bill_from_address = bill_from_address
+        stock_entry.bill_to_address = bill_to_address
+        stock_entry.ship_from_address = ship_from_address
+        stock_entry.ship_to_address = ship_to_address
+        stock_entry.vehicle_no = self.vehicle_no
+        
+        logger().debug(f"""
+        Assigned Addresses:
+        - Bill From: {stock_entry.bill_from_address}
+        - Bill To: {stock_entry.bill_to_address}
+        - Ship From: {stock_entry.ship_from_address}
+        - Ship To: {stock_entry.ship_to_address}
+        """)
+
+        # Add items with warehouse mapping
+        item_count = 0
+        for idx, x in enumerate(self.items, 1):
+            logger().debug(f"Processing item {idx}/{len(self.items)}")
+            logger().debug(f"Item details: {x.as_dict()}")
+
+            item_data = {
+                "item_code": x.product_ref,
+                "s_warehouse": source_warehouse,
+                "t_warehouse": target_warehouse,
+                "qty": x.qty_nos,
+                "uom": x.qty_uom,
+                "batch_no": x.batch_no,
+                "spp_batch_no": x.spp_batch_no,
+                "basic_rate": x.valuation_rate,
+                "amount": x.amount,
+                "scan_barcode": x.lot_no
+            }
+
+            stock_entry.append("items", item_data)
+            item_count += 1
+            logger().debug(f"Item added: {x.product_ref} | Qty: {x.qty_nos}")
+
+        if item_count == 0:
+            logger().warning("No items added to Stock Entry")
+            throw("Cannot create Stock Entry with zero items")
+
+        # Set reference to original document
+        stock_entry.custom_reference_doctype = self.doctype
+        stock_entry.custom_reference_docname = self.name
+        logger().debug(f"Set document references: {self.doctype} {self.name}")
+
+        # Insert and submit
+        stock_entry.insert(ignore_permissions=True)
+        logger().debug(f"Stock Entry inserted: {stock_entry.name}")
+        stock_entry.submit()
+        logger().debug(f"Stock Entry submitted: {stock_entry.name}")
+
+        # Update reference in original document
+        frappe.db.set_value(self.doctype, self.name, "stock_entry_reference", stock_entry.name)
+        frappe.db.commit()
+        logger().debug("Reference updated in original document")
+
+        self.reload()
+        logger().debug("Document reloaded successfully")
+        frappe.msgprint(f"Successfully created Stock Entry: {stock_entry.name}")
+        return stock_entry.name
+
+    except Exception as e:
+        frappe.db.rollback()
+        error_message = f"""
+        Error in create_stock_entry:
+
+        - Document: {self.doctype} {self.name if hasattr(self, 'name') else 'Unnamed'}
+        - User: {frappe.session.user}
+        - Error: {str(e)}
+        Traceback:
+        {frappe.get_traceback()}
+        """
+        
+        logger().error(error_message)
+        frappe.log_error(title="Stock Entry Creation Error", message=error_message)
+        frappe.msgprint(f"Failed to create Stock Entry: {str(e)}")
+        
+        if 'stock_entry' in locals():
+            logger().debug(f"Failed Stock Entry data: {stock_entry.as_dict()}")
+        
+        self.reload()
+        return False
 
 def check_available_stock(warehouse,item,batch_no):
 	try:
