@@ -75,6 +75,7 @@ def on_batch_update(doc,method):
 
 @frappe.whitelist()
 def on_sle_update(doc,method):
+	print('*****************************',doc,method)
 	if check_enqueue():
 		if doc.item_code and doc.batch_no:
 			update_item_batch_qty(doc.item_code,doc.batch_no,doc.stock_uom)
@@ -118,68 +119,6 @@ def update_item_batch_qty(item_code,batch_no,stock_uom):
 		frappe.db.sql("""DELETE FROM `tabItem Batch Stock Balance` WHERE item_code=%(item_code)s and batch_no = %(batch_no)s""",{"item_code":item_code,"batch_no":batch_no})
 	frappe.db.commit()
 	
-# Hided on 20/10/23 
-
-# @frappe.whitelist()	
-# def item_update(doc):
-# 	try:
-# 		# frappe.log_error(title = f'--item code -{doc.name}--',message = doc.name)
-# 		items_code = "'"+doc.name+"'"
-# 		frappe.db.sql("""DELETE FROM `tabItem Batch Stock Balance` WHERE item_code=%(item_code)s""",{"item_code":doc.name})
-# 		frappe.db.commit()
-# 		bom_items = frappe.db.sql(""" SELECT item_code FROM `tabBOM Item` BI 
-# 								  INNER JOIN `tabBOM` B ON BI.parent = B.name WHERE B.item=%(item)s 
-# 			    				  AND B.is_active = 1 """,{"item":doc.name},as_dict=1)
-# 		# frappe.log_error(title = f'--{doc.name} bom items--',message = bom_items)
-# 		if bom_items:
-# 			items_code+=","
-# 			for x in bom_items:
-# 				frappe.db.sql("""DELETE FROM `tabItem Batch Stock Balance` WHERE item_code=%(item_code)s""",{"item_code":x.item_code})
-# 				frappe.db.commit()
-# 				items_code += "'"+x.item_code+"',"
-# 				# c_bom_items = frappe.db.sql(""" SELECT item_code FROM `tabBOM Item` BI 
-# 				# 								INNER JOIN `tabBOM` B ON BI.parent = B.name WHERE B.item=%(item)s 
-# 				# 								AND B.is_active = 1 """,{"item":x.item_code},as_dict=1)
-# 				# for c in c_bom_items:
-# 				# 	frappe.db.sql("""DELETE FROM `tabItem Batch Stock Balance` WHERE item_code=%(item_code)s""",{"item_code":c.item_code})
-# 				# 	frappe.db.commit()
-# 				# 	items_code += "'"+c.item_code+"',"
-# 			items_code = items_code[:-1]
-# 		# frappe.log_error(title = '--Need to update items_code--',message = items_code)
-# 		item_map = get_item_details(items_code)
-# 		iwb_map = get_item_warehouse_batch_map(items_code,float_precision=3)
-# 		# frappe.log_error(title = '--iwbmap items--',message = iwb_map)
-# 		float_precision = 3
-# 		for item in sorted(iwb_map):
-# 			for wh in sorted(iwb_map[item]):
-# 				for batch in sorted(iwb_map[item][wh]):
-# 					qty_dict = iwb_map[item][wh][batch]
-# 					if qty_dict.opening_qty or qty_dict.in_qty or qty_dict.out_qty or qty_dict.bal_qty:
-# 						allow = False
-# 						if qty_dict.bal_qty>0:
-# 							allow = True
-# 						if frappe.db.get_value("Item",item,"allow_negative_stock")==1:
-# 							allow = True
-# 						if allow:
-# 							ibs_doc = frappe.new_doc("Item Batch Stock Balance")
-# 							ibs_doc.item_code=item
-# 							ibs_doc.item_name=item_map[item]["item_name"]
-# 							ibs_doc.description=item_map[item]["description"]
-# 							ibs_doc.warehouse=wh
-# 							ibs_doc.batch_no=batch
-# 							ibs_doc.qty=flt(qty_dict.bal_qty, float_precision)
-# 							ibs_doc.stock_uom=item_map[item]["stock_uom"]
-# 							ibs_doc.save(ignore_permissions=True)
-# 							frappe.db.commit()
-
-# 	except Exception as e:
-# 		frappe.log_error(message=frappe.get_traceback(),title="Item Batch Stock Balance")
-# 		frappe.log_error(title="item details--Item batch stock balance--",message=item_map)
-# 		frappe.log_error(title="sle items--Item batch stock balance--",message=iwb_map)
-# 		frappe.db.rollback()
-# 		return {"status":"Failed"}
-
-# end
 
 # Newly Optimized code on 20/10/23 
 

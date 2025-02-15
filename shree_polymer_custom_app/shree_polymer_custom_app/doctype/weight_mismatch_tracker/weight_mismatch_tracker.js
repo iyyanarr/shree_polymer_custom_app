@@ -1,6 +1,6 @@
 frappe.ui.form.on("Weight Mismatch Tracker", {
     refresh: function (frm) {
-        frm.events.update_weight_approval_scenario(frm); // Update the scenario dynamically
+        frm.events.update_weight_approval_scenario(frm); // Update scenario dynamically
         frm.events.update_overview(frm);                // Setup action buttons (Resolve & Rejection)
 
         // Disable buttons if the document is submitted
@@ -17,10 +17,10 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
         let scenario_message = "";
         let badge_color = "secondary";
         if (system_weight > observed_weight) {
-            scenario_message = "Scenario On - System Weight is greater than Observed Weight";
-            badge_color = "success";
+            scenario_message = " System Weight > Observed Weight";
+            badge_color = "warning";
         } else if (system_weight < observed_weight) {
-            scenario_message = "Scenario Two - Observed Weight is greater than System Weight";
+            scenario_message = " System Weight < Observed Weight";
             badge_color = "danger";
         } else {
             scenario_message = "Scenario Neutral - System Weight equals Observed Weight";
@@ -44,15 +44,10 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
 
         frm.get_field("overview").$wrapper.html(overview_html);
 
-        // Disable buttons if the document is already submitted
-        if (frm.doc.docstatus === 1) {
-            frm.get_field("overview").$wrapper.find("#resolve-btn").prop("disabled", true);
-            frm.get_field("overview").$wrapper.find("#rejection-btn").prop("disabled", true);
-            return;
-        }
-
-        // Resolve button: Logic for handling both reasons
+        // Resolve button logic
         frm.get_field("overview").$wrapper.find("#resolve-btn").on("click", function () {
+            frappe.dom.freeze("Resolving... Please wait"); // Display the loading dialog (freeze UI)
+
             const reason = frm.doc.reason;
             const details = frm.doc.details;
 
@@ -62,6 +57,7 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
                     indicator: "red",
                     message: __("Please select a Reason before resolving."),
                 });
+                frappe.dom.unfreeze(); // Unfreeze UI
                 return;
             }
 
@@ -71,11 +67,12 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
                     indicator: "red",
                     message: __("Details are mandatory for resolving this document."),
                 });
+                frappe.dom.unfreeze(); // Unfreeze UI
                 return;
             }
 
             if (reason === "Production Entry Wrong") {
-                // Stock Reconciliation for "Production Entry Wrong"
+                // Stock Reconciliation logic
                 frappe.call({
                     method: "shree_polymer_custom_app.shree_polymer_custom_app.doctype.weight_mismatch_tracker.weight_mismatch_tracker.create_stock_reconciliation",
                     args: {
@@ -83,18 +80,22 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
                         posting_date: frappe.datetime.now_date(),
                     },
                     callback: function (response) {
+                        frappe.dom.unfreeze(); // Remove the loading dialog
                         if (response.message) {
                             frappe.msgprint({
                                 title: __("Success"),
                                 indicator: "green",
                                 message: __(`Stock Reconciliation created: <b>${response.message}</b>`),
                             });
-                            frm.reload_doc();
+                            frm.reload_doc(); // Reload the form to reflect changes
                         }
                     },
+                    error: function () {
+                        frappe.dom.unfreeze(); // Remove loading dialog on error
+                    },
                 });
-            } else if (reason === "Spillage") {
-                // Stock Transfer for "Spillage"
+            } else if (reason === "Spillage" || reason === "Inspection Entry Wrong") {
+                // Stock Transfer logic
                 const transfer_amount = frm.doc.system_weight - frm.doc.observed_weight;
 
                 if (transfer_amount <= 0) {
@@ -103,6 +104,7 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
                         indicator: "red",
                         message: __("Transfer amount must be greater than zero."),
                     });
+                    frappe.dom.unfreeze(); // Remove loading dialog on error
                     return;
                 }
 
@@ -113,26 +115,32 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
                         item_code: frm.doc.item_code,
                         transfer_amount: transfer_amount,
                         from_warehouse: frm.doc.warehouse,
-                        batch_no: frm.doc.batch_number, 
+                        batch_no: frm.doc.batch_number,
                         posting_date: frappe.datetime.now_date(),
+                        reason_code:frm.doc.reason
                     },
                     callback: function (response) {
+                        frappe.dom.unfreeze(); // Remove the loading dialog after processing
                         if (response.message) {
                             frappe.msgprint({
                                 title: __("Success"),
                                 indicator: "green",
                                 message: __(`Stock Transfer created: <b>${response.message}</b>`),
                             });
-                            frm.reload_doc();
+                            frm.reload_doc(); // Reload the form to reflect changes
                         }
+                    },
+                    error: function () {
+                        frappe.dom.unfreeze(); // Remove loading dialog on error
                     },
                 });
             } else {
                 frappe.msgprint({
-                    title: __("No Action"),
+                    title: __("Unhandled Reason"),
                     indicator: "orange",
-                    message: __("This reason code doesn't have any specific action."),
+                    message: __("The selected reason is not associated with any action."),
                 });
+                frappe.dom.unfreeze(); // Unfreeze UI for unhandled reasons
             }
         });
 
@@ -150,6 +158,7 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
                 ],
                 primary_action_label: "Submit",
                 primary_action: function (values) {
+                    frappe.dom.freeze("Submitting rejection... Please wait"); // Show loading dialog
                     frappe.call({
                         method: "frappe.client.set_value",
                         args: {
@@ -161,6 +170,7 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
                             },
                         },
                         callback: function () {
+                            frappe.dom.unfreeze(); // Remove loading dialog after success
                             frappe.msgprint({
                                 title: __("Rejection Complete"),
                                 indicator: "green",
@@ -168,6 +178,9 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
                             });
                             rejectionDialog.hide();
                             frm.reload_doc();
+                        },
+                        error: function () {
+                            frappe.dom.unfreeze(); // Remove loading dialog on error
                         },
                     });
                 },

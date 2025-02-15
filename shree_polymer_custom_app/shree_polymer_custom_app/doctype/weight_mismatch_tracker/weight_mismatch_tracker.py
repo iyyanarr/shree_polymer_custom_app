@@ -90,19 +90,27 @@ def create_stock_reconciliation(document_name, posting_date):
     # Return the name of the Stock Reconciliation document
     return sr_doc.name
 @frappe.whitelist()
-def create_stock_transfer(document_name, item_code, transfer_amount, from_warehouse, batch_no, posting_date):
-    print('*******',document_name, item_code, transfer_amount, from_warehouse, batch_no, posting_date)
+def create_stock_transfer(document_name, item_code, transfer_amount, from_warehouse, batch_no, posting_date,reason_code):
+    """
+    Create a stock transfer for the Weight Mismatch Tracker based on the Reason Code.
+    """
+
+    # Fetch the Weight Mismatch Tracker document
     mismatch_doc = frappe.get_doc("Weight Mismatch Tracker", document_name)
 
-    # to_warehouse = "U2-Scrap - SPP INDIA"
-    # """
-    # Create a stock transfer for the Weight Mismatch Tracker.
-    # """
-    # Validate inputs
-    if not transfer_amount:
-        frappe.throw("Valid  positive Transfer Amount are required.")
-    if not from_warehouse:
-        frappe.throw("Valid Source Warehouse, Target Warehouse, are required.")
+
+    # Determine the target warehouse based on the Reason Code
+    
+    if reason_code == "Spillage":
+        to_warehouse = "U2-Scrap - SPP INDIA"  # Target warehouse for Spillage
+    elif reason_code == "Inspection Entry Wrong":
+        to_warehouse = "U2 Rejection - SPP INDIA"  # Target warehouse for Inspection Entry Wrong
+    else:
+        frappe.throw(f"Unhandled Reason Code: {reason_code}")
+
+    # Log details (for debugging purposes)
+    print("*******", document_name, item_code, transfer_amount, from_warehouse, batch_no, posting_date, to_warehouse)
+
     # Create the Stock Entry
     stock_entry = frappe.get_doc({
         "doctype": "Stock Entry",
@@ -112,16 +120,19 @@ def create_stock_transfer(document_name, item_code, transfer_amount, from_wareho
             {
                 "item_code": item_code,
                 "qty": transfer_amount,
-				"batch_no": batch_no,
+                "use_serial_batch_fields": 1,
+                "batch_no": batch_no,
                 "s_warehouse": from_warehouse,
-                "t_warehouse": "U2-Scrap - SPP INDIA"
+                "t_warehouse": to_warehouse,
             }
         ]
     })
 
     stock_entry.insert()
     stock_entry.submit()
-    mismatch_doc.stock_spillage__ref = stock_entry.name
+
+    # Update mismatch document with the Stock Entry reference and status
+    mismatch_doc.stock_spillage_ref = stock_entry.name  # Assuming this field exists
     mismatch_doc.status = "Resolved"
     mismatch_doc.save()
     mismatch_doc.submit()
