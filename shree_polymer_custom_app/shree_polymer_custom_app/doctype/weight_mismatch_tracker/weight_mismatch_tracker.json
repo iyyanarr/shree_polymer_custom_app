@@ -1,38 +1,275 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "format:WMT-{ref_lot_number}-{###}",
  "creation": "2025-02-11 15:59:50.590182",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "deflashing_de",
+  "action_center_section",
+  "column_break_xceg",
+  "weight_approval_scenario",
+  "column_break_okue",
+  "section_break_yoob",
+  "observed_weight",
+  "system_weight",
+  "difference_in_weight",
+  "column_break_mpwy",
+  "approved_weight",
+  "column_break_xqrk",
+  "reason",
+  "incharge_person",
+  "updated_cavities",
+  "update_no_of_lifts",
+  "column_break_kxta",
+  "details",
+  "overview",
+  "section_break_pdaj",
+  "item_code",
+  "item_group",
+  "column_break_klmb",
+  "ref_lot_number",
+  "batch_number",
+  "column_break_fwpu",
+  "ref_production_entry",
+  "entry_person",
+  "column_break_duqa",
+  "number_of_lifts",
+  "no_of_running_cavities",
+  "column_break_rfvb",
+  "warehouse",
+  "observed_by",
   "section_break_ltwk",
-  "items"
+  "status",
+  "column_break_pmpo",
+  "stock_reconcile_ref",
+  "stock_spillage__ref",
+  "amended_from"
  ],
  "fields": [
   {
-   "fieldname": "deflashing_de",
-   "fieldtype": "Link",
-   "label": " Deflashing Dispatch Entry ",
-   "options": "Deflashing Despatch Entry"
+   "fieldname": "section_break_ltwk",
+   "fieldtype": "Section Break",
+   "label": "Ref Details"
   },
   {
-   "fieldname": "section_break_ltwk",
+   "fieldname": "ref_lot_number",
+   "fieldtype": "Data",
+   "label": "Ref Lot Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "observed_weight",
+   "fieldtype": "Float",
+   "label": "Observed Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_okue",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ref_production_entry",
+   "fieldtype": "Link",
+   "label": "Ref Production Entry",
+   "options": "Moulding Production Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "difference_in_weight",
+   "fieldtype": "Float",
+   "label": "Difference In Weight ",
+   "read_only": 1
+  },
+  {
+   "fieldname": "observed_by",
+   "fieldtype": "Link",
+   "label": "Request & Observed  By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "entry_person",
+   "fieldtype": "Link",
+   "label": "Entry Person",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Select",
+   "label": "Reason Code",
+   "options": "Production Entry Wrong\nSpillage\nInspection Entry wrong\nOthers"
+  },
+  {
+   "fieldname": "overview",
+   "fieldtype": "HTML",
+   "label": "Overview"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nPending\nResolved\nRejected",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_reconcile_ref",
+   "fieldtype": "Link",
+   "label": "Stock Reconcile Ref",
+   "options": "Stock Reconciliation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_xceg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "action_center_section",
+   "fieldtype": "Section Break",
+   "label": "Action Center"
+  },
+  {
+   "fieldname": "incharge_person",
+   "fieldtype": "Link",
+   "label": "Responsible Person",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "approved_weight",
+   "fieldtype": "Float",
+   "label": "Approved Weight"
+  },
+  {
+   "fieldname": "no_of_running_cavities",
+   "fieldtype": "Data",
+   "label": "No Of Running Cavities",
+   "read_only": 1
+  },
+  {
+   "fieldname": "number_of_lifts",
+   "fieldtype": "Data",
+   "label": "Number Of Lifts",
+   "read_only": 1
+  },
+  {
+   "fieldname": "system_weight",
+   "fieldtype": "Float",
+   "label": "System weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "updated_cavities",
+   "fieldtype": "Int",
+   "label": "Update No Of Running Cavities"
+  },
+  {
+   "fieldname": "details",
+   "fieldtype": "Small Text",
+   "label": "Details"
+  },
+  {
+   "fieldname": "section_break_pdaj",
+   "fieldtype": "Section Break",
+   "label": "Item & Production Details "
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Data",
+   "label": "Item code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "batch_number",
+   "fieldtype": "Data",
+   "label": "Batch Number"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Data",
+   "label": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_klmb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Data",
+   "label": "Item Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_fwpu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_duqa",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_pmpo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "update_no_of_lifts",
+   "fieldtype": "Int",
+   "label": "Update No Of Lifts"
+  },
+  {
+   "fieldname": "column_break_rfvb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Weight Mismatch Tracker",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "hello",
+   "fieldname": "weight_approval_scenario",
+   "fieldtype": "HTML",
+   "label": "Weight Approval Scenario"
+  },
+  {
+   "fieldname": "section_break_yoob",
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "items",
-   "fieldtype": "Table",
-   "label": "Items",
-   "options": "Weight Mismatch Tracker Item"
+   "fieldname": "column_break_mpwy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_xqrk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_kxta",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "stock_spillage__ref",
+   "fieldtype": "Link",
+   "label": "Stock Spillage  Ref ",
+   "options": "Stock Entry",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2025-02-11 16:16:57.613987",
+ "modified": "2025-02-15 12:03:23.424418",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Weight Mismatch Tracker",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -48,7 +285,11 @@
    "write": 1
   }
  ],
+ "queue_in_background": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1,
+ "track_seen": 1,
+ "track_views": 1
 }

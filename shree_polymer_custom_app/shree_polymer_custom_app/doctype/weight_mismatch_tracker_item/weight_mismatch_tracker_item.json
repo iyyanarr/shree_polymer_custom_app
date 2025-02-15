@@ -7,13 +7,9 @@
  "engine": "InnoDB",
  "field_order": [
   "item_code",
-  "item_group",
   "batch_no",
   "system_weight",
-  "entry_person",
-  "observed_weight",
-  "obs_by",
-  "weight_diff"
+  "source_warehouse"
  ],
  "fields": [
   {
@@ -24,13 +20,6 @@
    "options": "Item"
   },
   {
-   "fieldname": "item_group",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Item Group",
-   "options": "Item Group"
-  },
-  {
    "fieldname": "batch_no",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -39,39 +28,22 @@
   },
   {
    "fieldname": "system_weight",
-   "fieldtype": "Int",
+   "fieldtype": "Float",
    "in_list_view": 1,
    "label": "System Weight"
   },
   {
-   "fieldname": "entry_person",
-   "fieldtype": "Data",
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Entry Person"
-  },
-  {
-   "fieldname": "observed_weight",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Observed Weight"
-  },
-  {
-   "fieldname": "obs_by",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Obs By"
-  },
-  {
-   "fieldname": "weight_diff",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Weight Diff"
+   "label": "Source Warehouse",
+   "options": "Warehouse"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-11 16:15:43.119571",
+ "modified": "2025-02-14 09:34:50.198698",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Weight Mismatch Tracker Item",
