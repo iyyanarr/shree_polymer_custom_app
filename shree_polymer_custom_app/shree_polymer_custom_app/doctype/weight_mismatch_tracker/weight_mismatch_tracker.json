@@ -16,11 +16,12 @@
   "difference_in_weight",
   "column_break_mpwy",
   "approved_weight",
+  "updated_cavities",
+  "update_no_of_lifts",
+  "update_approved_changes",
   "column_break_xqrk",
   "reason",
   "incharge_person",
-  "updated_cavities",
-  "update_no_of_lifts",
   "column_break_kxta",
   "details",
   "overview",
@@ -260,12 +261,17 @@
    "label": "Stock Spillage  Ref ",
    "options": "Stock Entry",
    "read_only": 1
+  },
+  {
+   "fieldname": "update_approved_changes",
+   "fieldtype": "HTML",
+   "label": "Update Approved changes"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-15 15:19:03.566197",
+ "modified": "2025-02-16 19:01:41.726519",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Weight Mismatch Tracker",
