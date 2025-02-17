@@ -179,63 +179,146 @@ class CompoundInspection(Document):
 			frappe.throw(f"Please enter <b>TS2 Observed</b> by Quality Approver..!")
 		if not self.q_tc_90_observed:
 			frappe.throw(f"Please enter <b>TC90 Observed</b> by Quality Approver..!")
+# def rollback_entries(self,q_ins_id,batch_no,st_items_row_id):
+# 	try:
+# 		flag = False
+# 		if q_ins_id:
+# 			frappe.db.delete("Quality Inspection",q_ins_id)
+# 		if self.stock_id:
+# 			exe_stock = frappe.get_doc("Stock Entry",self.stock_id)
+# 			if exe_stock.docstatus == 1:
+# 				exe_stock.db_set("docstatus",0)
+# 				frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{exe_stock.name}' ")
+# 				frappe.db.sql(f"UPDATE `tabStock Entry Detail` SET batch_no = '' WHERE name = '{st_items_row_id}' ")
+# 			frappe.db.set_value("Work Order",exe_stock.work_order,"produced_qty",0)
+# 		if batch_no:
+# 			frappe.db.sql(f" DELETE FROM `tabBatch` WHERE name = '{batch_no}' ")
+# 		self.db_set('docstatus',0)
+# 		frappe.db.commit()
+# 		flag = True
+# 		frappe.throw("Stock Entry or Quality Inspection submission error..!")
+# 	except Exception:
+# 		frappe.log_error(title="Error in compound inspection rollback_entries",message = frappe.get_traceback())
+# 		if not flag:
+# 			frappe.throw("Something went wrong, not able to rollback entries..!")
+#     def rollback_entries(self, q_ins_id, batch_no, st_items_row_id):
+#         try:
+#             if q_ins_id:
+#                 frappe.db.delete("Quality Inspection", q_ins_id)
+#             if self.stock_id:
+#                 exe_stock = frappe.get_doc("Stock Entry", self.stock_id)
+#                 if exe_stock.docstatus == 1:
+#                     exe_stock.cancel()  # Better to cancel
 
-def rollback_entries(self,q_ins_id,batch_no,st_items_row_id):
-	try:
-		flag = False
-		if q_ins_id:
-			frappe.db.delete("Quality Inspection",q_ins_id)
-		if self.stock_id:
-			exe_stock = frappe.get_doc("Stock Entry",self.stock_id)
-			if exe_stock.docstatus == 1:
-				exe_stock.db_set("docstatus",0)
-				frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{exe_stock.name}' ")
-				frappe.db.sql(f"UPDATE `tabStock Entry Detail` SET batch_no = '' WHERE name = '{st_items_row_id}' ")
-			frappe.db.set_value("Work Order",exe_stock.work_order,"produced_qty",0)
-		if batch_no:
-			frappe.db.sql(f" DELETE FROM `tabBatch` WHERE name = '{batch_no}' ")
-		self.db_set('docstatus',0)
-		frappe.db.commit()
-		flag = True
-		frappe.throw("Stock Entry or Quality Inspection submission error..!")
-	except Exception:
-		frappe.log_error(title="Error in compound inspection rollback_entries",message = frappe.get_traceback())
-		if not flag:
-			frappe.throw("Something went wrong, not able to rollback entries..!")
+#                 # Cleanup Serial and Batch Bundles
+#                 for item in exe_stock.items:
+#                     if item.serial_and_batch_bundle:
+#                         frappe.delete_doc("Serial and Batch Bundle", item.serial_and_batch_bundle)
 
+#                 frappe.db.set_value("Work Order", exe_stock.work_order, "produced_qty", 0)
+
+#             if batch_no:
+#                 frappe.db.sql(f"DELETE FROM `tabBatch` WHERE name = '{batch_no}'")
+
+#             frappe.db.commit()
+
+#         except Exception:
+#             frappe.log_error(title="Error in rollback_entries", message=frappe.get_traceback())
+
+# def submit_dc_receipt_stock(self):
+# 	try:
+# 		quality_ins_id = None
+# 		batch_no = None
+# 		st_items_row_id = None
+# 		exe_stock = frappe.get_doc("Stock Entry",self.stock_id)
+# 		if exe_stock.docstatus == 0:
+# 			exe_stock.docstatus = 1
+# 			exe_stock.save(ignore_permissions = True)
+# 			#""" Update posting date and time """
+# 			dc_resp = frappe.db.get_value("Delivery Challan Receipt",self.dc_receipt_id,["dc_receipt_date","mixing_time"],as_dict = 1)
+# 			if dc_resp.dc_receipt_date and dc_resp.mixing_time:
+# 				frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{dc_resp.dc_receipt_date}',posting_time = '{dc_resp.mixing_time}' WHERE name = '{exe_stock.name}' ")
+# 			elif dc_resp.dc_receipt_date :
+# 				frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{dc_resp.dc_receipt_date}' WHERE name = '{exe_stock.name}' ")
+# 			#"""end"""
+# 			batch_no = ""
+# 			for item in exe_stock.items:
+# 				if item.is_finished_item and item.t_warehouse:
+# 					batch_no = item.batch_no
+# 					st_items_row_id = item.name
+# 			resp_ = create_quality_inspection_entry(self,batch_no)
+# 			if resp_:
+# 				quality_ins_id = resp_
+# 				frappe.db.set_value(self.doctype,self.name,"qc_inspection_ref",quality_ins_id)
+# 				frappe.db.commit()
+# 		elif exe_stock.docstatus == 2:
+# 			frappe.throw(f"The<b>Stock Entry - {self.stock_id}</b> is cancelled..!")
+# 		elif exe_stock.docstatus == 1:
+# 			frappe.throw(f"The<b>Stock Entry - {self.stock_id}</b> is already submitted..!")
+# 	except Exception:
+# 		frappe.log_error(title="Error in submit_dc_receipt_stock",message = frappe.get_traceback())
+# 		rollback_entries(self,quality_ins_id,batch_no,st_items_row_id)
 def submit_dc_receipt_stock(self):
-	try:
-		quality_ins_id = None
-		batch_no = None
-		st_items_row_id = None
-		exe_stock = frappe.get_doc("Stock Entry",self.stock_id)
-		if exe_stock.docstatus == 0:
-			exe_stock.docstatus = 1
-			exe_stock.save(ignore_permissions = True)
-			#""" Update posting date and time """
-			dc_resp = frappe.db.get_value("Delivery Challan Receipt",self.dc_receipt_id,["dc_receipt_date","mixing_time"],as_dict = 1)
-			if dc_resp.dc_receipt_date and dc_resp.mixing_time:
-				frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{dc_resp.dc_receipt_date}',posting_time = '{dc_resp.mixing_time}' WHERE name = '{exe_stock.name}' ")
-			elif dc_resp.dc_receipt_date :
-				frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{dc_resp.dc_receipt_date}' WHERE name = '{exe_stock.name}' ")
-			#"""end"""
-			batch_no = ""
-			for item in exe_stock.items:
-				if item.is_finished_item and item.t_warehouse:
-					batch_no = item.batch_no
-					st_items_row_id = item.name
-			resp_ = create_quality_inspection_entry(self,batch_no)
-			if resp_:
-				quality_ins_id = resp_
-				frappe.db.set_value(self.doctype,self.name,"qc_inspection_ref",quality_ins_id)
-				frappe.db.commit()
-		elif exe_stock.docstatus == 2:
-			frappe.throw(f"The<b>Stock Entry - {self.stock_id}</b> is cancelled..!")
-		elif exe_stock.docstatus == 1:
-			frappe.throw(f"The<b>Stock Entry - {self.stock_id}</b> is already submitted..!")
-	except Exception:
-		frappe.log_error(title="Error in submit_dc_receipt_stock",message = frappe.get_traceback())
-		rollback_entries(self,quality_ins_id,batch_no,st_items_row_id)
+    try:
+        quality_ins_id = None
+        batch_no = None
+        
+        exe_stock = frappe.get_doc("Stock Entry", self.stock_id)
+        if exe_stock.docstatus == 0:
+            # V15 CRITICAL: Clear fields before submission <sup data-citation="3" className="inline select-none [&>a]:rounded-2xl [&>a]:border [&>a]:px-1.5 [&>a]:py-0.5 [&>a]:transition-colors shadow [&>a]:bg-ds-bg-subtle [&>a]:text-xs [&>svg]:w-4 [&>svg]:h-4 relative -top-[2px] citation-shimmer"><a href="https://discuss.frappe.io/c/erpnext/stock/9">3</a></sup><sup data-citation="7" className="inline select-none [&>a]:rounded-2xl [&>a]:border [&>a]:px-1.5 [&>a]:py-0.5 [&>a]:transition-colors shadow [&>a]:bg-ds-bg-subtle [&>a]:text-xs [&>svg]:w-4 [&>svg]:h-4 relative -top-[2px] citation-shimmer"><a href="https://stackoverflow.com/questions/78404336/new-stock-entry-add-get-items-from-purchase-receipt-in-frappe-erpnext-not-wo">7</a></sup>
+            for item in exe_stock.items:
+                # Reset all bundle-related fields
+                item.serial_no = None
+                item.batch_no = None
+                item.serial_and_batch_bundle = None
+            
+            # Initial save to clear legacy data
+            exe_stock.save(ignore_permissions=True)
+            exe_stock.reload()
+            
+            # Final submission
+            exe_stock.docstatus = 1
+            exe_stock.save(ignore_permissions=True)
+            
+            # Rest of your existing workflow... 
+
+        elif exe_stock.docstatus == 1:
+            frappe.throw("Stock Entry already submitted")
+            
+    except Exception as e:
+        self.rollback_entries(quality_ins_id, batch_no, None)
+        frappe.throw(f"Submission failed: {str(e)}")
+
+def rollback_entries(self, q_ins_id, batch_no, st_items_row_id):
+    try:
+        # Cancel Quality Inspection
+        if q_ins_id and frappe.db.exists("Quality Inspection", q_ins_id):
+            frappe.delete_doc("Quality Inspection", q_ins_id)
+        
+        # Handle Stock Entry
+        if self.stock_id and frappe.db.exists("Stock Entry", self.stock_id):
+            se = frappe.get_doc("Stock Entry", self.stock_id)
+            if se.docstatus == 1:
+                se.cancel()
+            
+            # Cleanup SABB
+            for item in se.items:
+                if item.serial_and_batch_bundle:
+                    bundle = item.serial_and_batch_bundle
+                    item.db_set("serial_and_batch_bundle", None)
+                    frappe.delete_doc("Serial and Batch Bundle", bundle)
+        
+        # Cleanup Batch
+        if batch_no and frappe.db.exists("Batch", batch_no):
+            frappe.db.delete("Batch", {"name": batch_no})
+            
+        frappe.db.commit()
+        
+    except Exception:
+        frappe.log_error(title="Compound Inspection Rollback Failure",
+                        message=frappe.get_traceback())
+        raise  # Re-raise for proper error visibility
+
 
 def create_quality_inspection_entry(self,batch_no):
 	inspected_by = frappe.db.get_value("Employee",self.operator_id,"company_email")
