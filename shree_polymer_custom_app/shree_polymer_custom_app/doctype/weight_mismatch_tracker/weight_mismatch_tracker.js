@@ -222,6 +222,13 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
     },
   
     setup_auto_save: function (frm) {
+          // Add auto-save for 'reason' field
+    frm.fields_dict["reason"].df.change = function() {
+      frm.save_or_update({
+          freeze: true,
+          freeze_message: "Saving Reason..."
+      });
+  };
       // Auto-save for 'approved_weight', 'updated_cavities', and 'update_no_of_lifts'
       frm.fields_dict["approved_weight"].df.change = function () {
         frm.save_or_update({

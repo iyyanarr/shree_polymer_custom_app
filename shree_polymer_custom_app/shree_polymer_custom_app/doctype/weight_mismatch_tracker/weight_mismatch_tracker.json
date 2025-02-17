@@ -44,7 +44,7 @@
   "status",
   "column_break_pmpo",
   "stock_reconcile_ref",
-  "stock_spillage__ref",
+  "stock_spillage_ref",
   "amended_from"
  ],
  "fields": [
@@ -100,7 +100,7 @@
    "fieldname": "reason",
    "fieldtype": "Select",
    "label": "Reason Code",
-   "options": "Production Entry Wrong\nSpillage\nInspection Entry Wrong\nOthers"
+   "options": "\nProduction Entry Wrong\nSpillage\nInspection Entry Wrong\nOthers"
   },
   {
    "fieldname": "overview",
@@ -256,22 +256,22 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "stock_spillage__ref",
+   "fieldname": "update_approved_changes",
+   "fieldtype": "HTML",
+   "label": "Update Approved changes"
+  },
+  {
+   "fieldname": "stock_spillage_ref",
    "fieldtype": "Link",
    "label": "Stock Spillage  Ref ",
    "options": "Stock Entry",
    "read_only": 1
-  },
-  {
-   "fieldname": "update_approved_changes",
-   "fieldtype": "HTML",
-   "label": "Update Approved changes"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-16 19:01:41.726519",
+ "modified": "2025-02-17 10:42:39.347514",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Weight Mismatch Tracker",
@@ -291,7 +291,6 @@
    "write": 1
   }
  ],
- "queue_in_background": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
