@@ -130,7 +130,7 @@ def create_stock_transfer(document_name, item_code, transfer_amount, from_wareho
     stock_entry.submit()
 
     # Update mismatch document with the Stock Entry reference and status
-    mismatch_doc.stock_spillage__ref = stock_entry.name  # Assuming this field exists
+    mismatch_doc.stock_spillage_ref = stock_entry.name  # Assuming this field exists
     mismatch_doc.status = "Resolved"
     mismatch_doc.save()
     mismatch_doc.submit()
