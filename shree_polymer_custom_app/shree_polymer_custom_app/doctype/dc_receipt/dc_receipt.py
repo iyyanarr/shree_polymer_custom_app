@@ -166,7 +166,6 @@ def make_stock_entry(mt_doc,spp_settings,work_order_id,compound_code, purpose, q
 			for x in work_order.required_items:
 				stock_entry.append("items",{
 					"item_code":x.item_code,
-					"use_serial_batch_fields": 1,
 					"s_warehouse":work_order.source_warehouse,
 					"t_warehouse":None,
 					"stock_uom": "Kg",
@@ -401,4 +400,3 @@ def getmonth(code):
 		return "K"
 	if code == "12":
 		return "L"
-
