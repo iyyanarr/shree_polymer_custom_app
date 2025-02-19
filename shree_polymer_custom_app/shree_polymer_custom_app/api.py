@@ -22,37 +22,6 @@ def verify_enqueue_and_alert(doc,method):
 						  To enable this please contact <b>Administrator</b>.<br>
 						  So that the <b>Stock</b> Of the Materials can updating properly. """)
 
-# hide on 25/10/23
-
-# def config_and_enqueue_job(doc):
-# 	# ,timeout = 5000
-# 	# at_front = True,
-# 	frappe.enqueue(item_update,queue = 'short',doc = doc)
-
-# @frappe.whitelist()
-# def on_item_update(doc,method):
-# 	if check_enqueue():
-# 		config_and_enqueue_job(doc)
-	
-# def on_batch_trash(doc,method):
-# 	if check_enqueue():
-# 		if doc.item:
-# 			item_doc = frappe._dict({'name':doc.item})
-# 			config_and_enqueue_job(item_doc)
-
-# @frappe.whitelist()
-# def on_batch_update(doc,method):
-# 	if doc.name.startswith("Cutbit_"):
-# 		generate_batch_barcode(doc)
-
-# @frappe.whitelist()
-# def on_sle_update(doc,method):
-# 	if check_enqueue():
-# 		if doc.item_code:
-# 			item_doc = frappe._dict({'name':doc.item_code})
-# 			config_and_enqueue_job(item_doc)
-
-# Newly Optimized code on 25/10/23 
 
 def config_and_enqueue_job(doc,batch_info = None):
 	frappe.enqueue(get_batch_info_update_qty,queue = 'short',doc = doc,batch_info = batch_info)
@@ -89,35 +58,41 @@ def get_batch_info_update_qty(doc,batch_info = None):
 	else:
 		update_item_batch_qty(doc.name,batch_info.name,batch_info.stock_uom)
 
-def update_item_batch_qty(item_code,batch_no,stock_uom):
-	from erpnext.stock.doctype.batch.batch import get_batch_qty
-	batch_qtys = get_batch_qty(batch_no=batch_no)
-	# frappe.log_error(title=f'--batch_qtys-- {batch_no} ', message = batch_qtys)
-	if batch_qtys:
-		for b in batch_qtys:
-			if b.get("qty") != 0:
-				check_exist = frappe.db.get_all("Item Batch Stock Balance",
-							filters={"item_code":item_code,"batch_no":batch_no,"warehouse":b.get("warehouse")}
-							)
-				if check_exist:
-					for x in check_exist:
-						frappe.db.set_value("Item Batch Stock Balance",x.name,"qty",b.get("qty"))
-				else:
-					item_name = frappe.db.get_value("Item",item_code,'item_name')
-					new_doc = frappe.new_doc("Item Batch Stock Balance")
-					new_doc.item_code = item_code
-					new_doc.item_name = item_name
-					new_doc.description = f"<div> <p>{item_code} - {item_name}</p></div>"
-					new_doc.warehouse = b.get("warehouse")
-					new_doc.qty = b.get("qty")
-					new_doc.stock_uom = stock_uom
-					new_doc.batch_no = batch_no
-					new_doc.insert(ignore_permissions = True)
-			else:
-				frappe.db.sql(f""" DELETE FROM `tabItem Batch Stock Balance` WHERE batch_no = '{batch_no}' AND warehouse = '{b.get("warehouse")}' AND item_code = '{item_code}' """ )
-	else:
-		frappe.db.sql("""DELETE FROM `tabItem Batch Stock Balance` WHERE item_code=%(item_code)s and batch_no = %(batch_no)s""",{"item_code":item_code,"batch_no":batch_no})
-	frappe.db.commit()
+def update_item_batch_qty(item_code, batch_no, stock_uom):
+    from erpnext.stock.doctype.batch.batch import get_batch_qty
+    batch_qtys = get_batch_qty(batch_no=batch_no)
+    # Debugging line to check if `batch_qtys` is being retrieved
+    print('Batch Qty:', batch_qtys)
+    
+    if batch_qtys:
+        for b in batch_qtys:
+            if b.get("qty") != 0:
+                check_exist = frappe.db.get_all(
+                    "Item Batch Stock Balance",
+                    filters={"item_code": item_code, "batch_no": batch_no, "warehouse": b.get("warehouse")}
+                )
+                print('Check Exist:', check_exist)  # Debugging line
+                if check_exist:
+                    for x in check_exist:
+                        frappe.db.set_value("Item Batch Stock Balance", x.name, "qty", b.get("qty"))
+                else:
+                    item_name = frappe.db.get_value("Item", item_code, 'item_name')
+                    new_doc = frappe.new_doc("Item Batch Stock Balance")
+                    new_doc.item_code = item_code
+                    new_doc.item_name = item_name
+                    new_doc.description = f"<div> <p>{item_code} - {item_name}</p></div>"
+                    new_doc.warehouse = b.get("warehouse")
+                    new_doc.qty = b.get("qty")
+                    new_doc.stock_uom = stock_uom
+                    new_doc.batch_no = batch_no
+                    new_doc.insert(ignore_permissions=True)
+            else:
+                frappe.db.sql(f""" DELETE FROM `tabItem Batch Stock Balance` WHERE batch_no = '{batch_no}' AND warehouse = '{b.get("warehouse")}' AND item_code = '{item_code}' """)
+    else:
+        frappe.db.sql("""DELETE FROM `tabItem Batch Stock Balance` WHERE item_code=%(item_code)s and batch_no = %(batch_no)s""", {"item_code": item_code, "batch_no": batch_no})
+    frappe.db.commit()
+    print(f"Updated Item Batch Stock Balance for item_code: {item_code}, batch_no: {batch_no}")
+
 	
 
 # Newly Optimized code on 20/10/23 
@@ -1218,58 +1193,36 @@ def validate_stock_entry(st_ids):
 		return {"status":"failed"}
 	else:
 		return {"status":"success"}
+def create_serial_batch_bundle(item_code, batch_no, warehouse, qty, voucher_type, parent_doc):
+    """ERPNext v14+ compliant bundle creation with audit trail"""
+    bundle = frappe.new_doc("Serial and Batch Bundle")
+    bundle.voucher_type = voucher_type
+    bundle.voucher_no = parent_doc.name if parent_doc else None
+    bundle.item_code = item_code
+    bundle.warehouse = warehouse
+    bundle.type_of_transaction = "Outward" if warehouse == parent_doc.from_warehouse else "Inward"
+    
+    bundle.append("entries", {
+        "batch_no": batch_no,
+        "qty": qty,
+        "warehouse": warehouse,
+        "incoming_rate": frappe.db.get_value("Item", item_code, "last_purchase_rate"),
+        "reference_doctype": parent_doc.doctype if parent_doc else None,
+        "reference_name": parent_doc.name if parent_doc else None
+    })
+    
+    bundle.flags.ignore_permissions = True
+    bundle.insert()
+    return bundle.name
 
-
-
-# backup on 25/3/24
-
-# def find_material_trns_entry(lot_no):
-# 	query = f""" SELECT SE.stock_entry_type,SED.source_ref_document,SED.creation, SED.mix_barcode,SED.t_warehouse,SED.item_code,SED.spp_batch_number,SED.qty,SED.stock_uom,SED.batch_no
-# 							FROM `tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE ON SE.name = SED.parent WHERE 
-# 							SE.docstatus = 1 AND SED.spp_batch_number = '{lot_no}' AND SED.t_warehouse IS NOT NULL AND SE.stock_entry_type = 'Material Receipt' LIMIT 1 """
-# 	result__ = frappe.db.sql(query,as_dict = 1)
-# 	if result__:
-# 		query = f""" SELECT SE.stock_entry_type,SED.valuation_rate,SED.amount,SED.source_ref_document,SED.creation, SED.mix_barcode,SED.t_warehouse,SED.item_code,SED.spp_batch_number,IBSB.qty,IBSB.stock_uom,SED.batch_no
-# 								FROM `tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE ON SE.name = SED.parent LEFT JOIN `tabItem Batch Stock Balance` IBSB ON IBSB.batch_no = SED.batch_no  WHERE 
-# 								IBSB.warehouse = SED.t_warehouse AND SE.docstatus = 1 AND SED.spp_batch_number = '{lot_no}' AND SED.t_warehouse IS NOT NULL AND SE.stock_entry_type = 'Material Receipt' LIMIT 1 """
-# 		result__ = frappe.db.sql(query,as_dict = 1)
-# 		if result__:
-# 			if result__[0].qty:
-# 				result__[0].creation = getdate(result__[0].creation)
-# 				return {"status":"success","data":result__[0]}
-# 			else:
-# 				return {"status":"success","message":"Stock is not available for the scanned lot..!"}
-# 		else:
-# 			return {"status":"success","message":"Stock is not available for the scanned lot..!"}
-# 	return False
-	
-	
-# def validate_nessaery_data(ref_doc,lot_no):
-# 	if ref_doc == "Lot Resource Tagging":
-# 		rept_entry = frappe.db.get_all("Deflashing Receipt Entry",{"lot_number":lot_no,"docstatus":1},["name"])
-# 		if rept_entry:
-# 			check_exist = frappe.db.get_all("Inspection Entry",filters={"docstatus":1,"lot_no":lot_no,"inspection_type":"Incoming Inspection"})
-# 			if check_exist:
-# 				return False
-# 			else:
-# 				return {"status":"failed","resp_status":"success","resp_message":f"There is no <b>Incoming Inspection entry</b> found for the lot <b>{lot_no}</b>"}
-# 	elif ref_doc == "Incoming Inspection Entry":
-# 		rept_entry = frappe.db.get_all("Deflashing Receipt Entry",{"lot_number":lot_no,"docstatus":1},["name","stock_entry_reference"])
-# 		if rept_entry:
-# 			if rept_entry[0].stock_entry_reference:
-# 				#Added on 4/7/2023 for incoming inspection validation for Final visual inspection entry
-# 				# query = f""" SELECT SE.stock_entry_type,SED.valuation_rate,SED.amount,SED.source_ref_document,SED.creation, SED.mix_barcode,SED.t_warehouse,SED.item_code,SED.spp_batch_number,SED.qty,SED.stock_uom,SED.batch_no
-# 				# 			FROM `tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE ON SE.name = SED.parent WHERE 
-# 				# 			SE.docstatus = 0 AND SED.t_warehouse IS NOT NULL AND SE.name='{rept_entry[0].stock_entry_reference}' """
-# 				query = f""" SELECT SE.stock_entry_type,SED.valuation_rate,SED.amount,SED.source_ref_document,SED.creation, SED.mix_barcode,SED.t_warehouse,SED.item_code,SED.spp_batch_number,SED.qty,SED.stock_uom,SED.batch_no
-# 							FROM `tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE ON SE.name = SED.parent WHERE 
-# 							(SE.docstatus = 0 OR SE.docstatus = 1) AND SED.t_warehouse IS NOT NULL AND SE.name='{rept_entry[0].stock_entry_reference}' AND SED.deflash_receipt_reference = '{lot_no}' LIMIT 1 """
-# 				#End
-# 				result__ = frappe.db.sql(query,as_dict = 1)
-# 				if result__:
-# 					return {"status":"failed","resp_status":"success","resp_data":result__[0]}
-# 				else:
-# 					return {"status":"failed","resp_status":"success","resp_message":"Stock Entry for Deflahing Receipt not found (Draft)..!"}
-# 			else:
-# 				return {"status":"failed","resp_status":"success","resp_message":"Stock Entry for Deflahing Receipt not found (Draft)..!"}
-# 	return False
+def validate_bundle_uniqueness(items):
+    seen = set()
+    for item in items:
+        if not item.serial_and_batch_bundle:
+            continue
+        if item.serial_and_batch_bundle in seen:
+            frappe.throw(
+                f"Duplicate bundle {item.serial_and_batch_bundle} found at row {item.idx}",
+                title="Inventory Bundle Conflict"
+            )
+        seen.add(item.serial_and_batch_bundle)

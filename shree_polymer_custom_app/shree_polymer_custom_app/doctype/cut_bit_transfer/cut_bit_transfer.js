@@ -50,92 +50,95 @@ frappe.ui.form.on('Cut Bit Transfer', {
 			frm.set_value("source_warehouse","Blanking Warehouse - SPP INDIA");
 		}
 	},
-	"scan_clip__bin":function(frm){
-		if(frm.doc.items){
+	"scan_clip__bin": function(frm) {
+		if(frm.doc.items) {
 			used_bar_codes = [];
-			for(var k=0;k<frm.doc.items.length;k++){
-					used_bar_codes.push(frm.doc.items[k].scan_barcode)
-				}
+			for(var k=0; k<frm.doc.items.length; k++) {
+				used_bar_codes.push(frm.doc.items[k].scan_barcode)
+			}
 		}
 		var scan_clip = frm.doc.scan_clip__bin;
 
-		if(scan_clip!="" && scan_clip!=undefined){
-			if(!scan_clip.toLowerCase().startsWith("cb_")){
+		if(scan_clip && scan_clip !== "") {
+			if(!scan_clip.toLowerCase().startsWith("cb_")) {
+				frappe.call({
+					method: 'shree_polymer_custom_app.shree_polymer_custom_app.doctype.cut_bit_transfer.cut_bit_transfer.validate_clip_barcode',
+					args: {
+						batch_no: scan_clip,
+						t_type: frm.doc.transfer_from,
+						warehouse: frm.doc.source_warehouse
+					},
+					freeze: true,
+					callback: function(r) {
+						console.log("Response:", r);
+						
+						if(!r.message || r.message.status === "Failed") {
+							frappe.msgprint(r.message ? r.message.message : "Failed to validate barcode");
+							frm.set_value("scan_clip__bin", "");
+							return;
+						}
 
-			
-			frappe.call({
-	                method: 'shree_polymer_custom_app.shree_polymer_custom_app.doctype.cut_bit_transfer.cut_bit_transfer.validate_clip_barcode',
-	                args: {
-	                    batch_no: scan_clip,
-	                    t_type:frm.doc.transfer_from,
-	                    warehouse:frm.doc.source_warehouse
-	                },
-	                freeze: true,
-	                callback: function(r) {
-	                	if(r.message.status=="Failed"){
-	                		frappe.msgprint(r.message.message);
-	                		frm.set_value("scan_clip__bin","")
-	                	}
-	                	else{
+						if(!r.message.stock || !Array.isArray(r.message.stock) || !r.message.stock.length) {
+							frappe.msgprint("No available stock found for this item");
+							frm.set_value("scan_clip__bin", "");
+							return;
+						}
 
-	                		var st_details = r.message.stock;
-	                		var is_exist = 0;
-	                		if(frm.doc.items){
-		                		for(var i=0;i<frm.doc.items.length;i++){
-		                			if(st_details[0].item_code == frm.doc.items[i].item_code &&
-		                			st_details[0].spp_batch_number == frm.doc.items[i].spp_batch_no &&
-		                			st_details[0].batch_no == frm.doc.items[i].batch_no &&
-		                			st_details[0].mix_barcode == frm.doc.items[i].scan_barcode ){
-		                				is_exist = 1;
-		                			}
-		                		}
-		                	}
-	                		if(is_exist==0){
-			                	var row = frappe.model.add_child(frm.doc, "Mixing Center Items", "items");
-		                		var scanned_code = frm.doc.scan_spp_batch_number;
-		                		row.item_code = st_details[0].item_code;
-		                		row.item_name = st_details[0].item_code;
-		                		row.spp_batch_no = st_details[0].spp_batch_number;
-		                		row.batch_no = st_details[0].batch_no;
-		                		row.qty = 0;
-		                		row.qty_uom = st_details[0].uom;
-		                		row.ct_source_warehouse = r.message.source_warehouse;
-		                		row.scan_barcode = st_details[0].mix_barcode;
-		                		used_bar_codes.push(scanned_code);
-		                		frm.refresh_field('items');
-		                		frm.set_value("scan_clip__bin","");
-		                	}
-		                	else{
-	                			frappe.msgprint("Item is already added.");
-	                			frm.set_value("scan_clip__bin","");
-		                	}
-                		}
-	                }
-	            })
-			}
-			else{
+						const stockItem = r.message.stock[0];
+						var is_exist = 0;
+
+						if(frm.doc.items) {
+							for(var i=0; i<frm.doc.items.length; i++) {
+								if(stockItem.item_code == frm.doc.items[i].item_code &&
+								   stockItem.spp_batch_number == frm.doc.items[i].spp_batch_no &&
+								   stockItem.batch_no == frm.doc.items[i].batch_no &&
+								   stockItem.mix_barcode == frm.doc.items[i].scan_barcode) {
+									is_exist = 1;
+									break;
+								}
+							}
+						}
+
+						if(is_exist == 0) {
+							var row = frappe.model.add_child(frm.doc, "Mixing Center Items", "items");
+							row.item_code = stockItem.item_code;
+							row.item_name = stockItem.item_code;
+							row.spp_batch_no = stockItem.spp_batch_number;
+							row.batch_no = stockItem.batch_no;
+							row.qty = 0;
+							row.qty_uom = stockItem.uom;
+							row.ct_source_warehouse = r.message.source_warehouse;
+							row.scan_barcode = stockItem.mix_barcode;
+							used_bar_codes.push(frm.doc.scan_spp_batch_number);
+							frm.refresh_field('items');
+						} else {
+							frappe.msgprint("Item is already added.");
+						}
+						frm.set_value("scan_clip__bin", "");
+					}
+				});
+			} else {
 				var ct_item = scan_clip.toLowerCase().split("cb_")[1];
 				var ct_valid = 0;
-				if(frm.doc.items){
-				for(var i=0;i<frm.doc.items.length;i++){
-					if(frm.doc.items[i].item_code.toLowerCase() == ct_item){
-						ct_valid = 1;
-	                	frm.set_value("cut_bit_item",frm.doc.items[i].item_code);
-	                	frm.set_value("scan_clip__bin","");
-
-					}
+				if(frm.doc.items) {
+					for(var i=0; i<frm.doc.items.length; i++) {
+						if(frm.doc.items[i].item_code.toLowerCase() == ct_item) {
+							ct_valid = 1;
+							frm.set_value("cut_bit_item", frm.doc.items[i].item_code);
+							break;
+						}
 					}
 				}
-				if(ct_valid==0){
+				if(ct_valid == 0) {
 					frappe.msgprint("Cut Bit Item and Fresh Batch Item not matched.");
-					frm.set_value("cut_bit_item","");
-	                frm.set_value("scan_clip__bin","");
+					frm.set_value("cut_bit_item", "");
 				}
+				frm.set_value("scan_clip__bin", "");
 			}
 		}
 	},
-	"manual_scan_spp_batch_number":function(frm){
-		if(frm.doc.items){
+	"manual_scan_spp_batch_number": function(frm) {
+		if(frm.doc.items) {
 			used_bar_codes = [];
 			for(var k=0;k<frm.doc.items.length;k++){
 					used_bar_codes.push(frm.doc.items[k].scan_barcode)
@@ -156,13 +159,17 @@ frappe.ui.form.on('Cut Bit Transfer', {
 	                },
 	                freeze: true,
 	                callback: function(r) {
-	                	if(r.message.status=="Failed"){
+	                	if(r.message.status === "Failed") {
 	                		frappe.msgprint(r.message.message);
-	                		frm.set_value("scan_clip__bin","")
+	                		frm.set_value("scan_clip__bin", "")
 	                	}
 	                	else{
 
-	                		var st_details = r.message.stock;
+	                		const st_details = r.message.stock;
+	                		if (!st_details || !st_details.length) {
+	                			frappe.msgprint("No stock details found");
+	                			frm.set_value("scan_clip__bin", "")
+	                		}
 	                		var is_exist = 0;
 	                		if(frm.doc.items){
 		                		for(var i=0;i<frm.doc.items.length;i++){

@@ -8,46 +8,55 @@ import json
 from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series
 
 class MaterialTransfer(Document):
-    def validate(self):
-        if getdate(self.transfer_date) > getdate():
-            frappe.throw("The <b>Posting Date</b> can't be greater than <b>Today Date</b>..!")
-        if not self.batches:
-            frappe.throw(f'Please Scan and add some items before submit..!')
-        if self.batches:
-            for x in self.batches:
-                if not x.qty > 0:
-                    frappe.throw("Please enter the quantity for the items.")
-        if self.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
-            for x in self.batches:
-                if x.is_cut_bit_item==0:
-                    cut_percentage_val = 0
-                    item_aging, cut_percentage = frappe.db.get_value("Item", x.item_code, ["item_aging", "cut_bit_percentage"])
-                    if cut_percentage:
-                        float_precision = 3
-                        cut_percentage_val = flt(x.qty) * cut_percentage / 100
-                        cut_percentage_val = flt(cut_percentage_val, float_precision)
-                    self.cutbit_qty = cut_percentage_val
-        if self.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
-            if not self.sheeting_clip:
-                frappe.throw("Please choose Clips.")
+	def validate(self):
+		if getdate(self.transfer_date) > getdate():
+			frappe.throw("The <b>Posting Date</b> can't be greater than <b>Today Date</b>..!")
+		if not self.batches:
+			frappe.throw(f'Please Scan and add some items before submit..!')
+		if self.batches:
+			for x in self.batches:
+				if not x.qty > 0:
+					frappe.throw("Please enter the quantity for the items.")
+		if self.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
+			for x in self.batches:
+				if x.is_cut_bit_item==0:
+					cut_percentage_val = 0
+					item_aging,cut_percentage = frappe.db.get_value("Item",x.item_code,["item_aging","cut_bit_percentage"])
+					if cut_percentage:
+						float_precision = 3
+						cut_percentage_val = flt(x.qty)*cut_percentage/100
+						cut_percentage_val=flt(cut_percentage_val, float_precision)
+					self.cutbit_qty =  cut_percentage_val
+		if self.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
+			if not self.sheeting_clip:
+				frappe.throw("Please choose Clips.")
 	
-    def on_submit(self):
-        if self.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
-            if not self.sheeting_clip:
-                frappe.throw("Please choose Clips.")
-            clip_validation = validate_sheeting_clips(self)
-            if clip_validation.get("status") == False:
-                frappe.throw(clip_validation.get("message"))
-
-        if self.material_transfer_type == "Transfer Batches to Mixing Center":
-            if self.source_warehouse != self.target_warehouse:
-                create_delivery_note(self)
-            else:
-                create_stock_entry(self)
-        if self.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
-            resp = create_sheeting_stock_entry(self)
-            if resp.get("status") == "Failed":
-                self.reload()
+	def on_submit(self):
+		if self.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
+			if not self.sheeting_clip:
+				frappe.throw("Please choose Clips.")
+			# ct_validation = validate_cut_bit_qty(self)
+			# if ct_validation.get("status")==False:
+			# 	frappe.throw(ct_validation.get("message"))
+			# qi_validation = validate_qi(self)
+			# if qi_validation.get("status")==False:
+			# 	frappe.throw(qi_validation.get("message"))
+			clip_validation = validate_sheeting_clips(self)
+			if clip_validation.get("status")==False:
+				frappe.throw(clip_validation.get("message"))
+		if self.material_transfer_type == "Transfer Batches to Mixing Center":
+			if self.source_warehouse != self.target_warehouse:
+				# create_dc(self)
+				create_delivery_note(self)
+			else:
+				create_stock_entry(self)
+			# else:
+				# frappe.throw(v_bom.get("message"))
+		if self.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
+			resp = create_sheeting_stock_entry(self)
+			if resp.get("status")=="Failed":
+				self.reload()
+		self.reload()
 
 def validate_bom_items(mt_doc):
 	status = True
@@ -535,139 +544,134 @@ def create_stock_entry(mt_doc):
 		return {"status":"Failed"}
 
 def create_sheeting_stock_entry(mt_doc):
-    try:
-        # ============ DEBUG INIT ============ #
-        debug_data = {
-            "pre_existing_batches": [],
-            "stock_entry_items": []
-        }
-        # ==================================== #
+	try:
+		spp_settings = frappe.get_single("SPP Settings")
+		stock_entry = frappe.new_doc("Stock Entry")
+		# Update posting date and time
+		stock_entry.posting_date = mt_doc.transfer_date
+		
+		stock_entry.purpose = "Repack"
+		stock_entry.company = "SPP"
+		stock_entry.naming_series = "MAT-STE-.YYYY.-"
+		
+		# Get naming series
+		naming_status, naming_series = get_stock_entry_naming_series(spp_settings, "Transfer Compound to Sheeting Warehouse")
+		if naming_status:
+			stock_entry.naming_series = naming_series
+			
+		stock_entry.stock_entry_type = "Repack"
+		stock_entry.from_warehouse = mt_doc.source_warehouse
+		stock_entry.to_warehouse = mt_doc.target_warehouse
+		
+		if mt_doc.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
+			stock_entry.employee = mt_doc.employee
+			sheeting_clips = ",".join([clip.sheeting_clip for clip in mt_doc.sheeting_clip])
+			stock_entry.sheeting_clip = sheeting_clips
 
-        spp_settings = frappe.get_single("SPP Settings")
-        stock_entry = frappe.new_doc("Stock Entry")
-        stock_entry.posting_date = mt_doc.transfer_date
-        stock_entry.purpose = "Repack"
-        stock_entry.company = "SPP"
-        stock_entry.use_serial_batch_bundle = 1
-        stock_entry.naming_series = "MAT-STE-.YYYY.-"
-        
-        # Validate naming series
-        naming_status, naming_series = get_stock_entry_naming_series(
-            spp_settings, 
-            "Transfer Compound to Sheeting Warehouse"
-        )
-        if naming_status:
-            stock_entry.naming_series = naming_series
+		cl_spp_no = None
+		total_qty = 0
+		org_batch_no = ""
+		mix_barcode = None
+		compound_code = None
+		compound_spp_code = None
+		create_issue_entry = 0
 
-        stock_entry.stock_entry_type = "Repack"
-        stock_entry.from_warehouse = mt_doc.source_warehouse
-        stock_entry.to_warehouse = mt_doc.target_warehouse
+		# Clear any existing serial/batch bundle references
+		stock_entry.serial_and_batch_bundle = None
 
-        if mt_doc.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
-            stock_entry.employee = mt_doc.employee
-            stock_entry.sheeting_clip = ",".join(
-                [clip.sheeting_clip for clip in mt_doc.sheeting_clip]
-            )
+		for x in mt_doc.batches:
+			item_dict = {
+				"item_code": x.item_code,
+				"stock_uom": "Kg",
+				"to_uom": "Kg",
+				"uom": "Kg",
+				"is_finished_item": 0,
+				"transfer_qty": x.qty,
+				"qty": x.qty,
+				# Clear serial and batch fields
+				"serial_no": None,
+				"batch_no": None,
+				"serial_and_batch_bundle": None
+			}
 
-        compound_code = None
-        compound_spp_code = None
-        total_qty = 0
+			if x.is_cut_bit_item == 0:
+				spp_batch_no = x.spp_batch_no
+				cl_spp_no = spp_batch_no
+				org_batch_no = x.batch_no
+				item_dict.update({
+					"s_warehouse": mt_doc.source_warehouse,
+					"spp_batch_number": spp_batch_no,
+					"mix_barcode": mix_barcode
+				})
+				compound_code = x.item_code
+				compound_spp_code = x.spp_batch_no
+			
+			elif x.is_cut_bit_item == 1:
+				create_issue_entry = 1
+				item_dict.update({
+					"s_warehouse": spp_settings.default_cut_bit_warehouse
+				})
 
-        # ========== MAIN ITEMS PROCESSING ========== #
-        for x in mt_doc.batches:
-            item_data = {
-                "item_code": x.item_code,
-                "s_warehouse": spp_settings.default_cut_bit_warehouse 
-                             if x.is_cut_bit_item 
-                             else mt_doc.source_warehouse,
-                "stock_uom": "Kg",
-                "transfer_qty": x.qty,
-                "qty": x.qty,  # Explicit quantity declaration
-                "is_finished_item": 0,
-                "use_serial_batch_fields": 1
-            }
+			stock_entry.append("items", item_dict)
+			total_qty += x.qty
 
-            if not x.is_cut_bit_item:
-                if not frappe.db.exists("Batch", x.batch_no):
-                    frappe.throw(f"Batch {x.batch_no} does not exist!")
-                
-                item_data.update({
-                    "batch_no": x.batch_no,
-                    "spp_batch_number": x.spp_batch_no
-                })
-                compound_code = x.item_code
-                compound_spp_code = x.spp_batch_no
-            else:
-                item_data["mix_barcode"] = None
+		# Generate new serial number for finished item
+		sl_no = generate_w_serial_no(compound_code, compound_spp_code, mt_doc)
+		spp_batch_no = f"{compound_spp_code}-{sl_no.serial_no}"
+		mix_barcode = f"{compound_code}_{compound_spp_code}"
 
-            stock_entry.append("items", item_data)
-            total_qty += x.qty if not x.is_cut_bit_item else 0
-            
-            # Debug tracking
-            debug_data["stock_entry_items"].append(item_data.copy())
+		# Add finished item
+		stock_entry.append("items", {
+			"item_code": compound_code,
+			"t_warehouse": mt_doc.target_warehouse,
+			"stock_uom": "Kg",
+			"to_uom": "Kg",
+			"uom": "Kg",
+			"is_finished_item": 1,
+			"transfer_qty": total_qty,
+			"qty": total_qty,
+			"spp_batch_number": spp_batch_no,
+			"mix_barcode": mix_barcode,
+			"source_ref_document": mt_doc.doctype,
+			"source_ref_id": mt_doc.name,
+			# Clear serial and batch fields
+			"serial_no": None,
+			"batch_no": None,
+			"serial_and_batch_bundle": None
+		})
 
-        # ========== FINISHED ITEM SECTION ========== #
-        if compound_code:
-            finished_item = {
-                "item_code": compound_code,
-                "t_warehouse": mt_doc.target_warehouse,
-                "is_finished_item": 1,
-                "transfer_qty": total_qty,
-                "qty": total_qty,  # Mandatory quantity fix
-                "mix_barcode": f"{compound_code}_{compound_spp_code}",
-                "source_ref_document": mt_doc.doctype,
-                "source_ref_id": mt_doc.name,
-                "use_serial_batch_fields": 1,
-                "stock_uom": "Kg"  # Ensure UOM specified
-            }
-            stock_entry.append("items", finished_item)
-            debug_data["stock_entry_items"].append(finished_item.copy())
+		# Save and submit
+		stock_entry.save(ignore_permissions=True)
+		stock_entry.submit()
 
-        # ========== DEBUG: PRE-SAVE VALIDATION ========== #
-        frappe.log_error(
-            title="Pre-Save Debug",
-            message=f"Items before save: {json.dumps(debug_data, indent=2)}"
-        )
+		# Update posting date
+		frappe.db.sql(
+			f"UPDATE `tabStock Entry` SET posting_date = '{mt_doc.transfer_date}' WHERE name = '{stock_entry.name}'"
+		)
 
-        # ========== SAVE & SUBMIT ========== #
-        stock_entry.save(ignore_permissions=True)
-        stock_entry.submit()
+		frappe.db.set_value("Material Transfer", mt_doc.name, "stock_entry_ref", stock_entry.name)
+		frappe.db.commit()
 
-        # ========== POST-SUBMIT UPDATES ========== #
-        frappe.db.set_value("Material Transfer", mt_doc.name, "stock_entry_ref", stock_entry.name)
-        
-        if mt_doc.sheeting_clip:
-            for clip in mt_doc.sheeting_clip:
-                frappe.get_doc({
-                    "doctype": "Item Clip Mapping",
-                    "compound": compound_code,
-                    "qty": total_qty,
-                    "sheeting_clip": clip.sheeting_clip,
-                    "spp_batch_number": compound_spp_code
-                }).insert(ignore_permissions=True)
+		# Handle clip mapping
+		if mt_doc.sheeting_clip:
+			t_qty = sum(batch.qty for batch in mt_doc.batches)
+			for clip in mt_doc.sheeting_clip:
+				clip_mapping = frappe.get_doc({
+					"doctype": "Item Clip Mapping",
+					"compound": mt_doc.batches[0].item_code,
+					"qty": t_qty,
+					"is_retired": 0,
+					"sheeting_clip": clip.sheeting_clip,
+					"spp_batch_number": spp_batch_no
+				})
+				clip_mapping.save(ignore_permissions=True)
 
-        return {"status": "Success", "stock_entry": stock_entry.name}
+		return {"status": "Success", "st_entry": stock_entry}
 
-    except Exception as e:
-        frappe.log_error(
-            title="Stock Entry Creation Failed",
-            message=f"Error: {str(e)}\nDebug Data: {json.dumps(debug_data, indent=2)}"
-        )
-        frappe.db.rollback()
-        return {"status": "Failed", "error": str(e)}
-
-def create_clip_mapping(mt_doc, batch_ref):
-    """Create clip mapping after successful stock entry"""
-    total_qty = sum(float(batch.qty) for batch in mt_doc.batches)
-    for clip in mt_doc.sheeting_clip:
-        frappe.get_doc({
-            "doctype": "Item Clip Mapping",
-            "compound": mt_doc.batches[0].item_code,
-            "qty": total_qty,
-            "sheeting_clip": clip.sheeting_clip,
-            "spp_batch_number": batch_ref
-        }).insert(ignore_permissions=True)
-
+	except Exception as e:
+		frappe.log_error(message=frappe.get_traceback(), title="Material Transfer Failed")
+		frappe.db.rollback()
+		return {"status": "Failed"}
 
 def create_sheeting_issue_entry(mt_doc,org_batch_no):
 	spp_settings = frappe.get_single("SPP Settings")
