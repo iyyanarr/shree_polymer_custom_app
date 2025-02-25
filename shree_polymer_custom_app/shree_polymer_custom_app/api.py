@@ -53,14 +53,19 @@ def on_sle_update(doc, method):
         print(f"Check enqueue result: {is_enqueued}")
         
         if is_enqueued:
-            if doc.item_code and doc.batch_no:
-
+            if doc.item_code and doc.serial_and_batch_bundle:
+                # Fetch the Serial and Batch Bundle document
+                batch_bundle = frappe.get_doc("Serial and Batch Bundle", doc.serial_and_batch_bundle)
                 
-                update_item_batch_qty(doc.item_code, doc.batch_no, doc.stock_uom)
+                # Process each batch entry
+                for entry in batch_bundle.entries:
+                    if entry.batch_no:
+                        update_item_batch_qty(doc.item_code, entry.batch_no, doc.stock_uom)
+                        print(f"Processing batch: {entry.batch_no} for item: {doc.item_code}")
             else:
                 print("Missing required fields:")
                 print(f"Item Code present: {bool(doc.item_code)}")
-                print(f"Batch No present: {bool(doc.batch_no)}")
+                print(f"Serial and Batch Bundle present: {bool(doc.serial_and_batch_bundle)}")
         else:
             print("Enqueue check failed - skipping update")
             
