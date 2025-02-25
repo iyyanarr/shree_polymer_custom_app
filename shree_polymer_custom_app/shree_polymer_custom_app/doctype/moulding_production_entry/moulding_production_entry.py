@@ -167,22 +167,111 @@ class MouldingProductionEntry(Document):
 			frappe.throw(cavity_val.get('message'))
 
 	def manual_on_submit(self):
+		print("\n=== Starting Manual Submit Process ===")
+		print(f"Document ID: {self.name}")
+		print(f"Stock Entry Reference: {self.stock_entry_reference}")
+
 		if self.stock_entry_reference:
 			try:
-				exe__stentry = frappe.get_doc("Stock Entry",self.stock_entry_reference)
-				if exe__stentry.docstatus == 0 and exe__stentry.docstatus !=2 and exe__stentry.docstatus !=1:
+				print(f"\nFetching Stock Entry: {self.stock_entry_reference}")
+				exe__stentry = frappe.get_doc("Stock Entry", self.stock_entry_reference)
+				print(f"Stock Entry Status: docstatus={exe__stentry.docstatus}")
+
+				# Check for existing Serial and Batch Bundles
+				print("\nChecking existing Serial and Batch Bundles:")
+				for idx, item in enumerate(exe__stentry.items, 1):
+					print(f"\nItem {idx}:")
+					print(f"Item Code: {item.item_code}")
+					print(f"Serial No: {item.serial_no}")
+					print(f"Batch No: {item.batch_no}")
+					print(f"Serial and Batch Bundle: {item.serial_and_batch_bundle}")
+					
+					# Check if bundle already exists
+					if item.serial_and_batch_bundle:
+						existing_bundle = frappe.db.exists(
+							"Serial and Batch Bundle",
+							item.serial_and_batch_bundle
+						)
+						print(f"Existing bundle found: {existing_bundle}")
+						
+						if existing_bundle:
+							# Clear the serial and batch fields if bundle exists
+							print(f"Clearing serial and batch fields for item {item.item_code}")
+							item.serial_no = None
+							item.batch_no = None
+							print("Fields cleared")
+
+				# Update use_serial_batch_fields for all items
+				print("\nUpdating use_serial_batch_fields:")
+				for item in exe__stentry.items:
+					previous_value = item.use_serial_batch_fields
+					item.use_serial_batch_fields = 1
+					print(f"Item {item.item_code}: {previous_value} -> {item.use_serial_batch_fields}")
+
+				# Submit stock entry if needed
+				if exe__stentry.docstatus == 0 and exe__stentry.docstatus != 2 and exe__stentry.docstatus != 1:
+					print("\nPreparing to submit Stock Entry...")
+					print("Current docstatus:", exe__stentry.docstatus)
 					exe__stentry.docstatus = 1
-					exe__stentry.save(ignore_permissions=True)
-					if self.moulding_date:
-						""" Update posting date and time """
-						frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{self.moulding_date}' WHERE name = '{exe__stentry.name}' ")
-						""" End """
-				submit_inspection_entry(self,exe__stentry)
-			except Exception:
-				manual_rollback_entries(self,"Something went wrong not able to submit stock entries..!")
-				frappe.log_error(title="Moulding production entry stock submission failed",message=frappe.get_traceback())
+					
+					try:
+						print("Saving stock entry...")
+						exe__stentry.save(ignore_permissions=True)
+						print("Stock Entry submitted successfully")
+					except Exception as save_error:
+						print(f"Error during save: {str(save_error)}")
+						raise
+
+				# Update moulding date
+				if self.moulding_date:
+					print(f"\nUpdating posting date to: {self.moulding_date}")
+					update_query = f"""
+						UPDATE `tabStock Entry` 
+						SET posting_date = '{self.moulding_date}' 
+						WHERE name = '{exe__stentry.name}'
+					"""
+					frappe.db.sql(update_query)
+					print("Posting date updated successfully")
+
+				print("\nSubmitting inspection entry...")
+				submit_inspection_entry(self, exe__stentry)
+				print("Inspection entry submitted successfully")
+
+			except Exception as e:
+				error_msg = f"""
+	====== Error in Manual Submit ======
+	Document: {self.name}
+	Stock Entry: {self.stock_entry_reference}
+	Error: {str(e)}
+	Traceback: {frappe.get_traceback()}
+	=================================
+	"""
+				print(error_msg)
+				
+				# Check the state of items before rollback
+				print("\nCurrent state of items before rollback:")
+				for item in exe__stentry.items:
+					print(f"""
+	Item: {item.item_code}
+	Serial No: {item.serial_no}
+	Batch No: {item.batch_no}
+	Bundle: {item.serial_and_batch_bundle}
+	Use Serial Batch Fields: {item.use_serial_batch_fields}
+	""")
+				
+				manual_rollback_entries(self, "Something went wrong not able to submit stock entries..!")
+				frappe.log_error(
+					title=f"Moulding production entry stock submission failed - {self.name}",
+					message=error_msg
+				)
 		else:
+			print(f"No Stock Entry Reference found for document: {self.name}")
 			frappe.throw("Stock Entry Reference not found in <b>Moulding Production Entry</b>")
+
+		print("\n=== Manual Submit Process Completed ===")
+
+
+
 
 	def on_cancel(self):
 		try:
@@ -483,12 +572,14 @@ def make_stock_entry(self):
 					"is_finished_item":1,
 					"transfer_qty":flt(flt((self.weight + self.line_rejection_qty),3),3),
 					"qty":flt(flt((self.weight + self.line_rejection_qty),3),3),
+					"use_serial_batch_fields": 1,
 					# "spp_batch_number":d_spp_batch_no,
 					"spp_batch_number":self.scan_lot_number,
 					"mix_barcode":bcode_resp.get("barcode_text"),
 					"barcode_attach":bcode_resp.get("barcode"),
 					"barcode_text":bcode_resp.get("barcode_text"),
 					"source_ref_document":self.doctype,
+					"use_serial_batch_fields":1,
 					"source_ref_id":self.name,
 					"batch_no":batch__no,
 					#For avaoiding the child table only submitted issue which means the parent docstatus = 0 but child docstatus = 1
@@ -568,6 +659,7 @@ def append_source_details(stock_entry,self,work_order):
 						"uom": "Kg",
 						"conversion_factor_uom":1,
 						"is_finished_item":0,
+                        "use_serial_batch_fields": 1,
 						"transfer_qty":flt(f__b.get('consumed__qty'),3),
 						"qty":flt(f__b.get('consumed__qty'),3),
 						"spp_batch_number":f__b.get('spp_batch_number'),
@@ -585,6 +677,7 @@ def append_source_details(stock_entry,self,work_order):
 						"conversion_factor_uom":1,
 						"is_finished_item":0,
 						"transfer_qty":self.shell_qty_nos,
+						"use_serial_batch_fields": 1,
 						"qty":self.shell_qty_nos,
 						"batch_no":self.s_batch,
 						#For avaoiding the child table only submitted issue which means the parent docstatus = 0 but child docstatus = 1
@@ -619,6 +712,8 @@ def submit_inspection_entry(self,st_entry):
 						frappe.db.commit()
 				ins__exe = frappe.get_doc("Stock Entry",ins.stock_entry_reference)
 				if ins__exe.docstatus == 0:
+					for item in ins__exe.items:
+						item.use_serial_batch_fields = 1  # or True
 					ins__exe.docstatus = 1
 					ins__exe.save(ignore_permissions = True)
 					if ins.posting_date:

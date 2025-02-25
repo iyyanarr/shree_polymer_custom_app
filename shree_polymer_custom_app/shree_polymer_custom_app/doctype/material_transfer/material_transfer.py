@@ -224,59 +224,9 @@ def validate_spp_batch_no(batch_no,warehouse,t_warehouse,s_type,t_type):
 		if stock_details:
 			is_cut_bit_item = 1
 	if stock_details:
-	# Hided for old compounds not able to scan on 1/8/23
-		# if stock_details[0].stock_entry_type == "Manufacture":
-		# 	item_group = frappe.db.get_value("Item",stock_details[0].item_code,'item_group')
-		# 	if item_group == "Compound":
-		# 		compound_ins = frappe.db.get_value("Compound Inspection",{"stock_id":stock_details[0].stock__id},["docstatus"],as_dict  = 1)
-		# 		if compound_ins:
-		# 			if compound_ins.docstatus == 0:
-		# 				return  {"status":False,"message":f"The <b>Compound Inspection Entry</b> is not <b>Submitted</b> for the <b>Compound - {stock_details[0].item_code}</b>..!"}		
-		# 			elif compound_ins.docstatus == 2:
-		# 				return  {"status":False,"message":f"The <b>Compound Inspection Entry</b> is <b>Cancelled</b> for the <b>Compound - {stock_details[0].item_code}</b>..!"}		
-		# 		else:
-		# 			return  {"status":False,"message":f"The <b>Compound Inspection Entry</b> is not found for the <b>Compound - {stock_details[0].item_code}</b>..!"}
-	# end
-		# if t_type != "Transfer Compound to Sheeting Warehouse":
-		# 	check_stock_details = frappe.db.sql(""" SELECT  SD.t_warehouse,SD.item_code,SD.item_name,SD.transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
-		# 				  FROM `tabStock Entry Detail` SD
-		# 				  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
-		# 				  INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
-		# 				  WHERE (SD.mix_barcode = %(mix_barcode)s OR SD.barcode_text = %(mix_barcode)s)   AND SD.t_warehouse = %(t_warehouse)s 
-		# 				  AND S.stock_entry_type = 'Material Transfer' AND S.docstatus = 1 
-		# 				  ORDER BY S.creation DESC limit 1""",{'mix_barcode':batch_no,'t_warehouse':t_warehouse},as_dict=1)
-		# 	if check_stock_details:
-		# 		return {"status":False,"message":"Material Transfer already created for this batch to Warehouse <b>"+check_stock_details[0].t_warehouse+"</b>"}
-			
+
 		if t_type == "Transfer Compound to Sheeting Warehouse" and is_cut_bit_item == 0:
-		# Temporarly disabled as per arun req on 8/2/23
-			## wrong calculation so below code changed on 8/2/23
-			# item_aging = frappe.db.get_value("Item",stock_details[0].item_code,["item_aging"])
-			# if item_aging and item_aging > 0:
-				# from frappe.utils import add_to_date
-				# from frappe.utils import time_diff,time_diff_in_hours
-				# time_diff = get_datetime(now())-get_datetime(str(stock_details[0].creation))
-				# to_date = add_to_date(stock_details[0].creation,hours = item_aging,as_string=True)
-				# to_time_diff = get_datetime(to_date)-get_datetime(now())
-				# if to_time_diff > time_diff:
-				# 	return {"status":False,"message":"The maturation time is not completed for the item <b>"+stock_details[0].item_code+"</b> and pending maturation time is <b>"+str((to_time_diff - time_diff )).split('.')[0]+" </b>"}
-			## right code
-			# item_aging = frappe.db.get_value("Item",stock_details[0].item_code,["item_aging"])
-			# if item_aging and item_aging > 0:
-			# 	from datetime import datetime
-			# 	datetime_str = f"{getdate(stock_details[0].posting_date)} {stock_details[0].posting_time}"
-			# 	if len(datetime_str)>19:
-			# 		datetime_str = datetime_str.split('.')[0]
-			# 	date_time = str(datetime.strptime(datetime_str, '%Y-%m-%d %H:%M:%S'))
-			# 	to_date = add_to_date(date_time,hours = item_aging,as_string=True)
-			# 	if to_date > str(now()):
-			# 		time_diff = get_datetime(to_date) - get_datetime(now())
-			# 		return {"status":False,"message":"The <b>Maturation time</b> is not completed for the item <b>"+stock_details[0].item_code+"</b> and pending maturation time is <b>"+str(time_diff).split('.')[0]+" hrs</b>"}
-			## end
-		# End
-			# check_cutbit_items_query = """ SELECT  SUM(qty) as qty	 FROM `tabItem Batch Stock Balance` 
-			# 		  WHERE warehouse = '{cutbit_warehouse}' AND item_code = '{st_id}' """.format(cutbit_warehouse=spp_settings.default_cut_bit_warehouse,st_id=stock_details[0].item_code)
-			# cut_bit_items = frappe.db.sql(check_cutbit_items_query,as_dict=1) 
+
 			check_qi_entry = frappe.db.get_all("Quality Inspection",filters={"spp_batch_number":stock_details[0].spp_batch_number,"docstatus":("!=",2)})
 			if check_qi_entry:
 				stock_details[0].qi_name = check_qi_entry[0].name
@@ -291,10 +241,7 @@ def validate_spp_batch_no(batch_no,warehouse,t_warehouse,s_type,t_type):
 					return {"status":False,"message":f"Multiple BOM's found for Item to Produce - <b>{bom[0].item}</b>"}
 				""" End """
 				stock_details[0].item_produced = bom[0].item
-			# if cut_percentage:
-			# 	float_precision = 3
-			# 	cut_percentage_val = stock_details[0].transfer_qty*cut_percentage/100
-			# 	cut_percentage_val=flt(cut_percentage_val, float_precision)
+
 
 		return {"cut_percentage_val":cut_percentage_val,"status":True,"stock":stock_details,'is_cut_bit_item':is_cut_bit_item,'cut_bit_items':cut_bit_items}
 

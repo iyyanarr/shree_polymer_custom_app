@@ -43,20 +43,34 @@ def on_batch_update(doc,method):
 		generate_batch_barcode(doc)
 
 @frappe.whitelist()
-def on_sle_update(doc,method):
-	print('*****************************',doc,method)
-	if check_enqueue():
-		if doc.item_code and doc.batch_no:
-			update_item_batch_qty(doc.item_code,doc.batch_no,doc.stock_uom)
-
-def get_batch_info_update_qty(doc,batch_info = None):
-	if not batch_info:
-		all_batches = frappe.db.get_all("Batch",{"item":doc.name,"disabled":0},['name','stock_uom'])
-		if all_batches:
-			for batch in all_batches:
-				update_item_batch_qty(doc.name,batch.name,batch.stock_uom)
-	else:
-		update_item_batch_qty(doc.name,batch_info.name,batch_info.stock_uom)
+def on_sle_update(doc, method):
+    print("\n=== Starting SLE Update ===")
+    print(f"Document: {doc.as_dict() if hasattr(doc, 'as_dict') else doc}")
+    print(f"Method: {method}")
+    
+    try:
+        is_enqueued = check_enqueue()
+        print(f"Check enqueue result: {is_enqueued}")
+        
+        if is_enqueued:
+            if doc.item_code and doc.batch_no:
+                print(f"Processing update for:")
+                print(f"Item Code: {doc.item_code}")
+                print(f"Batch No: {doc.batch_no}")
+                print(f"Stock UOM: {doc.stock_uom}")
+                
+                update_item_batch_qty(doc.item_code, doc.batch_no, doc.stock_uom)
+            else:
+                print("Missing required fields:")
+                print(f"Item Code present: {bool(doc.item_code)}")
+                print(f"Batch No present: {bool(doc.batch_no)}")
+        else:
+            print("Enqueue check failed - skipping update")
+            
+    except Exception as e:
+        print(f"Error in on_sle_update: {str(e)}")
+        print(f"Traceback: {frappe.get_traceback()}")
+        frappe.log_error(frappe.get_traceback(), "on_sle_update error")
 
 def update_item_batch_qty(item_code, batch_no, stock_uom):
     from erpnext.stock.doctype.batch.batch import get_batch_qty
