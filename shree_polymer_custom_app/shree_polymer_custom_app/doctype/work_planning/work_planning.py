@@ -202,6 +202,7 @@ def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item):
 			jc.batch_code = lot_number
 			jc.barcode_image_url = barcode.get('barcode')
 			jc.barcode_text = barcode.get('barcode_text')
+			jc.status ="Work In Progress",
 			# jc.shift_number = doc_info.shift_number
 			jc.shift_type = doc_info.shift_type
 			jc.shift_supervisor = doc_info.supervisor_id
