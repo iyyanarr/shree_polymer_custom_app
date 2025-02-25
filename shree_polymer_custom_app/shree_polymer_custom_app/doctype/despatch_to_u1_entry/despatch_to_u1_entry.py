@@ -109,8 +109,9 @@ def create_stock_entry(self):
                 "t_warehouse": target_warehouse,
                 "qty": x.qty_nos,
                 "uom": x.qty_uom,
+				"use_serial_batch_fields": 1,
                 "batch_no": x.batch_no,
-                "spp_batch_no": x.spp_batch_no,
+                "spp_batch_number": x.spp_batch_no,
                 "basic_rate": x.valuation_rate,
                 "amount": x.amount,
                 "scan_barcode": x.lot_no

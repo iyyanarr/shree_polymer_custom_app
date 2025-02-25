@@ -54,10 +54,7 @@ def on_sle_update(doc, method):
         
         if is_enqueued:
             if doc.item_code and doc.batch_no:
-                print(f"Processing update for:")
-                print(f"Item Code: {doc.item_code}")
-                print(f"Batch No: {doc.batch_no}")
-                print(f"Stock UOM: {doc.stock_uom}")
+
                 
                 update_item_batch_qty(doc.item_code, doc.batch_no, doc.stock_uom)
             else:

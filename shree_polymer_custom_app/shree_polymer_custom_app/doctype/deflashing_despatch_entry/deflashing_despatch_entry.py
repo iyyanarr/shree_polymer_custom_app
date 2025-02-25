@@ -14,8 +14,102 @@ class DeflashingDespatchEntry(Document):
 			frappe.throw(" Scan and add some items before save.")
 
 	def on_submit(self):
+		create_stock_entry(self)
 		# make_stock_entry(self)
-		make_delivery_note_entry(self)
+		# make_delivery_note_entry(self)
+
+def create_stock_entry(self):
+    try:
+        # Initialize source and target warehouses
+        source_warehouse = None
+        target_warehouse = None
+
+        # Query to fetch consolidated item details from Deflashing Despatch Entry Items
+        ddei__items = frappe.db.sql(f""" 
+            SELECT 
+                DDEI.valuation_rate, 
+                DDEI.amount,
+                DDEI.name,
+                DDEI.lot_number,
+                DDEI.source_warehouse_id,
+                DDEI.warehouse_id,
+                DDEI.item,
+                SUM(DDEI.qty) AS qty,
+                DDEI.batch_no,
+                DDEI.spp_batch_number 
+            FROM `tabDeflashing Despatch Entry Item` DDEI 
+            INNER JOIN `tabDeflashing Despatch Entry` DDE ON DDE.name = DDEI.parent 
+            WHERE DDE.name = '{self.name}' 
+            GROUP BY 
+                DDEI.source_warehouse_id,
+                DDEI.warehouse_id,
+                DDEI.item,
+                DDEI.batch_no,
+                DDEI.spp_batch_number,
+                DDEI.lot_number 
+        """, as_dict=1)
+
+        # Determine source and target warehouses from the first item
+        for each__item in ddei__items:
+            source_warehouse = each__item.source_warehouse_id
+            target_warehouse = each__item.warehouse_id
+            break
+
+        # Create a new Stock Entry document
+        stock_entry = frappe.new_doc("Stock Entry")
+
+        # Set basic fields
+        stock_entry.stock_entry_type = "Material Transfer"
+        stock_entry.from_warehouse = source_warehouse
+        stock_entry.to_warehouse = target_warehouse
+        stock_entry.posting_date = self.posting_date if self.posting_date else getdate()
+
+        # Log warehouse configurations
+        frappe.logger().debug(f"Werehouses configured: From {source_warehouse}, To {target_warehouse}")
+
+        # Add items to the Stock Entry
+        for each__item in ddei__items:
+            stock_entry.append("items", {
+                "item_code": each__item.item,
+                "s_warehouse": source_warehouse,
+                "t_warehouse": target_warehouse,
+                "qty": flt(each__item.qty, 3),
+                "uom": "Kg",
+				"use_serial_batch_fields": 1,
+                "batch_no": each__item.batch_no,
+                "spp_batch_number": each__item.spp_batch_no,
+                "basic_rate": each__item.valuation_rate,
+                "amount": each__item.amount,
+                "scan_barcode": each__item.lot_number
+            })
+
+        # Insert Stock Entry
+        stock_entry.insert(ignore_permissions=True)
+
+        # Setting stock entry to submitted
+        stock_entry.docstatus = 1
+        stock_entry.save(ignore_permissions=True)
+
+        # Update reference in the original document
+        frappe.db.set_value(self.doctype, self.name, "stock_entry_reference", stock_entry.name)
+        frappe.db.commit()
+
+        # Reference tracking
+        store_reference(self, stock_entry)
+
+        # Reload the current document
+        self.reload()
+
+        frappe.msgprint(f"Successfully created Stock Entry: {stock_entry.name}")
+        return stock_entry.name
+
+    except Exception as e:
+        # Rollback in case of any error
+        frappe.db.rollback()
+        rollback__entries(self)
+        frappe.log_error(message=frappe.get_traceback(), title="Stock Entry Creation Error")
+        self.reload()
+        frappe.msgprint(f"Failed to create Stock Entry: {str(e)}")
 
 def make_delivery_note_entry(self):
 	try:
@@ -44,7 +138,7 @@ def make_delivery_note_entry(self):
 					"scan_barcode":each__item.lot_number,
 					"item_code":each__item.item,
 					"item_name":frappe.db.get_value("Item",each__item.item,"item_name"),
-					"spp_batch_no":each__item.spp_batch_no,
+					"spp_batch_number":each__item.spp_batch_no,
 					"batch_no":each__item.batch_no,
 					"qty":flt(each__item.qty, 3),
 					"uom":"Kg",
