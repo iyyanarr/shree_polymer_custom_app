@@ -194,15 +194,21 @@ def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item):
 		barcode = generate_barcode(lot_number)
 		for job_card in job_cards:
 			jc = frappe.get_doc("Job Card",job_card.name)
-			for time_log in jc.time_logs:
-				time_log.completed_qty = flt(actual_weight,3)
-				time_log.time_in_mins = spp_settings.default_time
+			if not jc.time_logs:
+				jc.append("time_logs", {
+					"completed_qty": flt(actual_weight,3),
+					"time_in_mins": spp_settings.default_time
+				})
+			else:	
+				for time_log in jc.time_logs:
+					time_log.completed_qty = flt(actual_weight,3)
+					time_log.time_in_mins = spp_settings.default_time
 			jc.total_completed_qty =flt(actual_weight,3)
 			jc.for_quantity =flt(actual_weight,3)
 			jc.batch_code = lot_number
 			jc.barcode_image_url = barcode.get('barcode')
 			jc.barcode_text = barcode.get('barcode_text')
-			jc.status ="Work In Progress",
+			
 			# jc.shift_number = doc_info.shift_number
 			jc.shift_type = doc_info.shift_type
 			jc.shift_supervisor = doc_info.supervisor_id
