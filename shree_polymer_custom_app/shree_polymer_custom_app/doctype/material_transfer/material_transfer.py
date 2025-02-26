@@ -194,124 +194,120 @@ def get_minxing_s_warehouses(doctype, txt, searchfield, start, page_len, filters
 		return linked_docs
  
 @frappe.whitelist()
-def validate_spp_batch_no(batch_no, warehouse, t_warehouse, s_type, t_type):
-    # Start debugging
-    debug_print(f"Debug: Function called with batch_no={batch_no}, warehouse={warehouse}, t_warehouse={t_warehouse}, s_type={s_type}, t_type={t_type}")
-    
-    sheeting_condition = ""
-    try:
-        spp_settings = frappe.get_single("SPP Settings")
-        # debug_print(f"SPP Settings Loaded: {spp_settings.as_dict()}")
-        
-        cut_bit_items = []
-        is_cut_bit_item = 0
-        cut_percentage_val = 0
-        
-        if t_type == "Transfer Compound to Sheeting Warehouse":
-            # Debug sheeting condition block
-            sheeting_condition = ""  # Add logic here if needed
-            debug_print(f"Sheeting condition: {sheeting_condition}")
-            
-            stock_details = frappe.db.sql(
-                """ SELECT S.posting_date, S.posting_time, S.name stock__id, S.stock_entry_type,
-                           S.docstatus doc__status, P.quality_inspection_template, SD.creation, SD.item_code,
-                           SD.item_name, SI.qty as transfer_qty, SD.spp_batch_number, SD.batch_no, SD.stock_uom
-                    FROM `tabStock Entry Detail` SD
-                    INNER JOIN `tabStock Entry` S ON SD.parent = S.name
-                    INNER JOIN `tabItem` P ON P.name = SD.item_code
-                    INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
-                    WHERE (SD.mix_barcode = %(mix_barcode)s OR SD.barcode_text = %(mix_barcode)s)
-                          AND (SD.t_warehouse = %(t_warehouse)s)
-                          AND (S.stock_entry_type = %(type)s OR S.stock_entry_type = 'Material Receipt')
-                          AND S.docstatus = 1 {sheeting_condition}
-                    ORDER BY S.creation DESC
-                    LIMIT 1
-                """.format(sheeting_condition=sheeting_condition),
-                {
-                    'cut_bit_warehouse': spp_settings.default_cut_bit_warehouse,  
-                    'mix_barcode': batch_no,
-                    't_warehouse': warehouse,
-                    'type': s_type
-                }, as_dict=1
-            )
-            debug_print(f"Stock Details fetched: {stock_details}")
-        
-        if t_type == "Transfer Compound to Sheeting Warehouse" and not stock_details:
-            debug_print("Fetching Cut Bit Stock Details")
-            stock_details = frappe.db.sql(
-                """ SELECT S.posting_date, S.posting_time, S.name stock__id, S.stock_entry_type,
-                           S.docstatus doc__status, P.quality_inspection_template, SD.creation, SD.item_code,
-                           SD.item_name, SI.qty as transfer_qty, SD.spp_batch_number, SD.batch_no, SD.stock_uom
-                    FROM `tabStock Entry Detail` SD
-                    INNER JOIN `tabStock Entry` S ON SD.parent = S.name
-                    INNER JOIN `tabItem` P ON P.name = SD.item_code
-                    INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
-                    WHERE (SD.mix_barcode = %(mix_barcode)s OR SD.barcode_text = %(mix_barcode)s)
-                          AND (SD.t_warehouse = %(cut_bit_warehouse)s)
-                          AND S.docstatus = 1
-                    ORDER BY S.creation DESC
-                    LIMIT 1
-                """, 
-                {
-                    'cut_bit_warehouse': spp_settings.default_cut_bit_warehouse,
-                    'mix_barcode': batch_no
-                }, as_dict=1
-            )
-            debug_print(f"Cut Bit Stock Details: {stock_details}")
-        
-        if stock_details:
-            is_cut_bit_item = 1
-            debug_print(f"is_cut_bit_item set to: {is_cut_bit_item}")
-        
-        if stock_details:
-            if t_type != "Transfer Compound to Sheeting Warehouse":
-                debug_print("Validating BOM")
-                bom = frappe.db.sql(
-                    """ SELECT B.name, B.item 
-                        FROM `tabBOM Item` BI
-                        INNER JOIN `tabBOM` B ON BI.parent = B.name
-                        WHERE BI.item_code = %(item_code)s AND B.is_Active = 1
-                    """, {"item_code": stock_details[0].item_code}, as_dict=1
-                )
-                if not bom:
-                    debug_print(f"No BOM found for item code: {stock_details[0].item_code}")
-                    return {"status": False, "message": "No BOM found for scanned batch item."}
-                
-                bom_ = frappe.db.sql(
-                    """ SELECT B.name, B.item
-                        FROM `tabBOM` B
-                        WHERE B.item = %(bom_item)s AND B.is_Active = 1
-                    """, {"bom_item": bom[0].item}, as_dict=1
-                )
-                if len(bom_) > 1:
-                    return {
-                        "status": False,
-                        "message": f"Multiple BOM's found for Item to Produce - {bom[0].item}"
-                    }
+def validate_spp_batch_no(batch_no,warehouse,t_warehouse,s_type,t_type):
+	sheeting_condition = ""
+	spp_settings = frappe.get_single("SPP Settings")
+	cut_bit_items = []
+	is_cut_bit_item = 0
+	cut_percentage_val = 0
+	if t_type == "Transfer Compound to Sheeting Warehouse":
+		# sheeting_condition = " AND SD.is_compound=1"
+		sheeting_condition = ""
+	stock_details = frappe.db.sql(""" SELECT S.posting_date,S.posting_time,S.name stock__id,S.stock_entry_type,S.docstatus doc__status,P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SI.qty as transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
+					  FROM `tabStock Entry Detail` SD
+					  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
+					  INNER JOIN `tabItem` P ON P.name = SD.item_code
+					  INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
+					  WHERE (SD.mix_barcode = %(mix_barcode)s OR SD.barcode_text = %(mix_barcode)s) AND (SD.t_warehouse = %(t_warehouse)s) 
+					  AND (S.stock_entry_type = %(type)s OR S.stock_entry_type ='Material Receipt') AND S.docstatus = 1  {sheeting_condition}
+					  ORDER BY S.creation DESC limit 1 """.format(sheeting_condition=sheeting_condition),{'cut_bit_warehouse':spp_settings.default_cut_bit_warehouse,'sheeting_condition':sheeting_condition,'mix_barcode':batch_no,'t_warehouse':warehouse,'type':s_type},as_dict=1)
+	# stock_details = frappe.db.get_all("Stock Entry Detail",fields=['item_code','item_name','transfer_qty','spp_batch_number','batch_no','stock_uom'],filters={"mix_barcode":batch_no,"t_warehouse":warehouse},limit_page_length=1,order_by='creation desc')
+	if t_type == "Transfer Compound to Sheeting Warehouse" and not stock_details:
+		stock_details = frappe.db.sql(""" SELECT S.posting_date,S.posting_time,S.name stock__id,S.stock_entry_type,S.docstatus doc__status,P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SI.qty as transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
+					  FROM `tabStock Entry Detail` SD
+					  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
+					  INNER JOIN `tabItem` P ON P.name = SD.item_code
+					  INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
+					  WHERE (SD.mix_barcode = %(mix_barcode)s OR SD.barcode_text = %(mix_barcode)s) AND (SD.t_warehouse = %(cut_bit_warehouse)s) 
+					  AND S.docstatus = 1
+					  ORDER BY S.creation DESC limit 1 """,{'cut_bit_warehouse':spp_settings.default_cut_bit_warehouse,'sheeting_condition':sheeting_condition,'mix_barcode':batch_no,'t_warehouse':warehouse,'type':"Material Transfer"},as_dict=1)
+		if stock_details:
+			is_cut_bit_item = 1
+	if stock_details:
+	# Hided for old compounds not able to scan on 1/8/23
+		# if stock_details[0].stock_entry_type == "Manufacture":
+		# 	item_group = frappe.db.get_value("Item",stock_details[0].item_code,'item_group')
+		# 	if item_group == "Compound":
+		# 		compound_ins = frappe.db.get_value("Compound Inspection",{"stock_id":stock_details[0].stock__id},["docstatus"],as_dict  = 1)
+		# 		if compound_ins:
+		# 			if compound_ins.docstatus == 0:
+		# 				return  {"status":False,"message":f"The <b>Compound Inspection Entry</b> is not <b>Submitted</b> for the <b>Compound - {stock_details[0].item_code}</b>..!"}		
+		# 			elif compound_ins.docstatus == 2:
+		# 				return  {"status":False,"message":f"The <b>Compound Inspection Entry</b> is <b>Cancelled</b> for the <b>Compound - {stock_details[0].item_code}</b>..!"}		
+		# 		else:
+		# 			return  {"status":False,"message":f"The <b>Compound Inspection Entry</b> is not found for the <b>Compound - {stock_details[0].item_code}</b>..!"}
+	# end
+		# if t_type != "Transfer Compound to Sheeting Warehouse":
+		# 	check_stock_details = frappe.db.sql(""" SELECT  SD.t_warehouse,SD.item_code,SD.item_name,SD.transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
+		# 				  FROM `tabStock Entry Detail` SD
+		# 				  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
+		# 				  INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
+		# 				  WHERE (SD.mix_barcode = %(mix_barcode)s OR SD.barcode_text = %(mix_barcode)s)   AND SD.t_warehouse = %(t_warehouse)s 
+		# 				  AND S.stock_entry_type = 'Material Transfer' AND S.docstatus = 1 
+		# 				  ORDER BY S.creation DESC limit 1""",{'mix_barcode':batch_no,'t_warehouse':t_warehouse},as_dict=1)
+		# 	if check_stock_details:
+		# 		return {"status":False,"message":"Material Transfer already created for this batch to Warehouse <b>"+check_stock_details[0].t_warehouse+"</b>"}
+			
+		if t_type == "Transfer Compound to Sheeting Warehouse" and is_cut_bit_item == 0:
+		# Temporarly disabled as per arun req on 8/2/23
+			## wrong calculation so below code changed on 8/2/23
+			# item_aging = frappe.db.get_value("Item",stock_details[0].item_code,["item_aging"])
+			# if item_aging and item_aging > 0:
+				# from frappe.utils import add_to_date
+				# from frappe.utils import time_diff,time_diff_in_hours
+				# time_diff = get_datetime(now())-get_datetime(str(stock_details[0].creation))
+				# to_date = add_to_date(stock_details[0].creation,hours = item_aging,as_string=True)
+				# to_time_diff = get_datetime(to_date)-get_datetime(now())
+				# if to_time_diff > time_diff:
+				# 	return {"status":False,"message":"The maturation time is not completed for the item <b>"+stock_details[0].item_code+"</b> and pending maturation time is <b>"+str((to_time_diff - time_diff )).split('.')[0]+" </b>"}
+			## right code
+			# item_aging = frappe.db.get_value("Item",stock_details[0].item_code,["item_aging"])
+			# if item_aging and item_aging > 0:
+			# 	from datetime import datetime
+			# 	datetime_str = f"{getdate(stock_details[0].posting_date)} {stock_details[0].posting_time}"
+			# 	if len(datetime_str)>19:
+			# 		datetime_str = datetime_str.split('.')[0]
+			# 	date_time = str(datetime.strptime(datetime_str, '%Y-%m-%d %H:%M:%S'))
+			# 	to_date = add_to_date(date_time,hours = item_aging,as_string=True)
+			# 	if to_date > str(now()):
+			# 		time_diff = get_datetime(to_date) - get_datetime(now())
+			# 		return {"status":False,"message":"The <b>Maturation time</b> is not completed for the item <b>"+stock_details[0].item_code+"</b> and pending maturation time is <b>"+str(time_diff).split('.')[0]+" hrs</b>"}
+			## end
+		# End
+			# check_cutbit_items_query = """ SELECT  SUM(qty) as qty	 FROM `tabItem Batch Stock Balance` 
+			# 		  WHERE warehouse = '{cutbit_warehouse}' AND item_code = '{st_id}' """.format(cutbit_warehouse=spp_settings.default_cut_bit_warehouse,st_id=stock_details[0].item_code)
+			# cut_bit_items = frappe.db.sql(check_cutbit_items_query,as_dict=1) 
+			check_qi_entry = frappe.db.get_all("Quality Inspection",filters={"spp_batch_number":stock_details[0].spp_batch_number,"docstatus":("!=",2)})
+			if check_qi_entry:
+				stock_details[0].qi_name = check_qi_entry[0].name
+		if t_type != "Transfer Compound to Sheeting Warehouse":
+			bom = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name WHERE BI.item_code=%(item_code)s AND B.is_Active=1 """,{"item_code":stock_details[0].item_code},as_dict=1)
+			if not bom:
+				return  {"status":False,"message":"No BOM found for scanned batch item."}
+			else:
+				""" Multi Bom Validation """
+				bom__ = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM` B WHERE B.item=%(bom_item)s AND B.is_Active=1 """,{"bom_item":bom[0].item},as_dict=1)
+				if len(bom__) > 1:
+					return {"status":False,"message":f"Multiple BOM's found for Item to Produce - <b>{bom[0].item}</b>"}
+				""" End """
+				stock_details[0].item_produced = bom[0].item
+			# if cut_percentage:
+			# 	float_precision = 3
+			# 	cut_percentage_val = stock_details[0].transfer_qty*cut_percentage/100
+			# 	cut_percentage_val=flt(cut_percentage_val, float_precision)
 
-                stock_details[0].item_produced = bom[0].item
-        
-        return {
-            "cut_percentage_val": cut_percentage_val,
-            "status": True,
-            "stock": stock_details,
-            'is_cut_bit_item': is_cut_bit_item,
-            'cut_bit_items': cut_bit_items
-        }
-    except Exception as e:
-        # Log exception for debugging
-        frappe.log_error(
-            title="Error in validate_spp_batch_no",
-            message=frappe.get_traceback()
-        )
-        debug_print(f"Exception occurred: {e}")
-        frappe.throw(_("An error occurred. Check the error log for details."))
+		return {"cut_percentage_val":cut_percentage_val,"status":True,"stock":stock_details,'is_cut_bit_item':is_cut_bit_item,'cut_bit_items':cut_bit_items}
 
-def debug_print(msg):
-    """Utility method to print debug information"""
-    print(msg)  # Prints in bench terminal
-    frappe.msgprint(str(msg))  # Displays in ERPNext UI or browser console
-
+	else:
+	# Temporarly disabled as per arun req on 8/2/23
+		resp = check_compound_inspection(batch_no,warehouse,s_type)
+		if resp:
+			return resp
+		else:
+	# End
+			if batch_no.lower().startswith('cb'):
+				warehouse = spp_settings.default_cut_bit_warehouse
+			return  {"status":False,"message":"Scanned batch <b>"+batch_no+"</b> not exist in the wareshouse<b> "+warehouse+"</b>"}
 
 def check_compound_inspection(batch_no,warehouse,s_type):
 	stock_details = frappe.db.sql(""" SELECT S.name stock__id,S.stock_entry_type,S.docstatus doc__status,SD.item_code
@@ -476,8 +472,8 @@ def create_stock_entry(mt_doc):
 					"uom": "Kg",
 					"is_finished_item":0,
 					"transfer_qty":x.qty,
-					"use_serial_batch_fields": 1,
 					"qty":x.qty,
+					"use_serial_batch_fields":1,
 					"spp_batch_number":spp_batch_no,
 					"batch_no":x.batch_no,
 					"mix_barcode":mix_barcode,
@@ -508,9 +504,9 @@ def create_stock_entry(mt_doc):
 							"stock_uom": "Kg",
 							"to_uom": "Kg",
 							"uom": "Kg",
-							"use_serial_batch_fields": 1,
 							"is_finished_item":0,
 							"transfer_qty":s_qty,
+							"use_serial_batch_fields":1,
 							"qty":s_qty,
 							# "spp_batch_number":x.spp_batch_number,
 							"batch_no":batch.batch_no,
@@ -594,9 +590,9 @@ def create_sheeting_stock_entry(mt_doc):
 					"to_uom": "Kg",
 					"uom": "Kg",
 					"is_finished_item":0,
+					"use_serial_batch_fields":1,
 					"transfer_qty":x.qty,
 					"qty":x.qty,
-					"use_serial_batch_fields": 1,
 					"spp_batch_number":spp_batch_no,
 					"batch_no":x.batch_no,
 					"mix_barcode":mix_barcode,
@@ -612,9 +608,9 @@ def create_sheeting_stock_entry(mt_doc):
 					"to_uom": "Kg",
 					"uom": "Kg",
 					"is_finished_item":0,
+					"use_serial_batch_fields":1,
 					"transfer_qty":x.qty,
 					"qty":x.qty,
-					"use_serial_batch_fields": 1,
 					"batch_no":x.batch_no,
 					"mix_barcode":mix_barcode,
 					})
@@ -631,7 +627,7 @@ def create_sheeting_stock_entry(mt_doc):
 			"is_finished_item":1,
 			"transfer_qty":total_qty,
 			"qty":total_qty,
-			"use_serial_batch_fields": 1,
+			"use_serial_batch_fields":1,
 			"spp_batch_number":spp_batch_no,
 			"mix_barcode":mix_barcode,
 			"source_ref_document":mt_doc.doctype,
@@ -687,9 +683,9 @@ def create_sheeting_issue_entry(mt_doc,org_batch_no):
 			"to_uom": "Kg",
 			"uom": "Kg",
 			"is_finished_item":0,
-			"use_serial_batch_fields": 1,
 			"transfer_qty":x.qty,
 			"qty":x.qty,
+			"use_serial_batch_fields":1,
 			# "spp_batch_number":x.spp_batch_number,
 			"batch_no":"Cutbit_"+x.item_code,
 			"source_ref_document":mt_doc.doctype,
@@ -713,8 +709,8 @@ def create_sheeting_issue_entry(mt_doc,org_batch_no):
 			"uom": "Kg",
 			"is_finished_item":0,
 			"transfer_qty":x.qty,
-			"use_serial_batch_fields": 1,
 			"qty":x.qty,
+			"use_serial_batch_fields":1,
 			# "spp_batch_number":x.spp_batch_number,
 			"batch_no":org_batch_no,
 			"source_ref_document":mt_doc.doctype,
@@ -722,51 +718,20 @@ def create_sheeting_issue_entry(mt_doc,org_batch_no):
 			})
 	stock_entry_rc.docstatus = 1
 	stock_entry_rc.save(ignore_permissions=True)
-def generate_w_serial_no(item_code, spp_batch_no, mt_doc):
-    try:
-        # Validate required parameters
-        if not item_code or not spp_batch_no:
-            frappe.throw("Item code and SPP batch number are required")
-
-        # Get the next serial number
-        serial_no = 1
-        serial_nos = frappe.db.get_all("Warming Batch Serial No",
-            filters={"spp_batch_number": spp_batch_no},
-            fields=['serial_no'],
-            order_by="serial_no DESC"
-        )
-        
-        if serial_nos:
-            serial_no = serial_nos[0].serial_no + 1
-
-        # Create new serial number document
-        sl_no = frappe.new_doc("Warming Batch Serial No")
-        sl_no.posting_date = frappe.utils.getdate()
-        sl_no.compound = item_code  # Mandatory field
-        sl_no.serial_no = serial_no
-        sl_no.spp_batch_number = spp_batch_no  # Mandatory field
-
-        # Add sheeting clips if present
-        if mt_doc.sheeting_clip:
-            for x in mt_doc.sheeting_clip:
-                if x.sheeting_clip:  # Validate clip exists
-                    sl_no.append("sheeting_clips", {
-                        "sheeting_clip": x.sheeting_clip
-                    })
-
-        # Insert with validation
-        sl_no.insert(ignore_permissions=True)
-        frappe.db.commit()
-        
-        return sl_no
-
-    except Exception as e:
-        frappe.log_error(
-            message=f"Error in generate_w_serial_no: {str(e)}\n{frappe.get_traceback()}",
-            title="Warming Batch Serial No Creation Failed"
-        )
-        frappe.throw(f"Failed to create Warming Batch Serial No: {str(e)}")
-
+def generate_w_serial_no(item_code,spp_batch_no,mt_doc):
+	serial_no = 1
+	serial_nos = frappe.db.get_all("Warming Batch Serial No",filters={"spp_batch_number":spp_batch_no},fields=['serial_no'],order_by="serial_no DESC")
+	if serial_nos:
+		serial_no = serial_nos[0].serial_no+1
+	sl_no = frappe.new_doc("Warming Batch Serial No")
+	sl_no.posting_date = getdate()
+	sl_no.compound = item_code
+	sl_no.serial_no = serial_no
+	sl_no.spp_batch_number = spp_batch_no
+	for x in mt_doc.sheeting_clip:
+		sl_no.append("sheeting_clips",{"sheeting_clip":x.sheeting_clip})
+	sl_no.insert(ignore_permissions = True)
+	return sl_no
 @frappe.whitelist()
 def get_scanned_warehouse(scanned_loc):
 	return frappe.db.sql(""" SELECT name FROM `tabWarehouse` WHERE name=%(scanned_loc)s OR barcode_text=%(scanned_loc)s """,{"scanned_loc":scanned_loc},as_dict=1)

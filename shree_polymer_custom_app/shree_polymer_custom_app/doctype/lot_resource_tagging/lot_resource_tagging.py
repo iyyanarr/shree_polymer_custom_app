@@ -253,6 +253,11 @@ def update_job_cards(wo,actual_weight,doc_info,item):
 	operations = frappe.db.get_all("Work Order Operation",filters={"parent":wo},fields=['time_in_mins'])
 	for job_card in job_cards:
 		jc = frappe.get_doc("Job Card",job_card.name)
+		jc.append("time_logs", {
+			
+			"from_time": now(),"completed_qty": flt(actual_weight,3),
+			"time_in_mins": spp_settings.default_time
+		})
 		for time_log in jc.time_logs:
 			""" For rounding No's """
 			# time_log.completed_qty = flt("{:.3f}".format(actual_weight))
