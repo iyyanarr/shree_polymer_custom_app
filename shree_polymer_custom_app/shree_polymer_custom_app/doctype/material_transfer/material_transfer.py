@@ -476,6 +476,7 @@ def create_stock_entry(mt_doc):
 					"uom": "Kg",
 					"is_finished_item":0,
 					"transfer_qty":x.qty,
+					"use_serial_batch_fields": 1,
 					"qty":x.qty,
 					"spp_batch_number":spp_batch_no,
 					"batch_no":x.batch_no,
@@ -507,6 +508,7 @@ def create_stock_entry(mt_doc):
 							"stock_uom": "Kg",
 							"to_uom": "Kg",
 							"uom": "Kg",
+							"use_serial_batch_fields": 1,
 							"is_finished_item":0,
 							"transfer_qty":s_qty,
 							"qty":s_qty,
@@ -594,6 +596,7 @@ def create_sheeting_stock_entry(mt_doc):
 					"is_finished_item":0,
 					"transfer_qty":x.qty,
 					"qty":x.qty,
+					"use_serial_batch_fields": 1,
 					"spp_batch_number":spp_batch_no,
 					"batch_no":x.batch_no,
 					"mix_barcode":mix_barcode,
@@ -611,6 +614,7 @@ def create_sheeting_stock_entry(mt_doc):
 					"is_finished_item":0,
 					"transfer_qty":x.qty,
 					"qty":x.qty,
+					"use_serial_batch_fields": 1,
 					"batch_no":x.batch_no,
 					"mix_barcode":mix_barcode,
 					})
@@ -627,6 +631,7 @@ def create_sheeting_stock_entry(mt_doc):
 			"is_finished_item":1,
 			"transfer_qty":total_qty,
 			"qty":total_qty,
+			"use_serial_batch_fields": 1,
 			"spp_batch_number":spp_batch_no,
 			"mix_barcode":mix_barcode,
 			"source_ref_document":mt_doc.doctype,
@@ -682,6 +687,7 @@ def create_sheeting_issue_entry(mt_doc,org_batch_no):
 			"to_uom": "Kg",
 			"uom": "Kg",
 			"is_finished_item":0,
+			"use_serial_batch_fields": 1,
 			"transfer_qty":x.qty,
 			"qty":x.qty,
 			# "spp_batch_number":x.spp_batch_number,
@@ -707,6 +713,7 @@ def create_sheeting_issue_entry(mt_doc,org_batch_no):
 			"uom": "Kg",
 			"is_finished_item":0,
 			"transfer_qty":x.qty,
+			"use_serial_batch_fields": 1,
 			"qty":x.qty,
 			# "spp_batch_number":x.spp_batch_number,
 			"batch_no":org_batch_no,
@@ -715,20 +722,51 @@ def create_sheeting_issue_entry(mt_doc,org_batch_no):
 			})
 	stock_entry_rc.docstatus = 1
 	stock_entry_rc.save(ignore_permissions=True)
-def generate_w_serial_no(item_code,spp_batch_no,mt_doc):
-	serial_no = 1
-	serial_nos = frappe.db.get_all("Warming Batch Serial No",filters={"spp_batch_number":spp_batch_no},fields=['serial_no'],order_by="serial_no DESC")
-	if serial_nos:
-		serial_no = serial_nos[0].serial_no+1
-	sl_no = frappe.new_doc("Warming Batch Serial No")
-	sl_no.posting_date = getdate()
-	sl_no.compound = item_code
-	sl_no.serial_no = serial_no
-	sl_no.spp_batch_number = spp_batch_no
-	for x in mt_doc.sheeting_clip:
-		sl_no.append("sheeting_clips",{"sheeting_clip":x.sheeting_clip})
-	sl_no.insert(ignore_permissions = True)
-	return sl_no
+def generate_w_serial_no(item_code, spp_batch_no, mt_doc):
+    try:
+        # Validate required parameters
+        if not item_code or not spp_batch_no:
+            frappe.throw("Item code and SPP batch number are required")
+
+        # Get the next serial number
+        serial_no = 1
+        serial_nos = frappe.db.get_all("Warming Batch Serial No",
+            filters={"spp_batch_number": spp_batch_no},
+            fields=['serial_no'],
+            order_by="serial_no DESC"
+        )
+        
+        if serial_nos:
+            serial_no = serial_nos[0].serial_no + 1
+
+        # Create new serial number document
+        sl_no = frappe.new_doc("Warming Batch Serial No")
+        sl_no.posting_date = frappe.utils.getdate()
+        sl_no.compound = item_code  # Mandatory field
+        sl_no.serial_no = serial_no
+        sl_no.spp_batch_number = spp_batch_no  # Mandatory field
+
+        # Add sheeting clips if present
+        if mt_doc.sheeting_clip:
+            for x in mt_doc.sheeting_clip:
+                if x.sheeting_clip:  # Validate clip exists
+                    sl_no.append("sheeting_clips", {
+                        "sheeting_clip": x.sheeting_clip
+                    })
+
+        # Insert with validation
+        sl_no.insert(ignore_permissions=True)
+        frappe.db.commit()
+        
+        return sl_no
+
+    except Exception as e:
+        frappe.log_error(
+            message=f"Error in generate_w_serial_no: {str(e)}\n{frappe.get_traceback()}",
+            title="Warming Batch Serial No Creation Failed"
+        )
+        frappe.throw(f"Failed to create Warming Batch Serial No: {str(e)}")
+
 @frappe.whitelist()
 def get_scanned_warehouse(scanned_loc):
 	return frappe.db.sql(""" SELECT name FROM `tabWarehouse` WHERE name=%(scanned_loc)s OR barcode_text=%(scanned_loc)s """,{"scanned_loc":scanned_loc},as_dict=1)
