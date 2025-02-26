@@ -44,70 +44,114 @@ def on_batch_update(doc,method):
 
 @frappe.whitelist()
 def on_sle_update(doc, method):
-    print("\n=== Starting SLE Update ===")
-    print(f"Document: {doc.as_dict() if hasattr(doc, 'as_dict') else doc}")
-    print(f"Method: {method}")
-    
     try:
-        is_enqueued = check_enqueue()
-        print(f"Check enqueue result: {is_enqueued}")
-        
+        frappe.logger().info("\n=== Starting SLE Update ===")
+        frappe.logger().info(f"Document: {doc.as_dict() if hasattr(doc, 'as_dict') else str(doc)}")
+        frappe.logger().info(f"Method: {method}")
+
+        # Check if the enqueue function is valid
+        try:
+            is_enqueued = check_enqueue()
+            frappe.logger().info(f"Check enqueue result: {is_enqueued}")
+        except Exception as e:
+            frappe.log_error(frappe.get_traceback(), "Error during enqueue check in on_sle_update")
+            frappe.logger().error(f"Failed to check enqueue. Error: {str(e)}")
+            raise frappe.ValidationError("Error during enqueue check.")
+
         if is_enqueued:
             if doc.item_code and doc.serial_and_batch_bundle:
                 # Fetch the Serial and Batch Bundle document
-                batch_bundle = frappe.get_doc("Serial and Batch Bundle", doc.serial_and_batch_bundle)
-                
-                # Process each batch entry
-                for entry in batch_bundle.entries:
-                    if entry.batch_no:
-                        update_item_batch_qty(doc.item_code, entry.batch_no, doc.stock_uom)
-                        print(f"Processing batch: {entry.batch_no} for item: {doc.item_code}")
+                try:
+                    batch_bundle = frappe.get_doc("Serial and Batch Bundle", doc.serial_and_batch_bundle)
+                    frappe.logger().info(f"Fetched Serial and Batch Bundle: {batch_bundle.name}")
+                    
+                    # Process each batch entry
+                    for entry in batch_bundle.entries:
+                        if entry.batch_no:
+                            update_item_batch_qty(doc.item_code, entry.batch_no, doc.stock_uom)
+                            frappe.logger().info(f"Successfully processed batch: {entry.batch_no} for item: {doc.item_code}")
+                        else:
+                            frappe.log_error("Batch number missing in batch bundle entry", "Missing Batch Number")
+                            frappe.logger().error(f"Entry with missing batch_no: {entry}")
+                except Exception as e:
+                    frappe.log_error(frappe.get_traceback(), "Error fetching or processing Serial and Batch Bundle")
+                    frappe.logger().error(f"Error in fetching or processing Serial and Batch Bundle. Details: {str(e)}")
+                    raise frappe.ValidationError("Error in processing Serial and Batch Bundle.")
             else:
-                print("Missing required fields:")
-                print(f"Item Code present: {bool(doc.item_code)}")
-                print(f"Serial and Batch Bundle present: {bool(doc.serial_and_batch_bundle)}")
+                frappe.log_error("Missing required fields in SLE update", "Missing Fields in SLE Update")
+                frappe.logger().error(
+                    f"Missing required fields: "
+                    f"Item Code present: {bool(doc.item_code)}, "
+                    f"Serial and Batch Bundle present: {bool(doc.serial_and_batch_bundle)}"
+                )
         else:
-            print("Enqueue check failed - skipping update")
-            
+            frappe.log_error("Enqueue check failed - skipping update", "Skipping SLE Update")
+            frappe.logger().info("Enqueue check failed - skipping update")
     except Exception as e:
-        print(f"Error in on_sle_update: {str(e)}")
-        print(f"Traceback: {frappe.get_traceback()}")
+        frappe.logger().error(f"Error in on_sle_update: {str(e)}")
         frappe.log_error(frappe.get_traceback(), "on_sle_update error")
 
+
+
 def update_item_batch_qty(item_code, batch_no, stock_uom):
-    from erpnext.stock.doctype.batch.batch import get_batch_qty
-    batch_qtys = get_batch_qty(batch_no=batch_no)
-    # Debugging line to check if `batch_qtys` is being retrieved
-    print('Batch Qty:', batch_qtys)
-    
-    if batch_qtys:
-        for b in batch_qtys:
-            if b.get("qty") != 0:
-                check_exist = frappe.db.get_all(
-                    "Item Batch Stock Balance",
-                    filters={"item_code": item_code, "batch_no": batch_no, "warehouse": b.get("warehouse")}
-                )
-                print('Check Exist:', check_exist)  # Debugging line
-                if check_exist:
-                    for x in check_exist:
-                        frappe.db.set_value("Item Batch Stock Balance", x.name, "qty", b.get("qty"))
+    try:
+        from erpnext.stock.doctype.batch.batch import get_batch_qty
+
+        # Fetch batch quantities
+        batch_qtys = get_batch_qty(batch_no=batch_no)
+        frappe.logger().info(f"Retrieved Batch Quantity for {batch_no}: {batch_qtys}")
+
+        if batch_qtys:
+            for b in batch_qtys:
+                if b.get("qty") != 0:
+                    # Check if entry exists
+                    check_exist = frappe.db.get_all(
+                        "Item Batch Stock Balance",
+                        filters={"item_code": item_code, "batch_no": batch_no, "warehouse": b.get("warehouse")},
+                        fields=["name"]
+                    )
+                    frappe.logger().info(f"Existence check for {item_code} - {batch_no}: {check_exist}")
+
+                    if check_exist:
+                        for x in check_exist:
+                            frappe.db.set_value("Item Batch Stock Balance", x.name, "qty", b.get("qty"))
+                            frappe.logger().info(f"Updated existing Item Batch Stock Balance for {x.name}")
+                    else:
+                        # Create a new Item Batch Stock Balance entry
+                        item_name = frappe.db.get_value("Item", item_code, 'item_name')
+                        new_doc = frappe.new_doc("Item Batch Stock Balance")
+                        new_doc.item_code = item_code
+                        new_doc.item_name = item_name
+                        new_doc.description = f"<div> <p>{item_code} - {item_name}</p></div>"
+                        new_doc.warehouse = b.get("warehouse")
+                        new_doc.qty = b.get("qty")
+                        new_doc.stock_uom = stock_uom
+                        new_doc.batch_no = batch_no
+                        new_doc.insert(ignore_permissions=True)
+                        frappe.logger().info(
+                            f"Created new Item Batch Stock Balance for item_code: {item_code}, batch_no: {batch_no}, warehouse: {b.get('warehouse')}"
+                        )
                 else:
-                    item_name = frappe.db.get_value("Item", item_code, 'item_name')
-                    new_doc = frappe.new_doc("Item Batch Stock Balance")
-                    new_doc.item_code = item_code
-                    new_doc.item_name = item_name
-                    new_doc.description = f"<div> <p>{item_code} - {item_name}</p></div>"
-                    new_doc.warehouse = b.get("warehouse")
-                    new_doc.qty = b.get("qty")
-                    new_doc.stock_uom = stock_uom
-                    new_doc.batch_no = batch_no
-                    new_doc.insert(ignore_permissions=True)
-            else:
-                frappe.db.sql(f""" DELETE FROM `tabItem Batch Stock Balance` WHERE batch_no = '{batch_no}' AND warehouse = '{b.get("warehouse")}' AND item_code = '{item_code}' """)
-    else:
-        frappe.db.sql("""DELETE FROM `tabItem Batch Stock Balance` WHERE item_code=%(item_code)s and batch_no = %(batch_no)s""", {"item_code": item_code, "batch_no": batch_no})
-    frappe.db.commit()
-    print(f"Updated Item Batch Stock Balance for item_code: {item_code}, batch_no: {batch_no}")
+                    # Delete entries where quantity is 0
+                    frappe.db.sql(
+                        """ DELETE FROM `tabItem Batch Stock Balance` 
+                            WHERE batch_no = %s AND warehouse = %s AND item_code = %s """,
+                        (batch_no, b.get("warehouse"), item_code),
+                    )
+                    frappe.logger().info(f"Deleted Item Batch Stock Balance for {batch_no}, {b.get('warehouse')}")
+        else:
+            # Remove batch balance if no quantity exists
+            frappe.db.sql(
+                """ DELETE FROM `tabItem Batch Stock Balance` WHERE item_code = %s and batch_no = %s """,
+                (item_code, batch_no),
+            )
+            frappe.logger().info(f"Removed Item Batch Stock Balance entirely for {batch_no}")
+        
+        frappe.db.commit()
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Error in update_item_batch_qty")
+        frappe.logger().error(f"Error updating Item Batch Stock Balance for item_code: {item_code}, batch_no: {batch_no}. Details: {str(e)}")
+        raise
 
 	
 
