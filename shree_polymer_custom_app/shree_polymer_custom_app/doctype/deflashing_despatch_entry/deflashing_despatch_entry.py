@@ -36,7 +36,7 @@ def create_stock_entry(self):
                 DDEI.item,
                 SUM(DDEI.qty) AS qty,
                 DDEI.batch_no,
-                DDEI.spp_batch_number 
+                DDEI.spp_batch_no 
             FROM `tabDeflashing Despatch Entry Item` DDEI 
             INNER JOIN `tabDeflashing Despatch Entry` DDE ON DDE.name = DDEI.parent 
             WHERE DDE.name = '{self.name}' 
@@ -45,7 +45,7 @@ def create_stock_entry(self):
                 DDEI.warehouse_id,
                 DDEI.item,
                 DDEI.batch_no,
-                DDEI.spp_batch_number,
+                DDEI.spp_batch_no,
                 DDEI.lot_number 
         """, as_dict=1)
 

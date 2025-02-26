@@ -198,7 +198,7 @@ def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item):
 			jc.append("time_logs", {
 				"employee": doc_info.supervisor_id,
 				"from_time": now(),
-				"to_time": add_to_date(now(), minutes=int(spp_settings.default_time)),
+				# "to_time": add_to_date(now(), minutes=int(spp_settings.default_time)),
 				"completed_qty": flt(actual_weight,3),
 				"time_in_mins": spp_settings.default_time
 			})
