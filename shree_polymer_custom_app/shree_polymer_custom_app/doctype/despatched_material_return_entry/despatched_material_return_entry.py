@@ -15,13 +15,9 @@ class DespatchedMaterialReturnEntry(Document):
 	def on_submit(self):
 		resp_ = make_material_transfer(self)
 		if not resp_:
-			rollback_entries(self,"Something went wrong not able to submit stock entry..!")
+			rollback_entries(self, "Something went wrong not able to submit stock entry..!")
 		else:
-			try:
-				update_dc_status(self)
-				self.reload()
-			except Exception:
-				rollback_entries(self,"Something went wrong not able to update DC return status..!")
+			self.reload()
 
 def make_material_transfer(self):
 	try:
