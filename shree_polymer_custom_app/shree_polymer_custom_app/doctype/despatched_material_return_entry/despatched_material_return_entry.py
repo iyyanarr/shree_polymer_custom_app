@@ -33,8 +33,8 @@ def make_material_transfer(self):
 		for item in self.items:
 			stock_entry.append("items",{
 				"item_code":item.item,
-				"s_warehouse":item.source_warehouse_id,
-				"t_warehouse":item.target_warehouse_id,
+				"s_warehouse":item.target_warehouse_id,
+				"t_warehouse":item.source_warehouse_id,
 				"stock_uom": item.uom,
 				"uom": item.uom,
 				"transfer_qty":item.qty,

@@ -1,0 +1,132 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-27 14:18:14.949441",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "qty_uom",
+  "spp_batch_no",
+  "product_ref",
+  "qty_nos",
+  "vendor",
+  "valuation_rate",
+  "column_break_2",
+  "batch_no",
+  "date",
+  "lot_no",
+  "weight_kgs",
+  "stock_entry_reference",
+  "amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "qty_uom",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Qty UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spp_batch_no",
+   "fieldtype": "Data",
+   "label": "SPP Batch No.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "product_ref",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Product Ref.",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_nos",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Product Qty (No's)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "vendor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Vendor",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "valuation_rate",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Valuation Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Batch No",
+   "options": "Batch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lot_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Lot No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weight_kgs",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Product Weight (kg's)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_entry_reference",
+   "fieldtype": "Data",
+   "label": "Stock Entry Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Amount",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-02-27 14:18:14.949441",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Receive Deflashing Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
