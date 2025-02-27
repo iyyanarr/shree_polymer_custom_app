@@ -17,11 +17,7 @@ class DespatchedMaterialReturnEntry(Document):
 		if not resp_:
 			rollback_entries(self,"Something went wrong not able to submit stock entry..!")
 		else:
-			try:
-				update_dc_status(self)
-				self.reload()
-			except Exception:
-				rollback_entries(self,"Something went wrong not able to update DC return status..!")
+			self.reload()
 
 def make_material_transfer(self):
 	try:
@@ -39,6 +35,7 @@ def make_material_transfer(self):
 				"uom": item.uom,
 				"transfer_qty":item.qty,
 				"qty":item.qty,
+				"use_serial_batch_fields":1,
 				"spp_batch_number":item.spp_batch_no,
 				"batch_no":item.batch_no,
 				"source_ref_document":self.doctype,
@@ -66,7 +63,7 @@ def rollback_entries(self,msg):
 			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{self.stock_entry_reference}' ")
 			frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  name=%(name)s""",{"name":self.stock_entry_reference})
 			frappe.db.sql(""" DELETE FROM `tabStock Entry Detail` WHERE  parent=%(name)s""",{"name":self.stock_entry_reference})
-		undo_dc_status(self)
+		# undo_dc_status(self)
 		def_rec = frappe.get_doc(self.doctype, self.name)
 		def_rec.db_set("docstatus", 0)
 		def_rec.db_set("stock_entry_reference", "")
@@ -77,16 +74,16 @@ def rollback_entries(self,msg):
 		frappe.db.rollback()
 		frappe.log_error(title="manual_rollback_entries",message=frappe.get_traceback())
 		frappe.msgprint("Something went wrong..Not able to rollback..!")
-
-def update_dc_status(self):
-	for x in self.items:
-		frappe.db.sql(f""" UPDATE `tabDelivery Note Item` SET is_return = 1,dc_return_receipt_no = '{self.name}',
-							dc_return_date = '{getdate(self.modified) if not self.posting_date else self.posting_date}' 
-							WHERE docstatus = 1 AND
-								scan_barcode = '{x.lot_number}' AND item_code = '{x.item}'
-								AND spp_batch_no = '{x.spp_batch_no}' AND batch_no = '{x.batch_no}'
-								AND target_warehouse = '{x.source_warehouse_id}' """)
-		frappe.db.commit()
+#Not required for now
+# def update_dc_status(self):
+# 	for x in self.items:
+# 		frappe.db.sql(f""" UPDATE `tabDelivery Note Item` SET is_return = 1,dc_return_receipt_no = '{self.name}',
+# 							dc_return_date = '{getdate(self.modified) if not self.posting_date else self.posting_date}' 
+# 							WHERE docstatus = 1 AND
+# 								scan_barcode = '{x.lot_number}' AND item_code = '{x.item}'
+# 								AND spp_batch_no = '{x.spp_batch_no}' AND batch_no = '{x.batch_no}'
+# 								AND target_warehouse = '{x.source_warehouse_id}' """)
+# 		frappe.db.commit()
 
 def undo_dc_status(self):
 	for x in self.items:
