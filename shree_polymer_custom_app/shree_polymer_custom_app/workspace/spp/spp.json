@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"IpL9OG3hfP\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">SPP</span>\",\"col\":12}},{\"id\":\"M4T_Zcshfc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Batch ERP Entry\",\"col\":3}},{\"id\":\"si0a7aRFsD\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Transfer\",\"col\":3}},{\"id\":\"Bd6mSKVVOQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cut Bit Transfer\",\"col\":3}},{\"id\":\"IbhKj3wXSj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Blanking DC Entry\",\"col\":3}},{\"id\":\"M-UL84W2Tv\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Blank Bin Inward Entry\",\"col\":3}},{\"id\":\"vmv00pf09m\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Weight MT\",\"col\":3}},{\"id\":\"gqIviEO6iJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Notes\",\"col\":3}},{\"id\":\"21P4P5_Pr8\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC Receipts\",\"col\":3}},{\"id\":\"NIDGBMni_p\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inspection Entry\",\"col\":3}},{\"id\":\"wHbKSE2GZP\",\"type\":\"card\",\"data\":{\"card_name\":\"Moulding\",\"col\":3}},{\"id\":\"oOgxlGEaOD\",\"type\":\"card\",\"data\":{\"card_name\":\"Deflashing\",\"col\":3}},{\"id\":\"bIiXIphFyA\",\"type\":\"card\",\"data\":{\"card_name\":\"Manufacturing/Lot\",\"col\":3}},{\"id\":\"mN97w-k3vC\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters/Settings\",\"col\":3}},{\"id\":\"w1CZxkao3v\",\"type\":\"card\",\"data\":{\"card_name\":\"Despatch/Packing\",\"col\":4}},{\"id\":\"Azn8h5zkBT\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"4qrrdMgyKV\",\"type\":\"card\",\"data\":{\"card_name\":\"Inspection Entries\",\"col\":4}}]",
+ "content": "[{\"id\":\"IpL9OG3hfP\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">SPP</span>\",\"col\":12}},{\"id\":\"M4T_Zcshfc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Batch ERP Entry\",\"col\":3}},{\"id\":\"si0a7aRFsD\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Transfer\",\"col\":3}},{\"id\":\"Bd6mSKVVOQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cut Bit Transfer\",\"col\":3}},{\"id\":\"IbhKj3wXSj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Blanking DC Entry\",\"col\":3}},{\"id\":\"M-UL84W2Tv\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Blank Bin Inward Entry\",\"col\":3}},{\"id\":\"vmv00pf09m\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Weight MT\",\"col\":3}},{\"id\":\"gqIviEO6iJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Notes\",\"col\":3}},{\"id\":\"21P4P5_Pr8\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC Receipts\",\"col\":3}},{\"id\":\"NIDGBMni_p\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inspection Entry\",\"col\":3}},{\"id\":\"YWfCbBt7sK\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"U1 Receive Deflashing Entry\",\"col\":3}},{\"id\":\"wHbKSE2GZP\",\"type\":\"card\",\"data\":{\"card_name\":\"Moulding\",\"col\":3}},{\"id\":\"oOgxlGEaOD\",\"type\":\"card\",\"data\":{\"card_name\":\"Deflashing\",\"col\":3}},{\"id\":\"bIiXIphFyA\",\"type\":\"card\",\"data\":{\"card_name\":\"Manufacturing/Lot\",\"col\":3}},{\"id\":\"mN97w-k3vC\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters/Settings\",\"col\":3}},{\"id\":\"w1CZxkao3v\",\"type\":\"card\",\"data\":{\"card_name\":\"Despatch/Packing\",\"col\":4}},{\"id\":\"Azn8h5zkBT\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}},{\"id\":\"4qrrdMgyKV\",\"type\":\"card\",\"data\":{\"card_name\":\"Inspection Entries\",\"col\":4}}]",
  "creation": "2023-02-20 16:53:28.849027",
  "custom_blocks": [],
  "docstatus": 0,
@@ -470,7 +470,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-02-12 14:31:18.598506",
+ "modified": "2025-02-27 17:27:43.283211",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "SPP",
@@ -482,6 +482,14 @@
  "roles": [],
  "sequence_id": 1.0,
  "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "U1 Receive Deflashing Entry",
+   "link_to": "Receive Deflashing Entry",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
   {
    "color": "Grey",
    "doc_view": "List",

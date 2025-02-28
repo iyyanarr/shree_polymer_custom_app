@@ -157,6 +157,9 @@ frappe.ui.form.on('Inspection Entry', {
 		if (has_common(frappe.user_roles, ['Packer','U1 Supervisor']) && frappe.session.user!="Administrator") {
 			ins_opts.push("Final Visual Inspection")
 	    }
+		if (has_common(frappe.user_roles, ['Quality Executive', 'Lot Inspector','System Manager']) && frappe.session.user!="Administrator") {
+			ins_opts.push("Patrol Inspection")
+	    }
 		if(ins_opts && ins_opts.length > 0){
 			set_field_options("inspection_type", ins_opts)
 		}
