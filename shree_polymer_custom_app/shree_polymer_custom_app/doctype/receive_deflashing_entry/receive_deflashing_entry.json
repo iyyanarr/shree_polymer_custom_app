@@ -7,24 +7,15 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "posting_date",
+  "dd_number",
   "column_break_wnfav",
-  "vehicle_no",
-  "column_break_ylj57",
+  "get_items",
+  "column_break_ttby",
+  "despatch_info",
   "scan_lot",
-  "scan_lot_number",
-  "vendor",
-  "add_html",
+  "scan_lot_no",
   "column_break_2",
-  "date",
-  "product_ref",
-  "qty_nos",
-  "qty_uom",
   "column_break_6",
-  "spp_batch_no",
-  "batch_no",
-  "lot_no",
-  "weight_kgs",
   "section_break_11",
   "items",
   "section_break_13",
@@ -40,25 +31,7 @@
  ],
  "fields": [
   {
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Posting Date",
-   "reqd": 1
-  },
-  {
    "fieldname": "column_break_wnfav",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "vehicle_no",
-   "fieldtype": "Data",
-   "label": "Vehicle No",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_ylj57",
    "fieldtype": "Column Break"
   },
   {
@@ -66,81 +39,12 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "scan_lot_number",
-   "fieldtype": "Data",
-   "label": "Scan Lot Number",
-   "options": "Barcode"
-  },
-  {
-   "fieldname": "vendor",
-   "fieldtype": "Link",
-   "label": "Vendor",
-   "options": "Warehouse",
-   "read_only": 1
-  },
-  {
-   "fieldname": "add_html",
-   "fieldtype": "HTML",
-   "label": "Add"
-  },
-  {
    "fieldname": "column_break_2",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "date",
-   "fieldtype": "Data",
-   "label": "Date",
-   "read_only": 1
-  },
-  {
-   "fieldname": "product_ref",
-   "fieldtype": "Link",
-   "label": "Product Ref.",
-   "options": "Item",
-   "read_only": 1
-  },
-  {
-   "fieldname": "qty_nos",
-   "fieldtype": "Float",
-   "label": "Product Qty (No's)",
-   "read_only": 1
-  },
-  {
-   "fieldname": "qty_uom",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Qty UOM",
-   "read_only": 1
-  },
-  {
    "fieldname": "column_break_6",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "spp_batch_no",
-   "fieldtype": "Data",
-   "label": "Spp Batch No.",
-   "read_only": 1
-  },
-  {
-   "fieldname": "batch_no",
-   "fieldtype": "Link",
-   "label": "Batch No",
-   "options": "Batch",
-   "read_only": 1
-  },
-  {
-   "fieldname": "lot_no",
-   "fieldtype": "Data",
-   "label": "Lot No.",
-   "read_only": 1
-  },
-  {
-   "fieldname": "weight_kgs",
-   "fieldtype": "Float",
-   "label": "Product Weight (kg's)",
-   "read_only": 1
   },
   {
    "fieldname": "section_break_11",
@@ -214,12 +118,39 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "despatch_info",
+   "fieldtype": "HTML",
+   "label": "Despatch Info"
+  },
+  {
+   "fieldname": "scan_lot_no",
+   "fieldtype": "Data",
+   "label": "Scan Lot No"
+  },
+  {
+   "fieldname": "column_break_ttby",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "get_items",
+   "fieldtype": "HTML",
+   "label": "Get Items"
+  },
+  {
+   "fieldname": "dd_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Deflash Despatch Number",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-27 14:24:43.729173",
+ "modified": "2025-02-28 14:24:00.145674",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Receive Deflashing Entry",

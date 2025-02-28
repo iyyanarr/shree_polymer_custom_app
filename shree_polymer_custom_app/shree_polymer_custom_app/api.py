@@ -1286,3 +1286,20 @@ def validate_bundle_uniqueness(items):
                 title="Inventory Bundle Conflict"
             )
         seen.add(item.serial_and_batch_bundle)
+		
+@frappe.whitelist()
+def get_item_details(batch_number):
+    item = frappe.get_doc('Batch', batch_number)
+    item_code = item.item
+    item_name = frappe.db.get_value('Item', item_code, 'item_name')
+    item_group = frappe.db.get_value('Item', item_code, 'item_group')
+    warehouse = frappe.db.get_value('Item', item_code, 'default_warehouse')
+    current_stock = frappe.db.get_value('Bin', {'item_code': item_code, 'warehouse': warehouse}, 'actual_qty')
+
+    return {
+        'item_code': item_code,
+        'item_name': item_name,
+        'item_group': item_group,
+        'warehouse': warehouse,
+        'current_stock': current_stock
+    }

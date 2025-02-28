@@ -1,41 +1,54 @@
-// Copyright (c) 2025, Tridotstech and contributors
-// For license information, please see license.txt
+frappe.ui.form.on('Receive Deflashing Entry', {
+    refresh: function(frm) {
+        // Adding HTML button
+        frm.fields_dict.get_items.$wrapper.html('<button class="btn btn-primary">Get Items</button>');
 
-// frappe.ui.form.on("Receive Deflashing Entry", {
-// 	refresh(frm) {
+        frm.fields_dict.get_items.$wrapper.find('button').on('click', function() {
+            const ddNumber = frm.doc.dd_number; // Assuming dd_number is the fieldname for Deflash Despatch Number
+            
+            if (!ddNumber) {
+                frappe.msgprint(__('Please enter a Deflash Despatch Number.'));
+                return;
+            }
 
-// 	},
-// });
-// Copyright (c) 2025, Tridotstech and contributors
-// For license information, please see license.txt
-
-frappe.ui.form.on("Receive Deflashing Entry", {
-    scan_lot_number: function(frm) {
-        if (frm.doc.scan_lot_number) {
             frappe.call({
-                method: 'frappe.client.get_list',
+                method: 'shree_polymer_custom_app.shree_polymer_custom_app.doctype.receive_deflashing_entry.receive_deflashing_entry.get_despatch_info',
                 args: {
-                    doctype: 'Deflashing Despatch Entry',
-                    filters: {
-                        'lot_number': frm.doc.scan_lot_number
-                    },
-                    fields: ['*']
+                    dd_number: ddNumber
                 },
                 callback: function(response) {
-                    if (response.message && response.message.length > 0) {
-                        // Found matching record
-                        let despatch_entry = response.message[0];
-                        console.log(despatch_entry);
-                        // Set values from despatch entry to current form
-                        // Add the fields you want to populate here
-                        frm.refresh();
-                    } else {
-                        frappe.msgprint(__('No Deflashing Despatch Entry found for this Lot Number'));
-                        frm.doc.scan_lot_number = '';
-                        frm.refresh_field('scan_lot_number');
+                    if (response && response.message) {
+                        const despatchInfo = response.message;
+
+                        // Construct HTML to display despatch info
+                        let html = `
+                            <h4>Despatch Info</h4>
+                            <p>Name: ${despatchInfo.name}</p>
+                            <p>Owner: ${despatchInfo.owner}</p>
+                            <p>Vehicle No: ${despatchInfo.vehicle_no}</p>
+                            <p>Vendor: ${despatchInfo.vendor}</p>
+                            <p>Total Lots: ${despatchInfo.total_lots}</p>
+                            <p>Total Qty (Kgs): ${despatchInfo.total_qty_kgs}</p>
+                            <p>Total Qty (Nos): ${despatchInfo.total_qty_nos}</p>
+                            <h5>Items:</h5>
+                        `;
+
+                        despatchInfo.items.forEach(item => {
+                            html += `
+                                <div>
+                                    <p>Product Ref: ${item.product_ref}</p>
+                                    <p>Qty Nos: ${item.qty_nos}</p>
+                                    <p>Lot No: ${item.lot_no}</p>
+                                    <p>Weight (Kgs): ${item.weight_kgs}</p>
+                                </div>
+                                <hr>
+                            `;
+                        });
+
+                        frm.fields_dict.despatch_info.$wrapper.html(html);
                     }
                 }
             });
-        }
+        });
     }
 });

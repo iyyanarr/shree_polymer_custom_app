@@ -18,7 +18,9 @@
   "lot_no",
   "weight_kgs",
   "stock_entry_reference",
-  "amount"
+  "amount",
+  "received_weight",
+  "status"
  ],
  "fields": [
   {
@@ -115,12 +117,23 @@
    "hidden": 1,
    "label": "Amount",
    "read_only": 1
+  },
+  {
+   "fieldname": "received_weight",
+   "fieldtype": "Data",
+   "label": "Received Weight"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Approved\nMiss Match\nPending"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-27 14:18:14.949441",
+ "modified": "2025-02-28 14:04:33.562174",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Receive Deflashing Item",

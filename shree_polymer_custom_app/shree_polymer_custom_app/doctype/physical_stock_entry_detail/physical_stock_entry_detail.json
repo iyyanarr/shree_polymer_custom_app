@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-28 15:02:19.459308",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "batch_number",
+  "item_code",
+  "item_name",
+  "item_group",
+  "warehouse",
+  "current_stock",
+  "physical_stock"
+ ],
+ "fields": [
+  {
+   "fieldname": "batch_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Batch Number"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item"
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Group",
+   "options": "Item Group"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "current_stock",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Current Stock"
+  },
+  {
+   "fieldname": "physical_stock",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Physical Stock"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-02-28 15:07:05.059418",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Physical Stock Entry Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
