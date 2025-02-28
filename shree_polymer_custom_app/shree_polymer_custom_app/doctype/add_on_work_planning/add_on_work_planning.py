@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import getdate,flt
-from frappe.utils.data import get_time
+from frappe.utils.data import get_time, now
 
 class AddOnWorkPlanning(Document):
 	""" Store target item qty and bom for work order creation and validation """
@@ -194,7 +194,7 @@ def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item):
 		for job_card in job_cards:
 			jc = frappe.get_doc("Job Card",job_card.name)
 			jc.append("time_logs",{
-				"from_time":get_time(),
+				"from_time":now(),
 				"completed_qty":flt(actual_weight,3),
 				"time_in_mins":1
 			})
