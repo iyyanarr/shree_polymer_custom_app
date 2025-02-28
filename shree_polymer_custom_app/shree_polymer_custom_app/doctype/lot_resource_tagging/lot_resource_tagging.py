@@ -124,6 +124,7 @@ def make_stock_entry(self,work_order):
 					"t_warehouse":None,
 					"stock_uom": "Nos",
 					"uom": "Nos",
+					"use_serial_batch_fields":1,
 					# "transfer_qty":self.qtynos,
 					# "qty":self.qtynos,
 					"transfer_qty":self.qty_after_rejection_nos,
@@ -146,6 +147,7 @@ def make_stock_entry(self,work_order):
 				"qty":round(work_order.qty),
 				# End
 				# "spp_batch_number": d_spp_batch_no,
+				"use_serial_batch_fields":1,
 				"spp_batch_number": self.scan_lot_no,
 				"batch_no":batch__no,
 				"mix_barcode":bcode_resp.get("barcode_text"),
