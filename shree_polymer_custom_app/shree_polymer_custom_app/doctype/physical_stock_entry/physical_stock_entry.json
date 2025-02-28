@@ -1,14 +1,14 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format: PSE-.#####",
+ "autoname": "format: PSE-{#####}",
  "creation": "2025-02-28 15:01:49.400199",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "employee",
   "column_break_bfdo",
-  "date",
+  "item_group",
   "section_break_magy",
   "details"
  ],
@@ -24,11 +24,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "date",
-   "fieldtype": "Date",
-   "label": "Date"
-  },
-  {
    "fieldname": "section_break_magy",
    "fieldtype": "Section Break"
   },
@@ -37,11 +32,17 @@
    "fieldtype": "Table",
    "label": "Details",
    "options": "Physical Stock Entry Detail"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Select",
+   "label": "Item Type",
+   "options": "Raw Material\nBatch\nMaster Batch\nFinal Batch\nCompound\nMat\nProducts\nFinished Product"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-28 16:08:23.873939",
+ "modified": "2025-02-28 23:05:21.040577",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Physical Stock Entry",

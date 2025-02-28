@@ -700,31 +700,49 @@ def make_asset_movement(spp_settings,x):
 	ass__doc.docstatus = 1
 	ass__doc.save(ignore_permissions=True)
 
-def submit_inspection_entry(self,st_entry):
-	exe_insp = frappe.db.sql(f" SELECT stock_entry_reference,name,posting_date FROM `tabInspection Entry` WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Patrol Inspection' OR inspection_type = 'Lot Inspection') AND docstatus = 1 AND lot_no='{self.scan_lot_number}' ",as_dict = 1)	
-	if exe_insp:
-		for ins in exe_insp:
-			if ins.stock_entry_reference:
-				for st in st_entry.items:
-					if st.t_warehouse:
-						frappe.db.sql(f" UPDATE `tabStock Entry Detail` SET batch_no='{st.batch_no}' WHERE source_ref_document = 'Inspection Entry' AND source_ref_id = '{ins.name}' ")
-						frappe.db.sql(f" UPDATE `tabInspection Entry` SET batch_no='{st.batch_no}',spp_batch_number='{st.spp_batch_number}' WHERE name = '{ins.name}' ")
-						frappe.db.commit()
-				ins__exe = frappe.get_doc("Stock Entry",ins.stock_entry_reference)
-				if ins__exe.docstatus == 0:
-					for item in ins__exe.items:
-						item.use_serial_batch_fields = 1  # or True
-					ins__exe.docstatus = 1
-					ins__exe.save(ignore_permissions = True)
-					if ins.posting_date:
-						""" Update posting date and time """
-						frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{ins.posting_date}' WHERE name = '{ins__exe.name}' ")
-						""" End """
-	work_order_id = frappe.db.get_value("Job Card",self.job_card,"work_order")
-	frappe.db.set_value("Work Order",work_order_id,"status","Completed")
-	frappe.db.set_value("Job Card",self.job_card,"docstatus",1)
-	frappe.db.set_value("Job Card",self.job_card,"status",'Completed')
-	frappe.db.commit()
+def submit_inspection_entry(self, st_entry):
+    exe_insp = frappe.db.sql(f" SELECT stock_entry_reference,name,posting_date FROM `tabInspection Entry` WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Patrol Inspection' OR inspection_type = 'Lot Inspection') AND docstatus = 1 AND lot_no='{self.scan_lot_number}' ",as_dict = 1)    
+    if exe_insp:
+        for ins in exe_insp:
+            if ins.stock_entry_reference:
+                # Find the target batch number from stock entry
+                target_batch = None
+                for st in st_entry.items:
+                    if st.t_warehouse:  # This identifies the target/output item
+                        target_batch = st.batch_no
+                        break
+                
+                if not target_batch:
+                    frappe.throw("Target batch number not found in stock entry")
+
+                # Update batch details in stock entry detail and inspection entry
+                frappe.db.sql(f" UPDATE `tabStock Entry Detail` SET batch_no='{target_batch}' WHERE source_ref_document = 'Inspection Entry' AND source_ref_id = '{ins.name}' ")
+                frappe.db.sql(f" UPDATE `tabInspection Entry` SET batch_no='{target_batch}',spp_batch_number='{self.scan_lot_number}' WHERE name = '{ins.name}' ")
+                frappe.db.commit()
+
+                # Get and submit the inspection entry's stock entry
+                ins__exe = frappe.get_doc("Stock Entry", ins.stock_entry_reference)
+                if ins__exe.docstatus == 0:
+                    # Update batch numbers in all items
+                    for item in ins__exe.items:
+                        item.use_serial_batch_fields = 1
+                        if not item.batch_no:
+                            item.batch_no = target_batch
+                    
+                    ins__exe.docstatus = 1
+                    ins__exe.save(ignore_permissions = True)
+                    
+                    if ins.posting_date:
+                        """ Update posting date and time """
+                        frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{ins.posting_date}' WHERE name = '{ins__exe.name}' ")
+                        """ End """
+
+    # Update work order and job card status
+    work_order_id = frappe.db.get_value("Job Card", self.job_card, "work_order")
+    frappe.db.set_value("Work Order", work_order_id, "status", "Completed")
+    frappe.db.set_value("Job Card", self.job_card, "docstatus", 1)
+    frappe.db.set_value("Job Card", self.job_card, "status", 'Completed')
+    frappe.db.commit()
 	
 def get_spp_batch_date(compound):
 	serial_no = 1

@@ -16,7 +16,7 @@ function create_physical_stock_dialog(frm) {
                 fieldtype: 'Data',
                 reqd: true,
                 onchange: () => {
-                    onBatchNumberScanned(d);
+                    onBatchNumberScanned(d,frm);
                 }
             },
             {
@@ -69,16 +69,18 @@ function create_physical_stock_dialog(frm) {
     d.show();
 }
 
-function onBatchNumberScanned(dialog) {
+function onBatchNumberScanned(dialog,frm) {
     let batch_number = dialog.get_value('batch_number');
     if (batch_number) {
         frappe.call({
-            method: "shree_polymer_custom_app.shree_polymer_custom_app.doctype.physical_stock_entry.physical_stock_entry.get_item_details",
+            method: "shree_polymer_custom_app.shree_polymer_custom_app.doctype.physical_stock_entry.physical_stock_entry.get_filtered_stock_by_parameters",
             args: {
-                batch_number: batch_number
+                mixed_barcode: batch_number,
+                item_group: frm.doc.item_group
             },
             callback: function(r) {
                 if (r.message) {
+                    console.log(r.message);
                     dialog.set_value('item_code', r.message.item_code);
                     dialog.set_value('item_name', r.message.item_name);
                     dialog.set_value('item_group', r.message.item_group);
