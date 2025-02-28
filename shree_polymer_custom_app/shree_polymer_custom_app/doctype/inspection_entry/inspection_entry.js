@@ -144,7 +144,7 @@ frappe.ui.form.on('Inspection Entry', {
 		}
 	},
 	check_role_assign_opts(frm){
-		let ins_opts = []
+		let ins_opts = ['Patrol Inspection'] // Add Patrol Inspection by default for all roles
 		if (has_common(frappe.user_roles, ['Line Inspector']) && frappe.session.user!="Administrator") {
 			ins_opts.push('Line Inspection')
 	    }
@@ -158,7 +158,7 @@ frappe.ui.form.on('Inspection Entry', {
 			ins_opts.push("Final Visual Inspection")
 	    }
 		if (has_common(frappe.user_roles, ['Quality Executive', 'Lot Inspector','System Manager']) && frappe.session.user!="Administrator") {
-			ins_opts.push("Patrol Inspection")
+			// Patrol Inspection already added by default
 	    }
 		if(ins_opts && ins_opts.length > 0){
 			set_field_options("inspection_type", ins_opts)
