@@ -38,6 +38,7 @@ def get_filtered_stock_by_parameters(mixed_barcode, item_group):
         SELECT 
             sed.item_code,
             i.item_name,
+            i.item_group,
             sed.spp_batch_number,
             sed.mix_barcode,
             sed.batch_no,
