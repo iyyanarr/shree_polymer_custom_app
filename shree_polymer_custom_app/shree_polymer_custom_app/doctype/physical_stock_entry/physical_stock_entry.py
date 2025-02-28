@@ -15,7 +15,7 @@ WAREHOUSE_MAPPING = {
     'Batch': 'U3-Store - SPP INDIA',
     'Final Batch': 'U3-Store - SPP INDIA',
     'Master Batch': 'U3-Store - SPP INDIA',
-    'Matt': 'U2-Store - SPP INDIA',
+    'Mat': 'U2-Store - SPP INDIA',
     'Products': 'U2-Store - SPP INDIA',
     'Finished Product': 'U2-Store - SPP INDIA',
     'Cut Bit': 'Cutbit Warehouse - SPP INDIA'
@@ -23,7 +23,6 @@ WAREHOUSE_MAPPING = {
 
 @frappe.whitelist()
 def get_filtered_stock_by_parameters(mixed_barcode, item_group):
-    print('**************************',mixed_barcode, item_group)
     """
     Fetch stock details grouped by item using mixed_barcode and item_group filters,
     while mapping the warehouse based on item_group in Python.
@@ -34,7 +33,7 @@ def get_filtered_stock_by_parameters(mixed_barcode, item_group):
     warehouse = get_warehouse_for_item_group(item_group)
     if not warehouse:
         return {"error": "Warehouse mapping not found for the given item group"}
-    print('**************************',warehouse,mixed_barcode, item_group)
+
     sql_query = """
         SELECT 
             sed.item_code,
@@ -42,7 +41,8 @@ def get_filtered_stock_by_parameters(mixed_barcode, item_group):
             sed.spp_batch_number,
             sed.mix_barcode,
             sed.batch_no,
-            SUM(sed.qty) AS current_stock,
+            SUM(sed.qty) AS total_quantity,
+            sed.s_warehouse,
             sed.t_warehouse
         FROM 
             `tabStock Entry` se
@@ -54,18 +54,18 @@ def get_filtered_stock_by_parameters(mixed_barcode, item_group):
             se.stock_entry_type = 'Manufacture' AND
             sed.mix_barcode = %s AND
             i.item_group = %s AND
-            sed.t_warehouse = %s AND
+            (sed.s_warehouse = %s OR sed.t_warehouse = %s) AND
             sed.spp_batch_number IS NOT NULL AND sed.spp_batch_number != '' AND
             sed.t_warehouse IS NOT NULL AND sed.t_warehouse != '' AND
             sed.batch_no IS NOT NULL AND sed.batch_no != ''
         GROUP BY 
-            sed.item_code, sed.spp_batch_number, sed.mix_barcode, sed.batch_no,  sed.t_warehouse
+            sed.item_code, sed.spp_batch_number, sed.mix_barcode, sed.batch_no, sed.s_warehouse, sed.t_warehouse
         ORDER BY 
             sed.item_code, sed.spp_batch_number;
     """
 
     try:
-        result = frappe.db.sql(sql_query, (mixed_barcode,warehouse,item_group,), as_dict=True)
+        result = frappe.db.sql(sql_query, (mixed_barcode, item_group, warehouse, warehouse), as_dict=True)
         if not result:
             return {"message": "No data found for the given filters."}
         return result
