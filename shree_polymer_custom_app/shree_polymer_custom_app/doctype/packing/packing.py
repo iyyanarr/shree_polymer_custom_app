@@ -126,6 +126,7 @@ def make_repack_entry(mt_doc):
 				"uom": "Nos",
 				"is_finished_item":0,
 				"transfer_qty":flt(x.qty_nos,3),
+				"use_serial_batch_fields":1,
 				"qty":flt(x.qty_nos,3),
 				"batch_no":x.batch_no
 				})
@@ -137,6 +138,7 @@ def make_repack_entry(mt_doc):
 			"uom": "Nos",
 			"is_finished_item":1,
 			"transfer_qty":flt(mt_doc.total_qty_nos,3),
+			"use_serial_batch_fields":1,
 			"qty":flt(mt_doc.total_qty_nos,3),
 			# "spp_batch_number":x.spp_batch_no,
 			"mix_barcode": frappe.db.get_value(mt_doc.doctype,mt_doc.name,"barcode_text"),
