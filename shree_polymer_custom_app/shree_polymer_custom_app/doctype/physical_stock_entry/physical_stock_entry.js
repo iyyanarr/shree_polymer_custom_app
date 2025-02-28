@@ -16,7 +16,7 @@ function create_physical_stock_dialog(frm) {
                 fieldtype: 'Data',
                 reqd: true,
                 onchange: () => {
-                    onBatchNumberScanned(d,frm);
+                    onBatchNumberScanned(d, frm);
                 }
             },
             {
@@ -69,8 +69,9 @@ function create_physical_stock_dialog(frm) {
     d.show();
 }
 
-function onBatchNumberScanned(dialog,frm) {
+function onBatchNumberScanned(dialog, frm) {
     let batch_number = dialog.get_value('batch_number');
+
     if (batch_number) {
         frappe.call({
             method: "shree_polymer_custom_app.shree_polymer_custom_app.doctype.physical_stock_entry.physical_stock_entry.get_filtered_stock_by_parameters",
@@ -79,13 +80,15 @@ function onBatchNumberScanned(dialog,frm) {
                 item_group: frm.doc.item_group
             },
             callback: function(r) {
-                if (r.message) {
-                    console.log(r.message);
-                    dialog.set_value('item_code', r.message.item_code);
-                    dialog.set_value('item_name', r.message.item_name);
-                    dialog.set_value('item_group', r.message.item_group);
-                    dialog.set_value('warehouse', r.message.warehouse);
-                    dialog.set_value('current_stock', r.message.current_stock);
+                if (r.message && r.message.length > 0) {
+                    let data = r.message[0];
+                    console.log(data);
+                    dialog.set_value('item_code', data.item_code);
+                    dialog.set_value('item_name', data.item_name);
+                    dialog.set_value('item_group', data.item_group);
+                    dialog.set_value('warehouse', data.t_warehouse); // Assuming t_warehouse is your warehouse field
+                    dialog.set_value('current_stock', data.total_quantity);
+
                     // Set focus to the Physical Stock field
                     dialog.get_field('physical_stock').$input.focus();
                 } else {
@@ -99,6 +102,7 @@ function onBatchNumberScanned(dialog,frm) {
 function add_entry_to_child_table(frm, values) {
     if (frm && frm.doc) {
         let child = frm.add_child('details');
+
         if (child) {
             child.batch_number = values.batch_number;
             child.item_code = values.item_code;
@@ -107,8 +111,9 @@ function add_entry_to_child_table(frm, values) {
             child.warehouse = values.warehouse;
             child.current_stock = values.current_stock;
             child.physical_stock = values.physical_stock;
+
             frm.refresh_field('details');
-            frm.save();  // Save the document after adding the child
+            frm.save(); // Save the document after adding the child
         } else {
             frappe.msgprint(__('Failed to add child entry.'));
         }
