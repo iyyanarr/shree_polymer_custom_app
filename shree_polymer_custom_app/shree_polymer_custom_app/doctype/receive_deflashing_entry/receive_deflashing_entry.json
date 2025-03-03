@@ -12,6 +12,8 @@
   "get_items",
   "column_break_ttby",
   "despatch_info",
+  "column_break_uqtw",
+  "despatch_item_info",
   "scan_lot",
   "scan_lot_no",
   "column_break_2",
@@ -145,12 +147,21 @@
    "in_standard_filter": 1,
    "label": "Deflash Despatch Number",
    "reqd": 1
+  },
+  {
+   "fieldname": "despatch_item_info",
+   "fieldtype": "HTML",
+   "label": "Despatch Item info"
+  },
+  {
+   "fieldname": "column_break_uqtw",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-28 14:24:00.145674",
+ "modified": "2025-03-03 13:37:19.603166",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Receive Deflashing Entry",

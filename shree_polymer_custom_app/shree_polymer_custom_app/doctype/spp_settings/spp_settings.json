@@ -8,6 +8,8 @@
  "field_order": [
   "stock_enqueue_section",
   "enable_enqueue",
+  "section_break_kfzg",
+  "weight_tolerance",
   "batch_entry_section",
   "source_warehouse",
   "workstation",
@@ -40,7 +42,6 @@
   "from_location",
   "column_break_lp5z0",
   "to_location",
-  "designation_mapping_section",
   "work_plan_section",
   "item_group",
   "mould_item_group",
@@ -203,11 +204,6 @@
    "fieldtype": "Link",
    "label": "Default Blanking Warehouse",
    "options": "Warehouse"
-  },
-  {
-   "fieldname": "designation_mapping_section",
-   "fieldtype": "Section Break",
-   "label": "Designation Mapping"
   },
   {
    "fieldname": "column_break_20",
@@ -526,12 +522,21 @@
    "fieldname": "extra__of_compound_required",
    "fieldtype": "Percent",
    "label": "Extra % Of Compound Required"
+  },
+  {
+   "fieldname": "section_break_kfzg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "weight_tolerance",
+   "fieldtype": "Float",
+   "label": "Weight Tolerance"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-10-19 15:05:40.073264",
+ "modified": "2025-03-03 14:45:59.471392",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "SPP Settings",
