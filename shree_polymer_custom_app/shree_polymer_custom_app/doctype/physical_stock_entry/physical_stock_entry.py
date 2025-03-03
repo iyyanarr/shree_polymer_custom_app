@@ -61,7 +61,7 @@ def get_filtered_stock_by_parameters(batch_or_mixed_barcode, item_group):
             INNER JOIN `tabItem` i ON i.item_code = sed.item_code
             INNER JOIN `tabStock Entry` se ON se.name = sed.parent
             WHERE sed.mix_barcode = %s
-                AND i.item_group = %s
+                AND sed.item_group = %s
                 AND sed.batch_no IS NOT NULL AND sed.batch_no != ''
                 AND sed.is_finished_item = 1
                 AND se.stock_entry_type = 'Manufacture'
