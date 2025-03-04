@@ -161,16 +161,62 @@ frappe.ui.form.on('Receive Deflashing Entry', {
         const items = frm.despatchInfo.items;
         const scannedLots = frm.doc.items ? frm.doc.items.map(item => item.lot_no) : [];
 
-        let itemsHtml = `
+        // Custom CSS styles for the table
+        const customStyles = `
+            <style>
+                .item-table .scanned-row {
+                    background-color: rgba(40, 167, 69, 0.15); /* Light green with transparency */
+                    transition: background-color 0.3s ease;
+                }
+                .item-table .scanned-row:hover {
+                    background-color: rgba(40, 167, 69, 0.25); /* Slightly darker on hover */
+                }
+                .status-indicator {
+                    display: inline-block;
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 50%;
+                    margin-right: 5px;
+                }
+                .status-received .status-indicator {
+                    background-color: #28a745; /* Green */
+                }
+                .status-miss-match .status-indicator {
+                    background-color: #ffc107; /* Yellow */
+                }
+                .status-pending .status-indicator {
+                    background-color: #6c757d; /* Gray */
+                }
+                .progress-bar-container {
+                    background-color: #e9ecef;
+                    border-radius: 4px;
+                    height: 20px;
+                    margin-top: 10px;
+                    overflow: hidden;
+                }
+                .progress-bar {
+                    height: 100%;
+                    background-color: #28a745;
+                    text-align: center;
+                    color: white;
+                    font-weight: bold;
+                    line-height: 20px;
+                    transition: width 0.5s ease;
+                }
+            </style>
+        `;
+
+        let itemsHtml = customStyles + `
             <div class="table-responsive">
-                <table class="table table-bordered">
-                    <thead>
+                <table class="table table-bordered item-table">
+                    <thead class="thead-light">
                         <tr>
+                            <th>Status</th>
                             <th>Lot No.</th>
                             <th>Product</th>
                             <th>Weight (Kgs)</th>
                             <th>Qty (Nos)</th>
-                            <th>Status</th>
+                            <th>Received Weight</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -180,22 +226,46 @@ frappe.ui.form.on('Receive Deflashing Entry', {
             const isScanned = scannedLots.includes(item.lot_no);
             const scannedItem = isScanned ? frm.doc.items.find(i => i.lot_no === item.lot_no) : null;
             
+            let statusClass = 'status-pending';
+            let statusLabel = 'Pending';
+            let receivedWeight = '';
+            
+            if (isScanned) {
+                statusClass = scannedItem.status === 'Received' ? 'status-received' : 'status-miss-match';
+                statusLabel = scannedItem.status;
+                receivedWeight = scannedItem.received_weight;
+            }
+            
             itemsHtml += `
-                <tr class="${isScanned ? 'bg-light-green' : ''}">
-                    <td>${item.lot_no}</td>
+                <tr class="${isScanned ? 'scanned-row' : ''}" ${isScanned ? 'title="Scanned"' : ''}>
+                    <td class="${statusClass}"><span class="status-indicator"></span>${statusLabel}</td>
+                    <td><strong>${item.lot_no}</strong></td>
                     <td>${item.product_ref}</td>
                     <td>${item.weight_kgs}</td>
                     <td>${item.qty_nos}</td>
-                    <td>${isScanned ? scannedItem.status : 'Pending'}</td>
+                    <td>${isScanned ? `<strong>${receivedWeight}</strong>` : '-'}</td>
                 </tr>
             `;
         });
 
+        // Calculate progress percentage
+        const progress = scannedLots.length / frm.despatchInfo.items.length * 100;
+        
         itemsHtml += `
                     </tbody>
                 </table>
             </div>
-            <p class="text-muted">Scanned: ${scannedLots.length} of ${frm.despatchInfo.items.length} lots</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: ${progress}%">
+                    ${scannedLots.length} of ${frm.despatchInfo.items.length} (${Math.round(progress)}%)
+                </div>
+            </div>
+            <p class="text-muted mt-2">
+                <span class="badge badge-pill badge-light">
+                    <i class="fa fa-info-circle"></i> 
+                    Scan each lot number to process items
+                </span>
+            </p>
         `;
 
         frm.fields_dict.despatch_item_info.$wrapper.html(itemsHtml);
@@ -211,37 +281,49 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                 { fieldname: 'observed_weight', label: 'Observed Weight (Kgs)', fieldtype: 'Float', reqd: 1 }
             ],
             primary_action_label: 'Submit',
-            primary_action(values) {
+            primary_action: function(values) {
                 const difference = values.observed_weight - values.weight_kgs;
                 const abs_difference = Math.abs(difference);
-
-                if (values.weight_kgs > values.observed_weight && abs_difference <= tolerance) {
-                    // Condition: System weight is greater than observed weight, and the difference is within tolerance
+    
+                // Handle equal weights case
+                if (values.weight_kgs === values.observed_weight) {
                     frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
                     dialog.hide();
-                } else if (values.weight_kgs > values.observed_weight && abs_difference > tolerance) {
-                    // Condition: System weight is greater than observed weight, but the difference exceeds tolerance
-                    frm.events.add_item_to_table(frm, item, values.observed_weight, 'Miss Match');
-                    frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
-                    dialog.hide();
-                } else if (values.weight_kgs < values.observed_weight && abs_difference <= tolerance) {
-                    // Condition: System weight is less than observed weight, but the difference is within tolerance
-                    frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
-                    dialog.hide();
-                } else if (values.weight_kgs < values.observed_weight && abs_difference > tolerance) {
-                    // Condition: System weight is less than observed weight, and the difference exceeds tolerance
-                    frappe.msgprint({
-                        title: __('Weight Mismatch Tracker Created'),
-                        indicator: 'red',
-                        message: __('Observed weight exceeds system weight and difference is greater than tolerance. Raising a Weight Mismatch Tracker.')
-                    });
-                    frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
-                    dialog.hide();
+                    return;
                 }
+    
+                if (values.weight_kgs > values.observed_weight) {
+                    // System weight is greater than observed weight
+                    if (abs_difference <= tolerance) {
+                        // Difference is within tolerance
+                        frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
+                    } else {
+                        // Difference exceeds tolerance
+                        frm.events.add_item_to_table(frm, item, values.observed_weight, 'Miss Match');
+                        frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
+                    }
+                } else {
+                    // System weight is less than observed weight
+                    if (abs_difference <= tolerance) {
+                        // Difference is within tolerance
+                        frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
+                    } else {
+                        // Difference exceeds tolerance
+                        frappe.msgprint({
+                            title: __('Weight Mismatch Tracker Created'),
+                            indicator: 'red',
+                            message: __('Observed weight exceeds system weight and difference is greater than tolerance. Raising a Weight Mismatch Tracker.')
+                        });
+                        frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
+                    }
+                }
+                
+                dialog.hide();
             }
         });
+        
         dialog.show();
-    },
+    },    
 
     confirm_weight_mismatch_action: function(frm, item, observed_weight, difference) {
         let difference_description = difference < 0 ? "negative" : "excess";
