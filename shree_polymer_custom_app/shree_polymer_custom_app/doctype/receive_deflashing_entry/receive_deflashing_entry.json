@@ -8,16 +8,17 @@
  "engine": "InnoDB",
  "field_order": [
   "dd_number",
-  "column_break_wnfav",
   "get_items",
-  "column_break_ttby",
+  "column_break_wnfav",
   "despatch_info",
-  "column_break_uqtw",
+  "column_break_ttby",
   "despatch_item_info",
   "scan_lot",
   "scan_lot_no",
   "column_break_2",
+  "receiving_warehouse",
   "column_break_6",
+  "receive_scanned_items",
   "section_break_11",
   "items",
   "section_break_13",
@@ -29,7 +30,11 @@
   "stock_entry_reference",
   "valuation_rate",
   "amount",
-  "amended_from"
+  "amended_from",
+  "section_break_esyf",
+  "status",
+  "column_break_dssm",
+  "received_stock_entry_ref"
  ],
  "fields": [
   {
@@ -154,14 +159,41 @@
    "label": "Despatch Item info"
   },
   {
-   "fieldname": "column_break_uqtw",
+   "fieldname": "receive_scanned_items",
+   "fieldtype": "HTML",
+   "label": "Receive Scanned Items"
+  },
+  {
+   "fieldname": "receiving_warehouse",
+   "fieldtype": "Link",
+   "label": "Receiving Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "section_break_esyf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nClosed\nPending"
+  },
+  {
+   "fieldname": "column_break_dssm",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "received_stock_entry_ref",
+   "fieldtype": "Link",
+   "label": "Received Stock Entry Ref",
+   "options": "Stock Entry"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-03 13:37:19.603166",
+ "modified": "2025-03-04 19:42:56.215274",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Receive Deflashing Entry",
