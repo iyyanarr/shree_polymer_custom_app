@@ -35,7 +35,8 @@
   "total_qty_nos",
   "stock_entry_reference",
   "valuation_rate",
-  "amount"
+  "amount",
+  "amended_from"
  ],
  "fields": [
   {
@@ -203,12 +204,22 @@
    "fieldtype": "Data",
    "label": "Vehicle No",
    "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Despatch To U1 Entry",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-27 14:23:11.331516",
+ "modified": "2025-03-05 11:34:17.274651",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Despatch To U1 Entry",
