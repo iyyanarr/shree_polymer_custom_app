@@ -212,3 +212,30 @@ def create_stock_entries(doc_name, items):
         "processed_items": processed_items,
         "stock_entries": stock_entries
     }
+
+@frappe.whitelist()
+def check_existing_entries(dd_number, current_doc=None):
+    """Check if there are existing Receive Deflashing Entry docs for the given DD number."""
+    filters = {
+        'dd_number': dd_number,
+        'docstatus': ['<', 2]  # Not cancelled
+    }
+    
+    # Exclude current document if editing
+    if current_doc:
+        filters['name'] = ['!=', current_doc]
+    
+    existing = frappe.get_all('Receive Deflashing Entry', 
+                             filters=filters,
+                             fields=['name'],
+                             limit=1)
+    
+    if existing:
+        return {
+            'exists': True,
+            'doc_name': existing[0].name
+        }
+    
+    return {
+        'exists': False
+    }

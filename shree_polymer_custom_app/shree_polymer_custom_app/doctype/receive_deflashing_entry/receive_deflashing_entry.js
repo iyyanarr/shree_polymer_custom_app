@@ -271,7 +271,6 @@ frappe.ui.form.on('Receive Deflashing Entry', {
         frm.fields_dict.despatch_item_info.$wrapper.html(itemsHtml);
     },
 
-    // Updated show_observed_weight_dialog function with the new conditions
     show_observed_weight_dialog: function(frm, item, tolerance) {
         const dialog = new frappe.ui.Dialog({
             title: 'Weight Measurement',
@@ -284,46 +283,52 @@ frappe.ui.form.on('Receive Deflashing Entry', {
             primary_action: function(values) {
                 const difference = values.observed_weight - values.weight_kgs;
                 const abs_difference = Math.abs(difference);
-    
+
                 // Handle equal weights case
                 if (values.weight_kgs === values.observed_weight) {
                     frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
                     dialog.hide();
                     return;
                 }
-    
-                if (values.weight_kgs > values.observed_weight) {
-                    // System weight is greater than observed weight
-                    if (abs_difference <= tolerance) {
-                        // Difference is within tolerance
-                        frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
-                    } else {
-                        // Difference exceeds tolerance
-                        frm.events.add_item_to_table(frm, item, values.observed_weight, 'Miss Match');
-                        frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
-                    }
-                } else {
-                    // System weight is less than observed weight
-                    if (abs_difference <= tolerance) {
-                        // Difference is within tolerance
-                        frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
-                    } else {
-                        // Difference exceeds tolerance
-                        frappe.msgprint({
-                            title: __('Weight Mismatch Tracker Created'),
-                            indicator: 'red',
-                            message: __('Observed weight exceeds system weight and difference is greater than tolerance. Raising a Weight Mismatch Tracker.')
-                        });
-                        frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
-                    }
+
+                if (values.weight_kgs > values.observed_weight && abs_difference <= tolerance) {
+                    // Within tolerance: Add item with Received status
+                    frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
+                    dialog.hide();
+                } else if (values.weight_kgs > values.observed_weight && abs_difference > tolerance) {
+                    // Exceeds tolerance: Show alert and create weight mismatch
+                    frappe.confirm(
+                        __('Weight difference exceeds tolerance and system weight is greater than observed weight. Do you want to create a weight mismatch tracker?'),
+                        () => {
+                            // If confirmed, add item with Miss Match status and create tracker
+                            frm.events.add_item_to_table(frm, item, values.observed_weight, 'Miss Match');
+                            frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
+                            dialog.hide();
+                        },
+                        () => {
+                            // If cancelled, just close the dialog
+                            dialog.hide();
+                        }
+                    );
+                } else if (values.weight_kgs < values.observed_weight && abs_difference <= tolerance) {
+                    // Within tolerance: Add item with Received status
+                    frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
+                    dialog.hide();
+                } else if (values.weight_kgs < values.observed_weight && abs_difference > tolerance) {
+                    // Exceeds tolerance: Show alert and create weight mismatch
+                    frappe.msgprint({
+                        title: __('Weight Mismatch'),
+                        indicator: 'red',
+                        message: __('Observed weight exceeds system weight and difference is greater than tolerance. Creating Weight Mismatch Tracker.')
+                    });
+                    frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
+                    dialog.hide();
                 }
-                
-                dialog.hide();
             }
         });
         
         dialog.show();
-    },    
+    },
 
     confirm_weight_mismatch_action: function(frm, item, observed_weight, difference) {
         let difference_description = difference < 0 ? "negative" : "excess";
