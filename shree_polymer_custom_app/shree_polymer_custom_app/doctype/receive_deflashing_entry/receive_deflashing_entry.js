@@ -73,14 +73,16 @@ frappe.ui.form.on('Receive Deflashing Entry', {
 
     render_create_stock_entries_button: function(frm) {
         const items = frm.doc.items || [];
-        const validItems = items.filter(item =>
-            item.status === 'Received' || item.status === 'Miss Match'
+        // Filter items that have status 'Received' or 'Miss Match' AND stock_entry_status 'Not Created'
+        const validItems = items.filter(item => 
+            (item.status === 'Received' || item.status === 'Miss Match') && 
+            item.stock_entry_status === 'Not Created'
         );
 
         const buttonHtml = `
             <button class="btn btn-primary ${validItems.length ? '' : 'disabled'}"
                 ${validItems.length ? '' : 'disabled'}>
-                Create Stock Entries (${validItems.length} items)
+                Create Stock Entries (${validItems.length} pending items)
             </button>
         `;
         frm.fields_dict.receive_scanned_items.$wrapper.html(buttonHtml);
@@ -95,6 +97,12 @@ frappe.ui.form.on('Receive Deflashing Entry', {
     create_stock_entries: function(frm, items) {
         if (!items.length) {
             frappe.msgprint(__('No valid items to create stock entries for.'));
+            return;
+        }
+
+        // Check if document is new/unsaved
+        if (frm.is_new()) {
+            frappe.msgprint(__('Please save the document before creating stock entries.'));
             return;
         }
 
@@ -125,30 +133,33 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                     freeze: true,
                     freeze_message: __('Creating Stock Entries...'),
                     callback: function(response) {
-                        console.log(response);
                         if (response.message) {
                             // Update the status of processed items
                             const processedItems = response.message.processed_items || [];
                             const stockEntries = response.message.stock_entries || [];
+                            
                             if (processedItems.length) {
-                                // Update item status in the table
                                 frm.doc.items.forEach(item => {
                                     if (processedItems.includes(item.lot_no)) {
-                                        item.stock_entry_created = 1;
-                                        item.stock_entry_status = 'Created';
+                                        frappe.model.set_value(item.doctype, item.name, 'stock_entry_status', 'Created');
                                     }
                                 });
                                 frm.refresh_field('items');
+                                frm.reload_doc(); // Reload to get latest data
                             }
 
-                            // Show success message with links to created stock entries
+                            // Show success message
                             let messageHtml = `<p>Successfully created ${stockEntries.length} stock entries:</p><ul>`;
                             stockEntries.forEach(entry => {
                                 messageHtml += `<li><a href="/app/stock-entry/${entry}" target="_blank">${entry}</a></li>`;
                             });
                             messageHtml += `</ul>`;
 
-                            frappe.msgprint(messageHtml);
+                            frappe.msgprint({
+                                title: __('Success'),
+                                indicator: 'green',
+                                message: messageHtml
+                            });
                         }
                     }
                 });
@@ -413,10 +424,9 @@ frappe.ui.form.on('Receive Deflashing Entry', {
         child.stock_entry_reference = item.stock_entry_reference;
         child.amount = item.amount;
         child.received_weight = observed_weight;
+        child.stock_entry_status = 'Not Created';
         child.weight_difference = Math.abs(observed_weight - item.weight_kgs).toFixed(3);
         child.status = status;
-        child.stock_entry_created = 0;
-        child.stock_entry_status = 'Pending';
         frm.refresh_field('items');
         // Update the despatch item info display
         frm.events.update_despatch_item_info(frm);
