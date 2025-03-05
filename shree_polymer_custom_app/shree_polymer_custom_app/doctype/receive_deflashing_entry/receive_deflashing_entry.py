@@ -101,7 +101,7 @@ def create_stock_entries(doc_name, items):
                 
             print(f"DEBUG: Child item details - vendor: {child_item.vendor}, product_ref: {child_item.product_ref}")
             
-            source_warehouse = child_item.vendor  # Use vendor as source warehouse
+            source_warehouse = 'U1-Transit Store - SPP INDIA'  # Use vendor as source warehouse
             print(f"DEBUG: Source warehouse (vendor): {source_warehouse}")
             
             if not source_warehouse:
