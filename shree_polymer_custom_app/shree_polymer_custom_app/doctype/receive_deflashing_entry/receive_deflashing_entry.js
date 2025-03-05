@@ -115,6 +115,7 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                         items: items.map(item => ({
                             lot_no: item.lot_no,
                             product_ref: item.product_ref,
+                            qty_nos: item.qty_nos,
                             received_weight: item.received_weight,
                             status: item.status,
                             stock_entry_reference: item.stock_entry_reference,

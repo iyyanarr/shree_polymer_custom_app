@@ -128,17 +128,37 @@ def create_stock_entries(doc_name, items):
             
             print(f"DEBUG: Item data - product_ref: {item_data.get('product_ref')}, received_weight: {item_data.get('received_weight')}")
             
+            # Get item details including conversion factor
+            item_doc = frappe.get_doc("Item", item_data.get("product_ref"))
+
+            # Find the kg to nos conversion factor from the UOMs table
+            conversion_factor = 1  # Default value
+            for uom_row in item_doc.uoms:
+                if uom_row.uom == "Kg":
+                    conversion_factor = uom_row.conversion_factor
+                    print(f"DEBUG: Found conversion factor for {item_data.get('product_ref')}: {conversion_factor}")
+                    break
+
+            # Calculate quantity in nos from weight
+            weight_in_kg = float(item_data.get("received_weight") or 0)
+            qty_in_nos = weight_in_kg * conversion_factor
+            print(f"DEBUG: Converting {weight_in_kg} kg to nos using factor {conversion_factor} = {qty_in_nos} nos")
+            
             # Add item to stock entry
             stock_entry.append("items", {
                 "item_code": item_data.get("product_ref"),
-                "qty": float(item_data.get("received_weight")),  # Convert to float
+                "qty": qty_in_nos,  # Use converted quantity
+                "stock_uom": "Nos",  # Set stock UOM to Nos
+                "uom": "Nos",        # Set UOM to Nos
+                "conversion_factor": 1,  # Since we're already converting
                 "s_warehouse": source_warehouse,
                 "t_warehouse": target_warehouse,
                 "use_serial_batch_fields": 1,
                 "batch_no": item_data.get("batch_no"),
                 "spp_batch_number": item_data.get("lot_no"),
                 "is_deflashed": 1,
-                "status": item_data.get("status")
+                "status": item_data.get("status"),
+                "basic_rate": item_doc.standard_rate or 0
             })
             
             # Save and submit the stock entry
