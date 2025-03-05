@@ -177,16 +177,39 @@ def create_stock_entries(doc_name, items):
     # Update parent document
     if processed_items:
         print(f"DEBUG: Updating parent document with {len(stock_entry_refs)} stock entry references")
-        # Update received_stock_entry_ref field with comma-separated list of stock entries
-        if stock_entry_refs:
+        
+        # Calculate totals from processed items
+        total_lots = len(processed_items)
+        total_qty_kgs = 0
+        total_qty_nos = 0
+        
+        # Sum up quantities from child items that have stock entries
+        for item in parent_doc.items:
+            if item.stock_entry_reference_return:
+                total_qty_kgs += float(item.received_weight or 0)
+                total_qty_nos += float(item.qty_nos or 0)
+        
+        print(f"DEBUG: Calculated totals - Lots: {total_lots}, Kgs: {total_qty_kgs}, Nos: {total_qty_nos}")
+        
+        # Update parent document fields
+        parent_doc.total_lots = total_lots
+        parent_doc.total_qty_kgs = total_qty_kgs
+        parent_doc.total_qty_nos = total_qty_nos
+        
+        # Add stock entries to the received_stock_entry_ref table
+        for stock_entry_name in stock_entry_refs:
+            # Check if entry already exists in the table
+            exists = False
             if parent_doc.received_stock_entry_ref:
-                # Append new entries to existing ones
-                existing_refs = parent_doc.received_stock_entry_ref.split(',')
-                print(f"DEBUG: Existing refs: {len(existing_refs)}")
-                all_refs = existing_refs + stock_entry_refs
-                parent_doc.received_stock_entry_ref = ','.join(list(set(all_refs)))  # Remove duplicates
-            else:
-                parent_doc.received_stock_entry_ref = ','.join(stock_entry_refs)
+                exists = any(row.stock_entry == stock_entry_name 
+                           for row in parent_doc.received_stock_entry_ref)
+            
+            if not exists:
+                # Add new row to the table
+                parent_doc.append('received_stock_entry_ref', {
+                    'stock_entry': stock_entry_name
+                })
+                print(f"DEBUG: Added stock entry {stock_entry_name} to received_stock_entry_ref table")
         
         # Check status based on whether all items have stock entries
         all_items_processed = True
@@ -202,7 +225,7 @@ def create_stock_entries(doc_name, items):
             print("DEBUG: Some items still pending, setting status to Pending")
             parent_doc.status = "Pending"
         
-        print("DEBUG: Saving parent document")
+        print("DEBUG: Saving parent document with updated totals")
         parent_doc.save()
     else:
         print("DEBUG: No items were processed")
