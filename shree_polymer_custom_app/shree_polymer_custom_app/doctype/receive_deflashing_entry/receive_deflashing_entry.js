@@ -383,7 +383,7 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                     item_code: item.product_ref,
                     batch_number: item.batch_no,
                     system_weight: item.weight_kgs,
-                    warehouse: item.warehouse,
+                    warehouse: item.vendor,
                     observed_by: frappe.session.user,
                 }
             },
