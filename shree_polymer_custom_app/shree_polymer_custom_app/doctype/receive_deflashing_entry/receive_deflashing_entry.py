@@ -232,19 +232,25 @@ def create_stock_entries(doc_name, items):
                 })
                 print(f"DEBUG: Added stock entry {stock_entry_name} to received_stock_entry_ref table")
 
-        # Update document status
-        all_items_processed = True
+        # Check if all items have stock entries created
+        all_items_have_stock_entries = True
         for item in parent_doc.items:
-            if not item.stock_entry_reference_return:
-                all_items_processed = False
+            if item.stock_entry_status != "Created":
+                all_items_have_stock_entries = False
                 break
 
-        parent_doc.status = "Closed" if all_items_processed else "Pending"
-        print(f"DEBUG: Setting document status to: {parent_doc.status}")
+        print(f"DEBUG: All items have stock entries: {all_items_have_stock_entries}")
         
-        print("DEBUG: Saving parent document with updated totals")
-        parent_doc.save()
-        parent_doc.submit()
+        # Only submit if all items have stock entries
+        if all_items_have_stock_entries:
+            parent_doc.status = "Closed"
+            print("DEBUG: Setting document status to Closed and submitting")
+            parent_doc.save()
+            parent_doc.submit()
+        else:
+            parent_doc.status = "Pending"
+            print("DEBUG: Some items pending stock entry creation, saving without submitting")
+            parent_doc.save()
     else:
         print("DEBUG: No items were processed")
 
