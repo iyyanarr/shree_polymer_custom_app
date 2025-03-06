@@ -135,17 +135,23 @@ def create_stock_entries(doc_name, items):
             item_doc = frappe.get_doc("Item", item_data.get("product_ref"))
 
             # Find the kg to nos conversion factor from the UOMs table
-            conversion_factor = 1  # Default value
-            for uom_row in item_doc.uoms:
-                if uom_row.uom == "Kg":
-                    conversion_factor = uom_row.conversion_factor
-                    print(f"DEBUG: Found conversion factor for {item_data.get('product_ref')}: {conversion_factor}")
-                    break
+            if item_data.get("status") == "Received":
+                # For Received items, use the original qty_nos without conversion
+                qty_in_nos = float(item_data.get("qty_nos") or 0)
+                print(f"DEBUG: Using original qty_nos for Received item: {qty_in_nos}")
+            else:
+                # For other items, perform the weight conversion
+                conversion_factor = 1  # Default value
+                for uom_row in item_doc.uoms:
+                    if uom_row.uom == "Kg":
+                        conversion_factor = uom_row.conversion_factor
+                        print(f"DEBUG: Found conversion factor for {item_data.get('product_ref')}: {conversion_factor}")
+                        break
 
-            # Calculate quantity in nos from weight
-            weight_in_kg = float(item_data.get("received_weight") or 0)
-            qty_in_nos = weight_in_kg * conversion_factor
-            print(f"DEBUG: Converting {weight_in_kg} kg to nos using factor {conversion_factor} = {qty_in_nos} nos")
+                # Calculate quantity in nos from weight
+                weight_in_kg = float(item_data.get("received_weight") or 0)
+                qty_in_nos = weight_in_kg * conversion_factor
+                print(f"DEBUG: Converting {weight_in_kg} kg to nos using factor {conversion_factor} = {qty_in_nos} nos")
 
             # Add item to stock entry
             stock_entry.append("items", {
@@ -159,8 +165,6 @@ def create_stock_entries(doc_name, items):
                 "use_serial_batch_fields": 1,
                 "batch_no": item_data.get("batch_no"),
                 "spp_batch_number": item_data.get("lot_no"),
-                "is_deflashed": 1,
-                "status": item_data.get("status"),
                 "basic_rate": item_doc.standard_rate or 0
             })
 
