@@ -264,21 +264,21 @@ doc_events = {
 		"on_cancel": "shree_polymer_custom_app.shree_polymer_custom_app.api.on_sle_update",
 		"on_trash": "shree_polymer_custom_app.shree_polymer_custom_app.api.on_sle_update",
 	},
-	# "Item":{
-	# 	"on_update": "shree_polymer_custom_app.shree_polymer_custom_app.api.on_item_update"
-	# },
-	# "Batch":{
-	# 	"on_update": "shree_polymer_custom_app.shree_polymer_custom_app.api.on_batch_update",
-    #  "on_trash":"shree_polymer_custom_app.shree_polymer_custom_app.api.on_batch_trash",
-	# },
-	# "Warehouse":{
-	# 	"on_update": "shree_polymer_custom_app.shree_polymer_custom_app.api.update_wh_barcode"
+	"Item":{
+		"on_update": "shree_polymer_custom_app.shree_polymer_custom_app.api.on_item_update"
+	},
+	"Batch":{
+		"on_update": "shree_polymer_custom_app.shree_polymer_custom_app.api.on_batch_update",
+     "on_trash":"shree_polymer_custom_app.shree_polymer_custom_app.api.on_batch_trash",
+	},
+	"Warehouse":{
+		"on_update": "shree_polymer_custom_app.shree_polymer_custom_app.api.update_wh_barcode"
 
-	# },
-	# "Employee":{
-	# 	"on_update": "shree_polymer_custom_app.shree_polymer_custom_app.api.update_emp_barcode"
+	},
+	"Employee":{
+		"on_update": "shree_polymer_custom_app.shree_polymer_custom_app.api.update_emp_barcode"
 
-	# },
+	},
 	"Asset":{
 		"on_update":"shree_polymer_custom_app.shree_polymer_custom_app.api.update_asset_barcode",
         "on_update_after_submit":"shree_polymer_custom_app.shree_polymer_custom_app.api.update_asset_barcode"
