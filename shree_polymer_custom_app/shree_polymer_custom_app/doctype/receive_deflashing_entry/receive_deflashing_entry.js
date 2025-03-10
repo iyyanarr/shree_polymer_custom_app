@@ -449,6 +449,7 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                     observed_weight: observed_weight,
                     difference_in_weight: difference,
                     item_code: item.product_ref,
+                    source_document: frm.doc.dd_number,
                     dispatch_station: "U2 Store",
                     receiving_station: "U1 Store",
                     batch_number: item.batch_no,

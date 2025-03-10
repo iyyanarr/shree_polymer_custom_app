@@ -223,6 +223,7 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
 					ref_lot_number: frm.doc.scan_lot_number || "",
 					observed_weight: observed_weight,
 					difference_in_weight: difference,
+                    source_document: frm.doc.name,
                     received_station: 'Deflashing Despatch',
 					item_code: frm.doc.item , // Moved item_code to top-level
 					batch_number: frm.doc.batch_no , // Moved batch_no to top-level

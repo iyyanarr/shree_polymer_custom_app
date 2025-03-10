@@ -12,6 +12,7 @@
   "column_break_okue",
   "dispatch_station",
   "receiving_station",
+  "source_document",
   "section_break_yoob",
   "observed_weight",
   "system_weight",
@@ -278,12 +279,18 @@
    "fieldname": "receiving_station",
    "fieldtype": "Data",
    "label": "Receiving Station"
+  },
+  {
+   "fieldname": "source_document",
+   "fieldtype": "Link",
+   "label": "Source Document",
+   "options": "Despatch To U1 Entry"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-10 13:36:21.140600",
+ "modified": "2025-03-10 15:10:00.859361",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Weight Mismatch Tracker",
