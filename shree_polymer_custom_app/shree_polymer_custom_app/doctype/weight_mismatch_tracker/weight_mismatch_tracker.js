@@ -85,7 +85,7 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
         }
   
         // If reason is "Production Entry Wrong," ensure mandatory fields are filled
-        if (reason === "Production Entry Wrong") {
+        if (reason === "Production Entry Wrong" || reason === "Stock Reconsile") {
           const approved_weight = frm.doc.approved_weight || 0;
           const updated_cavities = frm.doc.updated_cavities || 0;
           const update_no_of_lifts = frm.doc.update_no_of_lifts || 0;
@@ -104,7 +104,7 @@ frappe.ui.form.on("Weight Mismatch Tracker", {
         }
   
         // Call appropriate server-side methods for the selected reason
-        if (reason === "Production Entry Wrong") {
+        if (reason === "Production Entry Wrong" || reason === "Stock Reconcile") { 
           frappe.call({
             method: "shree_polymer_custom_app.shree_polymer_custom_app.doctype.weight_mismatch_tracker.weight_mismatch_tracker.create_stock_reconciliation",
             args: {

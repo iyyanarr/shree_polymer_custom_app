@@ -9,66 +9,127 @@ frappe.ui.form.on('Receive Deflashing Entry', {
         frm.fields_dict.get_items.$wrapper.find('button').on('click', function() {
             const ddNumber = frm.doc.dd_number; // Assuming dd_number is the fieldname for Deflash Despatch Number
             if (!ddNumber) {
-                frappe.msgprint(__('Please enter a Deflash Despatch Number.'));
-                return;
+            frappe.msgprint(__('Please enter a Deflash Despatch Number.'));
+            return;
             }
 
-            frappe.call({
-                method: 'shree_polymer_custom_app.shree_polymer_custom_app.doctype.receive_deflashing_entry.receive_deflashing_entry.get_despatch_info',
-                args: {
-                    dd_number: ddNumber
-                },
-                callback: function(response) {
-                    if (response && response.message) {
-                        const despatchInfo = response.message;
-                        frm.despatchInfo = despatchInfo; // Store for later use
+            // Check if dd_number already exists in Receive Deflashing Entry
+            if (frm.is_new()) {
+                frappe.call({
+                    method: 'frappe.client.get_list',
+                    args: {
+                        doctype: 'Receive Deflashing Entry',
+                        filters: {
+                            dd_number: ddNumber
+                        },
+                        fields: ['name']
+                    },
+                    callback: function(response) {
+                        if (response && response.message && response.message.length > 0) {
+                            frappe.msgprint(__('The Deflash Despatch Number is already created in Receive Deflashing Entry.'));
+                            frappe.set_route('Form', 'Receive Deflashing Entry', response.message[0].name);
+                            return;
+                        }
 
-                        frappe.model.get_value('SPP Settings', {'name': 'SPP Settings'}, 'weight_tolerance', function(d) {
-                            const tolerance = d.weight_tolerance;
-
-                            let despatchHtml = `
-                                <h4>Despatch Info</h4>
-                                <p>Name: ${despatchInfo.name}</p>
-                                <p>Owner: ${despatchInfo.owner}</p>
-                                <p>Vehicle No: ${despatchInfo.vehicle_no}</p>
-                                <p>Vendor: ${despatchInfo.vendor}</p>
-                                <p>Total Lots: ${despatchInfo.total_lots}</p>
-                                <p>Total Qty (Kgs): ${despatchInfo.total_qty_kgs}</p>
-                                <p>Total Qty (Nos): ${despatchInfo.total_qty_nos}</p>
-                            `;
-
-                            frm.fields_dict.despatch_info.$wrapper.html(despatchHtml);
-                            frm.events.update_despatch_item_info(frm);
-                            frm.events.render_create_stock_entries_button(frm);
-
-                            // Add event listener for scan_lot_no field
-                            frm.fields_dict.scan_lot_no.$input.on('change', function() {
-                                const scanLotNumber = frm.doc.scan_lot_no;
-                                // Check if lot is already scanned
-                                const existingItem = frm.doc.items && frm.doc.items.find(row => row.lot_no === scanLotNumber);
-                                if (existingItem) {
-                                    frappe.msgprint({
-                                        title: __('Duplicate Entry'),
-                                        indicator: 'red',
-                                        message: __(`Lot number ${scanLotNumber} has already been scanned and processed.`)
-                                    });
-                                    frm.set_value('scan_lot_no', '');
-                                    return;
-                                }
-
-                                const item = despatchInfo.items.find(item => item.lot_no === scanLotNumber);
-                                if (item) {
-                                    frm.events.show_observed_weight_dialog(frm, item, tolerance);
-                                } else {
-                                    frappe.msgprint(__('Lot number not found in despatch.'));
-                                }
-                                frm.set_value('scan_lot_no', '');
-                            });
-                        });
+                        // Proceed with fetching despatch info if dd_number does not exist
+                        fetchDespatchInfo();
                     }
-                }
-            });
+                });
+            } else {
+                fetchDespatchInfo();
+            }
+
+            function fetchDespatchInfo() {
+                frappe.call({
+                    method: 'shree_polymer_custom_app.shree_polymer_custom_app.doctype.receive_deflashing_entry.receive_deflashing_entry.get_despatch_info',
+                    args: {
+                        dd_number: ddNumber
+                    },
+                    callback: function(response) {
+                        if (response && response.message) {
+                            const despatchInfo = response.message;
+                            frm.despatchInfo = despatchInfo; // Store for later use
+
+                            frappe.model.get_value('SPP Settings', {'name': 'SPP Settings'}, 'weight_tolerance', function(d) {
+                                const tolerance = d.weight_tolerance;
+
+                                let despatchHtml = `
+                                    <h4>Despatch Info</h4>
+                                    <p>Name: ${despatchInfo.name}</p>
+                                    <p>Owner: ${despatchInfo.owner}</p>
+                                    <p>Vehicle No: ${despatchInfo.vehicle_no}</p>
+                                    <p>Vendor: ${despatchInfo.vendor}</p>
+                                    <p>Total Lots: ${despatchInfo.total_lots}</p>
+                                    <p>Total Qty (Kgs): ${despatchInfo.total_qty_kgs}</p>
+                                    <p>Total Qty (Nos): ${despatchInfo.total_qty_nos}</p>
+                                `;
+                                frm.set_value('total_received_lots', despatchInfo.total_lots);
+                                frm.fields_dict.despatch_info.$wrapper.html(despatchHtml);
+                                frm.events.update_despatch_item_info(frm);
+                                frm.events.render_create_stock_entries_button(frm);
+
+                                // Add event listener for scan_lot_no field
+                                frm.fields_dict.scan_lot_no.$input.on('change', function() {
+                                    const scanLotNumber = frm.doc.scan_lot_no;
+                                    // Check if lot is already scanned
+                                    const existingItem = frm.doc.items && frm.doc.items.find(row => row.lot_no === scanLotNumber);
+                                    if (existingItem) {
+                                        frappe.msgprint({
+                                            title: __('Duplicate Entry'),
+                                            indicator: 'red',
+                                            message: __(`Lot number ${scanLotNumber} has already been scanned and processed.`)
+                                        });
+                                        frm.set_value('scan_lot_no', '');
+                                        return;
+                                    }
+
+                                    const item = despatchInfo.items.find(item => item.lot_no === scanLotNumber);
+                                    if (item) {
+                                        frm.events.show_observed_weight_dialog(frm, item, tolerance);
+                                    } else {
+                                        frappe.msgprint(__('Lot number not found in despatch.'));
+                                    }
+                                    frm.set_value('scan_lot_no', '');
+                                });
+                            });
+                        }
+                    }
+                });
+            }
         });
+
+        // Add Report Discrepancy button with enhanced styling
+        frm.add_custom_button(__('Report Discrepancy'), function() {
+            frm.events.show_discrepancy_dialog(frm);
+        }, __('Actions')).addClass('btn-warning report-discrepancy-btn');
+
+        // Add custom CSS for the button
+        if (!document.getElementById('report-discrepancy-styles')) {
+            const styles = `
+                <style id="report-discrepancy-styles">
+                    .report-discrepancy-btn {
+                        background-color: #ff6b6b !important;
+                        color: white !important;
+                        font-weight: 500 !important;
+                        border: none !important;
+                        padding: 8px 15px !important;
+                        margin-left: 10px !important;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                        transition: all 0.3s ease !important;
+                    }
+                    .report-discrepancy-btn:hover {
+                        background-color: #ff5252 !important;
+                        transform: translateY(-1px) !important;
+                        box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+                    }
+                    .report-discrepancy-btn:active {
+                        transform: translateY(0) !important;
+                        box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+                    }
+                </style>
+            `;
+            $(styles).appendTo('head');
+        }
     },
 
     render_create_stock_entries_button: function(frm) {
@@ -313,7 +374,7 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                         __('Weight difference exceeds tolerance and system weight is greater than observed weight. Do you want to create a weight mismatch tracker?'),
                         () => {
                             // If confirmed, add item with Miss Match status and create tracker
-                            frm.events.add_item_to_table(frm, item, values.observed_weight, 'Miss Match');
+                            // frm.events.add_item_to_table(frm, item, values.observed_weight, 'Miss Match');
                             frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
                             dialog.hide();
                         },
@@ -326,15 +387,22 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                     // Within tolerance: Add item with Received status
                     frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
                     dialog.hide();
-                } else if (values.weight_kgs < values.observed_weight && abs_difference > tolerance) {
+                }else if(values.weight_kgs < values.observed_weight && abs_difference > tolerance){
                     // Exceeds tolerance: Show alert and create weight mismatch
-                    frappe.msgprint({
-                        title: __('Weight Mismatch'),
-                        indicator: 'red',
-                        message: __('Observed weight exceeds system weight and difference is greater than tolerance. Creating Weight Mismatch Tracker.')
-                    });
-                    frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
-                    dialog.hide();
+                    frappe.confirm(
+                        __('Weight difference exceeds tolerance and observed weight is greater than system weight. Do you want to create a weight mismatch tracker?'),
+                        () => {
+                            // If confirmed, add item with Miss Match status and create tracker
+                            // frm.events.add_item_to_table(frm, item, values.observed_weight, 'Miss Match');
+                            frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
+                            dialog.hide();
+                        },
+                        () => {
+                            // If cancelled, just close the dialog
+                            dialog.hide();
+                        }
+                    );
+
                 }
             }
         });
@@ -381,9 +449,11 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                     observed_weight: observed_weight,
                     difference_in_weight: difference,
                     item_code: item.product_ref,
+                    dispatch_station: "U2 Store",
+                    receiving_station: "U1 Store",
                     batch_number: item.batch_no,
                     system_weight: item.weight_kgs,
-                    warehouse: item.vendor,
+                    warehouse: 'U1-Transit Store - SPP INDIA',
                     observed_by: frappe.session.user,
                 }
             },
@@ -432,5 +502,144 @@ frappe.ui.form.on('Receive Deflashing Entry', {
         frm.events.update_despatch_item_info(frm);
         // Re-render the create stock entries button
         frm.events.render_create_stock_entries_button(frm);
+    },
+
+    show_discrepancy_dialog: function(frm) {
+        const dialog = new frappe.ui.Dialog({
+            title: __('Report Discrepancy'),
+            fields: [
+                {
+                    fieldname: 'delivery_note',
+                    label: __('Delivery Note (DC) Number'),
+                    fieldtype: 'Data',
+                    default: frm.doc.dd_number,
+                    read_only: 1
+                },
+                {
+                    fieldname: 'discrepancy_type',
+                    label: __('Discrepancy Type'),
+                    fieldtype: 'Select',
+                    options: [
+                        'Items Not Found',
+                        'Items Found But Not Listed'
+                    ],
+                    reqd: 1
+                },
+                {
+                    fieldname: 'warehouse_from',
+                    label: __('Warehouse From'),
+                    fieldtype: 'Link',
+                    options: 'Warehouse',
+                    default: 'U2 Store',
+                    read_only: 1
+                },
+                {
+                    fieldname: 'warehouse_to',
+                    label: __('Warehouse To'),
+                    fieldtype: 'Link',
+                    options: 'Warehouse',
+                    default: 'U1-Transit Store - SPP INDIA',
+                    read_only: 1
+                },
+                {
+                    fieldname: 'section_break_1',
+                    fieldtype: 'Section Break',
+                    label: __('Item Details')
+                },
+                {
+                    fieldname: 'items',
+                    fieldtype: 'Table',
+                    label: __('Items'),
+                    cannot_add_rows: false,
+                    fields: [
+                        {
+                            fieldname: 'item_code',
+                            fieldtype: 'Link',
+                            options: 'Item',
+                            in_list_view: 1,
+                            label: __('Item Code'),
+                            reqd: 1
+                        },
+                        {
+                            fieldname: 'item_name',
+                            fieldtype: 'Data',
+                            in_list_view: 1,
+                            label: __('Item Description'),
+                            fetch_from: 'item_code.item_name'
+                        },
+                        {
+                            fieldname: 'qty_as_per_dc',
+                            fieldtype: 'Float',
+                            in_list_view: 1,
+                            label: __('Quantity as per DC'),
+                            reqd: 1
+                        },
+                        {
+                            fieldname: 'qty_found',
+                            fieldtype: 'Float',
+                            in_list_view: 1,
+                            label: __('Quantity Found'),
+                            reqd: 1
+                        },
+                        {
+                            fieldname: 'comments',
+                            fieldtype: 'Data',
+                            in_list_view: 1,
+                            label: __('Comments')
+                        }
+                    ]
+                },
+                {
+                    fieldname: 'section_break_2',
+                    fieldtype: 'Section Break'
+                },
+                {
+                    fieldname: 'remarks',
+                    label: __('Remarks'),
+                    fieldtype: 'Text Editor'
+                },
+                {
+                    fieldname: 'attachments',
+                    label: __('Attachments'),
+                    fieldtype: 'Attach',
+                    allow_multiple: 1
+                }
+            ],
+            primary_action_label: __('Submit'),
+            primary_action: function(values) {
+                frappe.call({
+                    method: 'frappe.client.insert',
+                    args: {
+                        doc: {
+                            doctype: 'Discrepancy Report',
+                            delivery_note: values.delivery_note,
+                            discrepancy_type: values.discrepancy_type,
+                            warehouse_from: values.warehouse_from,
+                            warehouse_to: values.warehouse_to,
+                            items: values.items,
+                            remarks: values.remarks,
+                            attachments: values.attachments,
+                            status: 'Open',
+                            reported_by: frappe.session.user
+                        }
+                    },
+                    callback: function(r) {
+                        if (!r.exc) {
+                            frappe.msgprint({
+                                title: __('Success'),
+                                indicator: 'green',
+                                message: __('Discrepancy Report {0} created successfully', 
+                                    [`<a href="/app/discrepancy-report/${r.message.name}" target="_blank">${r.message.name}</a>`])
+                            });
+                            dialog.hide();
+                        }
+                    }
+                });
+            }
+        });
+
+        dialog.show();
     }
 });
+
+

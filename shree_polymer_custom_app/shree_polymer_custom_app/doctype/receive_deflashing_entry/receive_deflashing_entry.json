@@ -11,6 +11,7 @@
   "get_items",
   "column_break_wnfav",
   "despatch_info",
+  "total_received_lots",
   "column_break_ttby",
   "despatch_item_info",
   "scan_lot",
@@ -164,10 +165,12 @@
    "label": "Receive Scanned Items"
   },
   {
+   "default": "U1-Store - SPP INDIA",
    "fieldname": "receiving_warehouse",
    "fieldtype": "Link",
    "label": "Receiving Warehouse",
-   "options": "Warehouse"
+   "options": "Warehouse",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_esyf",
@@ -188,12 +191,19 @@
    "fieldtype": "Table MultiSelect",
    "label": "Received Stock Entry Ref",
    "options": "Receive Deflash Stock Entry"
+  },
+  {
+   "fieldname": "total_received_lots",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Received Lots",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-05 12:04:26.341546",
+ "modified": "2025-03-10 14:29:20.645405",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Receive Deflashing Entry",

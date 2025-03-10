@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-10 14:10:24.177764",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "quantity_as_per_dc",
+  "quantity_found",
+  "column_break_rpmp",
+  "item_description",
+  "comments"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item"
+  },
+  {
+   "fieldname": "item_description",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Description"
+  },
+  {
+   "fieldname": "quantity_as_per_dc",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Quantity as per DC"
+  },
+  {
+   "fieldname": "quantity_found",
+   "fieldtype": "Data",
+   "label": "Quantity Found"
+  },
+  {
+   "fieldname": "column_break_rpmp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-10 14:13:03.667980",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Discrepancy Report Items",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

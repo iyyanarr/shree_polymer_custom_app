@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-10 14:04:25.595542",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_yqfg",
+  "report_id",
+  "column_break_pkou",
+  "date_and_time",
+  "column_break_ycwq",
+  "warehouse_from",
+  "column_break_rzdf",
+  "warehouse_to",
+  "section_break_xuwl",
+  "document_number",
+  "column_break_fguy",
+  "discrepancy_type",
+  "section_break_nwlg",
+  "item_details"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_yqfg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "report_id",
+   "fieldtype": "Data",
+   "label": "Report ID"
+  },
+  {
+   "fieldname": "date_and_time",
+   "fieldtype": "Datetime",
+   "label": "Date and Time"
+  },
+  {
+   "fieldname": "column_break_ycwq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "warehouse_from",
+   "fieldtype": "Link",
+   "label": "Warehouse From",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_rzdf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "warehouse_to",
+   "fieldtype": "Link",
+   "label": "Warehouse To",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_pkou",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_xuwl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "document_number",
+   "fieldtype": "Link",
+   "label": "Document Number",
+   "options": "Despatch To U1 Entry"
+  },
+  {
+   "fieldname": "column_break_fguy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "discrepancy_type",
+   "fieldtype": "Select",
+   "label": "Discrepancy Type",
+   "options": "Items Not Found\nItems Found But Not Listed"
+  },
+  {
+   "fieldname": "section_break_nwlg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "item_details",
+   "fieldtype": "Table",
+   "label": "Item Details",
+   "options": "Discrepancy Report Items"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-03-10 14:13:22.158521",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Discrepancy Report",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -179,9 +179,9 @@ def _update_parent_document(parent_doc, processed_data):
                 'stock_entry': stock_entry_name
             })
 
-    # Check if all items have stock entries
-    all_processed = all(item.stock_entry_status == "Created" 
-                       for item in parent_doc.items)
+    # Check if all items have stock entries and total received lots match
+    all_processed = (all(item.stock_entry_status == "Created" for item in parent_doc.items) and
+                     len(parent_doc.items) == parent_doc.total_received_lots)
     
     parent_doc.status = "Closed" if all_processed else "Pending"
     parent_doc.save()
