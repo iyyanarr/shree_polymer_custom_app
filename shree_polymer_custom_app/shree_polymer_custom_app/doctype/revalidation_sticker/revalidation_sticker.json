@@ -1,0 +1,98 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:material_code",
+ "creation": "2025-03-11 13:27:23.955709",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "date_time",
+  "materialcode",
+  "material_name",
+  "lot_no",
+  "grn_no",
+  "serial_number",
+  "expiry_date",
+  "column_break_pnnc",
+  "barcode"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title"
+  },
+  {
+   "fieldname": "date_time",
+   "fieldtype": "Datetime",
+   "label": "Date Time"
+  },
+  {
+   "fieldname": "materialcode",
+   "fieldtype": "Link",
+   "label": "Material Code",
+   "options": "Item"
+  },
+  {
+   "fieldname": "column_break_pnnc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "barcode",
+   "fieldtype": "Barcode",
+   "label": "Barcode"
+  },
+  {
+   "fetch_from": "materialcode.item_name",
+   "fieldname": "material_name",
+   "fieldtype": "Data",
+   "label": "Material Name"
+  },
+  {
+   "fieldname": "lot_no",
+   "fieldtype": "Data",
+   "label": "LOT NO"
+  },
+  {
+   "fieldname": "grn_no",
+   "fieldtype": "Data",
+   "label": "GRN NO"
+  },
+  {
+   "fieldname": "serial_number",
+   "fieldtype": "Data",
+   "label": "Serial Number"
+  },
+  {
+   "fieldname": "expiry_date",
+   "fieldtype": "Date",
+   "label": "Expiry Date"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-03-11 15:20:50.845453",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Revalidation Sticker",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

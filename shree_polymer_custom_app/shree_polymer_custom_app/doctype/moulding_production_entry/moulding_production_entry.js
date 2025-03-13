@@ -40,8 +40,9 @@ frappe.ui.form.on('Moulding Production Entry', {
 				args: {
 					batch_no: frm.doc.scan_lot_number
 				},
-				freeze: true,
+				freeze: false,
 				callback: function (r) {
+					console.log("r",r.message.message)
 					if(r.message.status=="Failed"){
 						frappe.msgprint(r.message.message)
 						frm.set_value('scan_lot_number','')
@@ -134,7 +135,7 @@ frappe.ui.form.on('Moulding Production Entry', {
 								batch_no: frm.doc.scan_bin,
 								job_card:frm.doc.job_card
 							},
-							freeze: true,
+							freeze: false,
 							callback: function (r) {
 								if(r.message.status=="Failed"){
 									frappe.msgprint(r.message.message)
@@ -219,7 +220,8 @@ frappe.ui.form.on('Moulding Production Entry', {
 						}
 						else {
 							flag = true
-							res["consumed__qty"] = parseFloat((parseFloat(res.qty.toFixed(3)) - net_weight).toFixed(3))
+							// res["consumed__qty"] = parseFloat((parseFloat(res.qty.toFixed(3)) - net_weight).toFixed(3))
+							res["consumed__qty"] = parseFloat((parseFloat(res.qty.toFixed(3))).toFixed(3))
 							res["balance__qty"] = net_weight
 							res["is__consumed"] = 1
 							res["is_balance_bin"] = 1
@@ -300,75 +302,7 @@ frappe.ui.form.on('Moulding Production Entry', {
 			}
 		}
 	},
-	// "scan_bin": (frm) => {
-	// 	if (frm.doc.scan_bin && frm.doc.scan_bin != undefined) {
-	// 		if(frm.doc.job_card){
-	// 			frappe.call({
-	// 				method: 'shree_polymer_custom_app.shree_polymer_custom_app.doctype.moulding_production_entry.moulding_production_entry.validate_bin',
-	// 				args: {
-	// 					batch_no: frm.doc.scan_bin,
-	// 					job_card:frm.doc.job_card
-	// 				},
-	// 				freeze: true,
-	// 				callback: function (r) {
-	// 					if(r.message.status=="Failed"){
-	// 						frappe.msgprint(r.message.message)
-	// 					}
-	// 					else{
-	// 						frm.set_value("scan_bin",frm.doc.scan_bin.toUpperCase())
-	// 						frm.set_value("bin_weight",r.message.bin_weight)
-	// 						frm.set_value("bin_code",r.message.blanking_bin)
-	// 						frm.set_value("bin_name",r.message.asset_name)
-	// 					}
-	// 				}
-	// 			});
-	// 		}
-	// 		else{
-	// 			frappe.msgprint("Please Scan Lot No. before scan Bin")
-	// 		}
-	// 	}
-	// },
-	// "weight_of_balance_bin":function(frm){
-	// 	if(frm.doc.weight_of_balance_bin){
-	// 		if(frm.doc.scan_bin && frm.doc.weight){
-	// 			frappe.call({
-	// 				method: 'shree_polymer_custom_app.shree_polymer_custom_app.doctype.moulding_production_entry.moulding_production_entry.validate_bin_weight',
-	// 				args: {
-	// 					weight: frm.doc.weight_of_balance_bin ,
-	// 					bin:frm.doc.bin_code,
-	// 					bin_Weight:frm.doc.bin_weight,
-	// 					prod_weight: frm.doc.weight
-	// 				},
-	// 				freeze: true,
-	// 				callback: function (r) {
-	// 					if(r.message.status=="Failed"){
-	// 						frappe.msgprint(r.message.message);
-	// 						frm.set_value("net_weight",0);
-	// 						frm.set_value("weight_of_balance_bin",0);
-
-	// 					}
-	// 					else{
-	// 						var net_wt= frm.doc.weight_of_balance_bin - frm.doc.bin_weight
-	// 						frm.set_value("net_weight",net_wt);
-	// 					}
-
-	// 				}
-	// 			});
-	// 		}
-	// 		else{
-	// 			if(!frm.doc.scan_bin ){
-	// 				frappe.msgprint("Please scan bin before enter gross weight of balance bin...!")
-	// 				frm.set_value("weight_of_balance_bin",0);
-	// 				return
-	// 			}
-	// 			if(!frm.doc.weight){
-	// 				frappe.msgprint("Please enter the <b>Production Weight</b> before enter gross weight of balance bin...!")
-	// 				frm.set_value("weight_of_balance_bin",0);
-	// 			}
-
-	// 		}
-	// 	}
-	// },
+	
 });
 
 frappe.ui.form.on('Moulding Balance Bin',{
@@ -389,19 +323,3 @@ frappe.ui.form.on('Moulding Balance Bin',{
 
 
 
-// weight(frm){
-	// 	if(frm.doc.weight){
-	// 		if(frm.doc.availabe_qty){
-	// 			if(frm.doc.weight > frm.doc.availabe_qty){
-	// 				frappe.msgprint(`The <b>weight - ${frm.doc.weight} kgs</b> can't be greater than the <b>Available Weight - ${frm.doc.availabe_qty} kgs</b>`)
-	// 				frm.set_value("weight",0)
-	// 				return
-	// 			}
-	// 		}
-	// 		else{
-	// 			frappe.msgprint(`The <b>Available Weight</b> not found..!`)
-	// 			frm.set_value("weight",0)
-	// 			return
-	// 		}
-	// 	}
-	// },

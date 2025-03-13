@@ -282,7 +282,7 @@
   },
   {
    "fieldname": "source_document",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Source Document",
    "options": "Despatch To U1 Entry"
   }
@@ -290,7 +290,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-10 15:10:00.859361",
+ "modified": "2025-03-13 15:13:22.279507",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Weight Mismatch Tracker",
