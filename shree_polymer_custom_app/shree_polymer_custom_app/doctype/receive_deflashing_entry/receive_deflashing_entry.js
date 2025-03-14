@@ -345,6 +345,7 @@ frappe.ui.form.on('Receive Deflashing Entry', {
     },
 
     show_observed_weight_dialog: function(frm, item, tolerance) {
+        console.log(item);
         const dialog = new frappe.ui.Dialog({
             title: 'Weight Measurement',
             fields: [
