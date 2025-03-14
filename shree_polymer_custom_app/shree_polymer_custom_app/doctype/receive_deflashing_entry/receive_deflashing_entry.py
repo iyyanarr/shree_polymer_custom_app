@@ -71,6 +71,7 @@ def create_stock_entries(doc_name, items):
             stock_entry = _create_stock_entry(
                 item_data=item_data,
                 qty_in_nos=qty_in_nos,
+                qty_in_kgs=float(item_data.get("received_weight") or 0),
                 company=company,
                 source_warehouse=source_warehouse,
                 target_warehouse=target_warehouse,
@@ -111,7 +112,7 @@ def _calculate_quantity(item_data, item_doc):
     weight_in_kg = float(item_data.get("received_weight") or 0)
     return weight_in_kg * conversion_factor
 
-def _create_stock_entry(item_data, qty_in_nos, company, source_warehouse, 
+def _create_stock_entry(item_data, qty_in_kgs, company, source_warehouse, 
                        target_warehouse, doc_name, item_doc):
     """Create and submit stock entry"""
     stock_entry = frappe.new_doc("Stock Entry")
@@ -132,9 +133,9 @@ def _create_stock_entry(item_data, qty_in_nos, company, source_warehouse,
 
     stock_entry.append("items", {
         "item_code": item_data.get("product_ref"),
-        "qty": qty_in_nos,
-        "stock_uom": "Nos",
-        "uom": "Nos",
+        "qty": qty_in_kgs,
+        "stock_uom": "Kg",
+        "uom": "Kg",
         "conversion_factor": 1,
         "s_warehouse": source_warehouse,
         "t_warehouse": target_warehouse,
