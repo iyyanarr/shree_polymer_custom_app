@@ -345,70 +345,87 @@ frappe.ui.form.on('Receive Deflashing Entry', {
     },
 
     show_observed_weight_dialog: function(frm, item, tolerance) {
-        console.log(item);
-        const dialog = new frappe.ui.Dialog({
-            title: 'Weight Measurement',
-            fields: [
-                { fieldname: 'item_name', label: 'Item Name', fieldtype: 'Data', default: item.product_ref, read_only: 1 },
-                { fieldname: 'weight_kgs', label: 'System Weight (Kgs)', fieldtype: 'Float', default: item.weight_kgs, read_only: 1 },
-                { fieldname: 'observed_weight', label: 'Observed Weight (Kgs)', fieldtype: 'Float', reqd: 1 }
-            ],
-            primary_action_label: 'Submit',
-            primary_action: function(values) {
-                const difference = values.observed_weight - values.weight_kgs;
-                const abs_difference = Math.abs(difference);
+        // Fetch the quantity from Item Batch Stock Balance
+        frappe.call({
+            method: 'frappe.client.get_value',
+            args: {
+                doctype: 'Item Batch Stock Balance',
+                filters: {
+                    item_code: item.product_ref,
+                    batch_no: item.batch_no,
+                    warehouse: 'U1-Transit Store - SPP INDIA'
+                },
+                fieldname: 'qty'
+            },
+            callback: function(response) {
+                if (response && response.message) {
+                    const systemWeight = response.message.qty;
 
-                // Handle equal weights case
-                if (values.weight_kgs === values.observed_weight) {
-                    frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
-                    dialog.hide();
-                    return;
-                }
+                    const dialog = new frappe.ui.Dialog({
+                        title: 'Weight Measurement',
+                        fields: [
+                            { fieldname: 'item_name', label: 'Item Name', fieldtype: 'Data', default: item.product_ref, read_only: 1 },
+                            { fieldname: 'weight_kgs', label: 'System Weight (Kgs)', fieldtype: 'Float', default: systemWeight, read_only: 1 },
+                            { fieldname: 'observed_weight', label: 'Observed Weight (Kgs)', fieldtype: 'Float', reqd: 1 }
+                        ],
+                        primary_action_label: 'Submit',
+                        primary_action: function(values) {
+                            const difference = values.observed_weight - values.weight_kgs;
+                            const abs_difference = Math.abs(difference);
 
-                if (values.weight_kgs > values.observed_weight && abs_difference <= tolerance) {
-                    // Within tolerance: Add item with Received status
-                    frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
-                    dialog.hide();
-                } else if (values.weight_kgs > values.observed_weight && abs_difference > tolerance) {
-                    // Exceeds tolerance: Show alert and create weight mismatch
-                    frappe.confirm(
-                        __('Weight difference exceeds tolerance and system weight is greater than observed weight. Do you want to create a weight mismatch tracker?'),
-                        () => {
-                            // If confirmed, add item with Miss Match status and create tracker
-                            // frm.events.add_item_to_table(frm, item, values.observed_weight, 'Miss Match');
-                            frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
-                            dialog.hide();
-                        },
-                        () => {
-                            // If cancelled, just close the dialog
-                            dialog.hide();
+                            // Handle equal weights case
+                            if (values.weight_kgs === values.observed_weight) {
+                                frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
+                                dialog.hide();
+                                return;
+                            }
+
+                            if (values.weight_kgs > values.observed_weight && abs_difference <= tolerance) {
+                                // Within tolerance: Add item with Received status
+                                frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
+                                dialog.hide();
+                            } else if (values.weight_kgs > values.observed_weight && abs_difference > tolerance) {
+                                // Exceeds tolerance: Show alert and create weight mismatch
+                                frappe.confirm(
+                                    __('Weight difference exceeds tolerance and system weight is greater than observed weight. Do you want to create a weight mismatch tracker?'),
+                                    () => {
+                                        // If confirmed, add item with Miss Match status and create tracker
+                                        frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
+                                        dialog.hide();
+                                    },
+                                    () => {
+                                        // If cancelled, just close the dialog
+                                        dialog.hide();
+                                    }
+                                );
+                            } else if (values.weight_kgs < values.observed_weight && abs_difference <= tolerance) {
+                                // Within tolerance: Add item with Received status
+                                frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
+                                dialog.hide();
+                            } else if (values.weight_kgs < values.observed_weight && abs_difference > tolerance) {
+                                // Exceeds tolerance: Show alert and create weight mismatch
+                                frappe.confirm(
+                                    __('Weight difference exceeds tolerance and observed weight is greater than system weight. Do you want to create a weight mismatch tracker?'),
+                                    () => {
+                                        // If confirmed, add item with Miss Match status and create tracker
+                                        frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
+                                        dialog.hide();
+                                    },
+                                    () => {
+                                        // If cancelled, just close the dialog
+                                        dialog.hide();
+                                    }
+                                );
+                            }
                         }
-                    );
-                } else if (values.weight_kgs < values.observed_weight && abs_difference <= tolerance) {
-                    // Within tolerance: Add item with Received status
-                    frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
-                    dialog.hide();
-                }else if(values.weight_kgs < values.observed_weight && abs_difference > tolerance){
-                    // Exceeds tolerance: Show alert and create weight mismatch
-                    frappe.confirm(
-                        __('Weight difference exceeds tolerance and observed weight is greater than system weight. Do you want to create a weight mismatch tracker?'),
-                        () => {
-                            // If confirmed, add item with Miss Match status and create tracker
-                            // frm.events.add_item_to_table(frm, item, values.observed_weight, 'Miss Match');
-                            frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
-                            dialog.hide();
-                        },
-                        () => {
-                            // If cancelled, just close the dialog
-                            dialog.hide();
-                        }
-                    );
+                    });
 
+                    dialog.show();
+                } else {
+                    frappe.msgprint(__('Unable to fetch system weight for the item.'));
                 }
             }
         });
-        
-        dialog.show();
     },
 
     confirm_weight_mismatch_action: function(frm, item, observed_weight, difference) {
