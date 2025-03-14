@@ -53,7 +53,17 @@ def create_stock_reconciliation(document_name, posting_date):
 
     # Prepare quantities
     current_qty = mismatch_doc.system_weight if mismatch_doc.system_weight is not None else 0
-    approved_qty = mismatch_doc.approved_weight if mismatch_doc.approved_weight is not None else 0
+    approved_qty_kg = mismatch_doc.approved_weight if mismatch_doc.approved_weight is not None else 0
+
+    # Fetch the conversion factor for the item
+    item_doc = frappe.get_doc("Item", mismatch_doc.item_code)
+    conversion_factor = next((uom.conversion_factor for uom in item_doc.uoms if uom.uom == "Kg"), None)
+
+    if not conversion_factor:
+        frappe.throw(f"Conversion factor for 'Kg' not found for item {mismatch_doc.item_code}")
+
+    # Convert approved_qty from Kg to Nos
+    approved_qty_nos = approved_qty_kg * conversion_factor
 
     # Prepare the Stock Reconciliation data
     items = [{
@@ -62,7 +72,9 @@ def create_stock_reconciliation(document_name, posting_date):
         "current_qty": current_qty,
         "use_serial_batch_fields": 1,  # Include batch details if needed
         "batch_no": mismatch_doc.batch_number if mismatch_doc.batch_number else None,
-        "qty": approved_qty,
+        "qty": approved_qty_nos,
+        "stock_uom": "Nos",
+        "uom": "Nos",
     }]
 
     # Create and insert the Stock Reconciliation entry
@@ -89,6 +101,7 @@ def create_stock_reconciliation(document_name, posting_date):
 
     # Return the name of the Stock Reconciliation document
     return sr_doc.name
+
 @frappe.whitelist()
 def create_stock_transfer(document_name, item_code, transfer_amount, from_warehouse, batch_no, posting_date,reason_code):
     """
@@ -118,6 +131,8 @@ def create_stock_transfer(document_name, item_code, transfer_amount, from_wareho
             {
                 "item_code": item_code,
                 "qty": transfer_amount,
+                "stock_uom": "Kg",
+                "uom": "Kg",
                 "use_serial_batch_fields": 1,
                 "batch_no": batch_no,
                 "s_warehouse": from_warehouse,

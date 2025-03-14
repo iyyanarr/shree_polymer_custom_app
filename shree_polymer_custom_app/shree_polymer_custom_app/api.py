@@ -44,6 +44,7 @@ def on_batch_update(doc,method):
 
 @frappe.whitelist()
 def on_sle_update(doc, method):
+ 
     try:
         frappe.logger().info("\n=== Starting SLE Update ===")
         frappe.logger().info(f"Document: {doc.as_dict() if hasattr(doc, 'as_dict') else str(doc)}")

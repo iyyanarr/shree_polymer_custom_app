@@ -185,6 +185,7 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                             lot_no: item.lot_no,
                             product_ref: item.product_ref,
                             qty_nos: item.qty_nos,
+                            received_product_qty_nos:item.received_product_qty_nos,
                             received_weight: item.received_weight,
                             status: item.status,
                             stock_entry_reference: item.stock_entry_reference,
@@ -345,6 +346,7 @@ frappe.ui.form.on('Receive Deflashing Entry', {
     },
 
     show_observed_weight_dialog: function(frm, item, tolerance) {
+        console.log(item);
         // Fetch the quantity from Item Batch Stock Balance
         frappe.call({
             method: 'frappe.client.get_value',
@@ -355,72 +357,103 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                     batch_no: item.batch_no,
                     warehouse: 'U1-Transit Store - SPP INDIA'
                 },
-                fieldname: 'qty'
+                fieldname: ['qty'] // Assuming 'qty_nos' is the field for quantity in numbers
             },
             callback: function(response) {
                 if (response && response.message) {
-                    const systemWeight = response.message.qty;
+                    const systemQtyNos = response.message.qty;
 
-                    const dialog = new frappe.ui.Dialog({
-                        title: 'Weight Measurement',
-                        fields: [
-                            { fieldname: 'item_name', label: 'Item Name', fieldtype: 'Data', default: item.product_ref, read_only: 1 },
-                            { fieldname: 'weight_kgs', label: 'System Weight (Kgs)', fieldtype: 'Float', default: systemWeight, read_only: 1 },
-                            { fieldname: 'observed_weight', label: 'Observed Weight (Kgs)', fieldtype: 'Float', reqd: 1 }
-                        ],
-                        primary_action_label: 'Submit',
-                        primary_action: function(values) {
-                            const difference = values.observed_weight - values.weight_kgs;
-                            const abs_difference = Math.abs(difference);
+                    // Fetch the conversion factor for the item
+                    frappe.call({
+                        method: 'frappe.client.get',
+                        args: {
+                            doctype: 'Item',
+                            name: item.product_ref
+                        },
+                        callback: function(itemResponse) {
+                            if (itemResponse && itemResponse.message) {
+                                const itemData = itemResponse.message;
+                                const conversionFactor = itemData.uoms.find(uom => uom.uom === 'Kg').conversion_factor;
+                                const systemWeight = systemQtyNos / conversionFactor;
 
-                            // Handle equal weights case
-                            if (values.weight_kgs === values.observed_weight) {
-                                frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
-                                dialog.hide();
-                                return;
-                            }
+                                const dialog = new frappe.ui.Dialog({
+                                    title: 'Weight Measurement',
+                                    fields: [
+                                        { fieldname: 'item_name', label: 'Item Name', fieldtype: 'Data', default: item.product_ref, read_only: 1 },
+                                        { fieldname: 'weight_kgs', label: 'System Weight (Kgs)', fieldtype: 'Float', default: systemWeight, read_only: 1 },
+                                        { fieldname: 'observed_weight', label: 'Observed Weight (Kgs)', fieldtype: 'Float', reqd: 1 },
+                                        { fieldname: 'system_qty_nos', label: 'System Qty (Nos)', fieldtype: 'Float', default: systemQtyNos, read_only: 1 },
+                                        { fieldname: 'observed_qty_nos', label: 'Observed Qty (Nos)', fieldtype: 'Float', reqd: 1 },
+                                        { fieldname: 'conversion_factor', label: 'Conversion Factor', fieldtype: 'Float', default: conversionFactor, read_only: 1 }
+                                    ],
+                                    primary_action_label: 'Submit',
+                                    primary_action: function(values) {
+                                        const weightDifference = values.observed_weight - values.weight_kgs;
+                                        const absWeightDifference = Math.abs(weightDifference);
+                                        const qtyDifference = values.observed_qty_nos - values.system_qty_nos;
+                                        const absQtyDifference = Math.abs(qtyDifference);
 
-                            if (values.weight_kgs > values.observed_weight && abs_difference <= tolerance) {
-                                // Within tolerance: Add item with Received status
-                                frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
-                                dialog.hide();
-                            } else if (values.weight_kgs > values.observed_weight && abs_difference > tolerance) {
-                                // Exceeds tolerance: Show alert and create weight mismatch
-                                frappe.confirm(
-                                    __('Weight difference exceeds tolerance and system weight is greater than observed weight. Do you want to create a weight mismatch tracker?'),
-                                    () => {
-                                        // If confirmed, add item with Miss Match status and create tracker
-                                        frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
-                                        dialog.hide();
-                                    },
-                                    () => {
-                                        // If cancelled, just close the dialog
-                                        dialog.hide();
+                                        // Handle equal weights and quantities case
+                                        if (values.weight_kgs === values.observed_weight && values.system_qty_nos === values.observed_qty_nos) {
+                                            frm.events.add_item_to_table(frm, item, values.observed_weight, values.observed_qty_nos, 'Received');
+                                            dialog.hide();
+                                            return;
+                                        }
+
+                                        if (values.weight_kgs > values.observed_weight && absWeightDifference <= tolerance) {
+                                            // Within tolerance: Add item with Received status
+                                            frm.events.add_item_to_table(frm, item, values.observed_weight, values.observed_qty_nos, 'Received');
+                                            dialog.hide();
+                                        } else if (values.weight_kgs > values.observed_weight && absWeightDifference > tolerance) {
+                                            // Exceeds tolerance: Show alert and create weight mismatch
+                                            frappe.confirm(
+                                                __('Weight difference exceeds tolerance and system weight is greater than observed weight. Do you want to create a weight mismatch tracker?'),
+                                                () => {
+                                                    // If confirmed, add item with Miss Match status and create tracker
+                                                    frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, weightDifference);
+                                                    dialog.hide();
+                                                },
+                                                () => {
+                                                    // If cancelled, just close the dialog
+                                                    dialog.hide();
+                                                }
+                                            );
+                                        } else if (values.weight_kgs < values.observed_weight && absWeightDifference <= tolerance) {
+                                            // Within tolerance: Add item with Received status
+                                            frm.events.add_item_to_table(frm, item, values.observed_weight, values.observed_qty_nos, 'Received');
+                                            dialog.hide();
+                                        } else if (values.weight_kgs < values.observed_weight && absWeightDifference > tolerance) {
+                                            // Exceeds tolerance: Show alert and create weight mismatch
+                                            frappe.confirm(
+                                                __('Weight difference exceeds tolerance and observed weight is greater than system weight. Do you want to create a weight mismatch tracker?'),
+                                                () => {
+                                                    // If confirmed, add item with Miss Match status and create tracker
+                                                    frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, weightDifference);
+                                                    dialog.hide();
+                                                },
+                                                () => {
+                                                    // If cancelled, just close the dialog
+                                                    dialog.hide();
+                                                }
+                                            );
+                                        }
                                     }
-                                );
-                            } else if (values.weight_kgs < values.observed_weight && abs_difference <= tolerance) {
-                                // Within tolerance: Add item with Received status
-                                frm.events.add_item_to_table(frm, item, values.observed_weight, 'Received');
-                                dialog.hide();
-                            } else if (values.weight_kgs < values.observed_weight && abs_difference > tolerance) {
-                                // Exceeds tolerance: Show alert and create weight mismatch
-                                frappe.confirm(
-                                    __('Weight difference exceeds tolerance and observed weight is greater than system weight. Do you want to create a weight mismatch tracker?'),
-                                    () => {
-                                        // If confirmed, add item with Miss Match status and create tracker
-                                        frm.events.create_weight_mismatch_tracker(frm, item, values.observed_weight, difference);
-                                        dialog.hide();
-                                    },
-                                    () => {
-                                        // If cancelled, just close the dialog
-                                        dialog.hide();
-                                    }
-                                );
+                                });
+
+                                // Update observed_qty_nos based on observed_weight and conversion_factor
+                                dialog.fields_dict.observed_weight.$input.on('change', function() {
+                                    const observedWeight = parseFloat(dialog.get_value('observed_weight'));
+                                    const conversionFactor = parseFloat(dialog.get_value('conversion_factor'));
+                                    const observedQtyNos = observedWeight * conversionFactor;
+                                    dialog.set_value('observed_qty_nos', observedQtyNos);
+                                });
+
+                                dialog.show();
+                            } else {
+                                frappe.msgprint(__('Unable to fetch conversion factor for the item.'));
                             }
                         }
                     });
-
-                    dialog.show();
                 } else {
                     frappe.msgprint(__('Unable to fetch system weight for the item.'));
                 }
@@ -498,7 +531,7 @@ frappe.ui.form.on('Receive Deflashing Entry', {
         });
     },
 
-    add_item_to_table: function(frm, item, observed_weight, status) {
+    add_item_to_table: function(frm, item, observed_weight,observed_qty_nos, status) {
         const child = frm.add_child('items');
         child.qty_uom = item.qty_uom;
         child.spp_batch_no = item.spp_batch_no;
@@ -513,6 +546,7 @@ frappe.ui.form.on('Receive Deflashing Entry', {
         child.stock_entry_reference = item.stock_entry_reference;
         child.amount = item.amount;
         child.received_weight = observed_weight;
+        child.received_product_qty_nos = observed_qty_nos;
         child.stock_entry_status = 'Not Created';
         child.weight_difference = Math.abs(observed_weight - item.weight_kgs).toFixed(3);
         child.status = status;
