@@ -22,6 +22,7 @@ def get_despatch_info(dd_number):
 
 @frappe.whitelist()
 def create_stock_entries(doc_name, items):
+    spp_settings = frappe.get_single("SPP Settings")
     """Creates stock entries for received deflashing items"""
     if not doc_name or not items:
         frappe.throw(_("Missing required parameters"))
@@ -47,7 +48,7 @@ def create_stock_entries(doc_name, items):
 
     # Cache common values
     company = frappe.defaults.get_user_default("Company")
-    source_warehouse = 'U1-Transit Store - SPP INDIA'
+    source_warehouse = spp_settings.p_target_warehouse
     processed_data = {
         "items": [],
         "stock_entries": [],
