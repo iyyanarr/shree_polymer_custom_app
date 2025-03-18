@@ -114,6 +114,7 @@ def make_stock_entry(self):
 				"conversion_factor_uom":1,
 				"transfer_qty":x.get("bin_net_weight"),
 				"qty":x.get("bin_net_weight"),
+				"use_serial_batch_fields": 1,
 				"batch_no":x.get("batch_no"),
 				})
 			stock_entry.append("items",{
@@ -123,6 +124,7 @@ def make_stock_entry(self):
 				"uom": "Kg",
 				"conversion_factor_uom":1,
 				"is_finished_item":1,
+				"use_serial_batch_fields": 1,
 				"transfer_qty":x.get("bin_net_weight"),
 				"batch_no":x.cut_bit_batch,
 				"qty":x.get("bin_net_weight"),

@@ -43,8 +43,7 @@
    "fieldname": "move_to_cut_bit_warehouse",
    "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Move To Cut Bit Warehouse",
-   "read_only_depends_on": "eval:doc.items"
+   "label": "Move To Cut Bit Warehouse"
   },
   {
    "fieldname": "items",
@@ -178,7 +177,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-08-17 17:34:10.128641",
+ "modified": "2025-03-18 11:40:22.878624",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Blank Bin Inward Entry",
