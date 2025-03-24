@@ -228,6 +228,7 @@ def make_stock_entry(self):
 				"conversion_factor_uom":1,
 				"transfer_qty":flt(each.qty, 3),
 				"qty":flt(each.qty, 3),
+				"use_serial_batch_fields": 1,
 				"batch_no":each.batch_no,
 				"spp_batch_number":each.spp_batch_no,
 				"source_ref_document":self.doctype,
