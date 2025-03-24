@@ -117,6 +117,7 @@ def make_stock_entry(self):
 						"t_warehouse":spp_settings.rejection_warehouse,
 						"stock_uom": "Kg",
 						"uom": "Kg",
+						"use_serial_batch_fields": 1,
 						"batch_no":self.batch_no,
 						"conversion_factor_uom":1,
 						"transfer_qty":flt(t_qty, 3),
