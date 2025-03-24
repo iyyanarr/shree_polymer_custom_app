@@ -104,7 +104,6 @@ def create_stock_entry(self):
 
             item_data = {
                 "item_code": x.product_ref,
-				"use_serial_batch_fields": 1,
                 "s_warehouse": source_warehouse,
                 "t_warehouse": target_warehouse,
                 "qty": x.qty_nos,

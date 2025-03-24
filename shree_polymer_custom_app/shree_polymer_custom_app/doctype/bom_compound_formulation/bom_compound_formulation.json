@@ -1,0 +1,107 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-17 14:36:03.301557",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_k6qj",
+  "formula_code",
+  "formula_name",
+  "aim_of_formula",
+  "final_product",
+  "table_tmwr",
+  "column_break_qwhw",
+  "issue_no",
+  "issue_date",
+  "mixing_center",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_k6qj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "formula_code",
+   "fieldtype": "Data",
+   "label": "Formula Code"
+  },
+  {
+   "fieldname": "formula_name",
+   "fieldtype": "Data",
+   "label": "Formula Name"
+  },
+  {
+   "fieldname": "final_product",
+   "fieldtype": "Data",
+   "label": "Final Product",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_qwhw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "issue_no",
+   "fieldtype": "Int",
+   "label": "Issue No"
+  },
+  {
+   "fieldname": "issue_date",
+   "fieldtype": "Date",
+   "label": "Issue Date"
+  },
+  {
+   "fieldname": "mixing_center",
+   "fieldtype": "Date",
+   "label": "Mixing Center"
+  },
+  {
+   "fieldname": "aim_of_formula",
+   "fieldtype": "Small Text",
+   "label": "Aim Of Formula"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Bom Compound Formulation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "table_tmwr",
+   "fieldtype": "Table",
+   "options": "Bom For Master Batch Items"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-03-17 17:07:14.673176",
+ "modified_by": "Administrator",
+ "module": "Shree Polymer Custom App",
+ "name": "Bom Compound Formulation",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

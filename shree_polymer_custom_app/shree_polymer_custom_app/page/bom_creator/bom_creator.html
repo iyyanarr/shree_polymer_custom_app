@@ -1,0 +1,88 @@
+<div class="bom-creator-container">
+    <div class="mb-4">
+        <div class="alert alert-info">
+            Enter an Item Code and click "Fetch BOM Details" to view the complete BOM structure.
+            <ul class="mt-2 mb-0">
+                <li>Select "Multi Level" to automatically show all nested BOMs (may be slow for complex items)</li>
+                <li>Select "Single Level" to expand BOMs on demand by clicking the Expand buttons</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Main container styling */
+.bom-result-area {
+    margin-top: 20px;
+}
+
+/* Card styling */
+.bom-result-area .card {
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.bom-result-area .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,0.125);
+}
+
+/* Table container with potential scroll */
+.bom-table-container {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* BOM child rows styling */
+.bom-child {
+    background-color: #f8f9fa;
+}
+
+.bom-child-header {
+    background-color: #e9ecef !important;
+}
+
+.bom-child-footer {
+    background-color: #e9ecef !important;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.bom-child td {
+    border-top: none !important;
+}
+
+.expanded {
+    background-color: #e9ecef;
+}
+
+/* Styling for server-rendered BOM headers */
+.bom-header {
+    background-color: #e9ecef !important;
+    font-weight: bold;
+}
+
+.total-row {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+/* Padding for indentation */
+.pl-2 { padding-left: 0.5rem !important; }
+.pl-4 { padding-left: 1rem !important; }
+.pl-6 { padding-left: 1.5rem !important; }
+.pl-8 { padding-left: 2rem !important; }
+.pl-10 { padding-left: 2.5rem !important; }
+.pl-12 { padding-left: 3rem !important; }
+
+/* Button styling */
+.btn-expand-bom, .btn-collapse {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 0.2rem;
+}
+
+/* Hover effects */
+.main-item:hover {
+    background-color: rgba(0,0,0,0.03);
+}
+</style>

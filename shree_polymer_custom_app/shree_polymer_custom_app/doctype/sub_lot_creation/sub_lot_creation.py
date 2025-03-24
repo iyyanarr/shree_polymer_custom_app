@@ -224,6 +224,7 @@ def make_repack_entry(self):
 				"to_uom": self.uom,
 				"uom": self.uom,
 				"is_finished_item":0,
+				"use_serial_batch_fields": 1,
 				"transfer_qty":from_qty__,
 				"qty":from_qty__,
 				"batch_no":self.batch_no})
@@ -239,6 +240,7 @@ def make_repack_entry(self):
 						"is_finished_item":1,
 						"transfer_qty":qty__,
 						"qty":qty__,
+						"use_serial_batch_fields": 1,
 						"spp_batch_number":self.sub_lot_no,
 						"batch_no":batch__no,
 						"mix_barcode": bar_dict.get("barcode_text"),

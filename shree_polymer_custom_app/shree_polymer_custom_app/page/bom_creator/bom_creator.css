@@ -1,0 +1,48 @@
+.bom-creator-container {
+    padding: 20px;
+}
+
+.step-indicator {
+    display: flex;
+    margin-bottom: 20px;
+}
+
+.step {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+}
+
+.step.active {
+    background: #2490ef;
+    color: white;
+}
+
+.step-content {
+    display: none;
+    padding: 20px;
+    border: 1px solid #ddd;
+    margin-bottom: 20px;
+}
+
+.step-content.active {
+    display: block;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.raw-materials-container {
+    margin-top: 15px;
+    padding: 15px;
+    border: 1px solid #ddd;
+}
