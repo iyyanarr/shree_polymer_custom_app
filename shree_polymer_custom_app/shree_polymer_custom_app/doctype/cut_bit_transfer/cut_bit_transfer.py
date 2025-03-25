@@ -190,7 +190,6 @@ def create_stock_entry(mt_doc):
 		stock_entry.to_warehouse = spp_settings.default_cut_bit_warehouse
 
 		# Clear any existing serial/batch bundle references
-		stock_entry.serial_and_batch_bundle = None
 		
 		for x in mt_doc.items:
 			r_batchno = x.batch_no
@@ -216,10 +215,11 @@ def create_stock_entry(mt_doc):
 				"is_finished_item": 0,
 				"transfer_qty": x.qty,
 				"qty": x.qty,
-				# Clear serial and batch fields
-				"serial_no": None,
-				"batch_no": None,
-				"serial_and_batch_bundle": None
+				"use_serial_batch_fields": 1,
+				"spp_batch_number":x.spp_batch_no,
+ 		                "batch_no":x.batch_no,
+ 		                "mix_barcode":x.scan_barcode
+
 			})
 
 			# Target item
@@ -232,14 +232,13 @@ def create_stock_entry(mt_doc):
 				"is_finished_item": 0,
 				"transfer_qty": x.qty,
 				"qty": x.qty,
-				"batch_no": r_batchno,
+				"use_serial_batch_fields": 1,
 				"source_ref_document": mt_doc.doctype,
 				"source_ref_id": mt_doc.name,
 				"mix_barcode": "CB_" + x.item_code,
-				# Clear serial fields
-				"serial_no": None,
-				"serial_and_batch_bundle": None
-			})
+				"spp_batch_number":x.spp_batch_no,
+ 		                "batch_no":r_batchno
+					})
 
 		# Save without submit first
 		stock_entry.save(ignore_permissions=True)
