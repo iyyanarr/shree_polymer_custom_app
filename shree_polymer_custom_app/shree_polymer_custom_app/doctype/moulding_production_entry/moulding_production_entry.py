@@ -579,7 +579,6 @@ def make_stock_entry(self):
 					"barcode_attach":bcode_resp.get("barcode"),
 					"barcode_text":bcode_resp.get("barcode_text"),
 					"source_ref_document":self.doctype,
-					"use_serial_batch_fields":1,
 					"source_ref_id":self.name,
 					"batch_no":batch__no,
 					#For avaoiding the child table only submitted issue which means the parent docstatus = 0 but child docstatus = 1
@@ -659,7 +658,7 @@ def append_source_details(stock_entry,self,work_order):
 						"uom": "Kg",
 						"conversion_factor_uom":1,
 						"is_finished_item":0,
-                        "use_serial_batch_fields": 1,
+                        			"use_serial_batch_fields": 1,
 						"transfer_qty":flt(f__b.get('consumed__qty'),3),
 						"qty":flt(f__b.get('consumed__qty'),3),
 						"spp_batch_number":f__b.get('spp_batch_number'),
