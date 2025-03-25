@@ -263,6 +263,7 @@ def make_stock_entry(self,work_order):
 						"t_warehouse":spp_settings.scrap_warehouse,
 						"is_scrap_item":1,
 						"stock_uom": "Kg",
+						"use_serial_batch_fields": 1,
 						"uom": "Kg",
 						"is_finished_item":0,
 						"transfer_qty":flt(self.scrap_weight, 3),
