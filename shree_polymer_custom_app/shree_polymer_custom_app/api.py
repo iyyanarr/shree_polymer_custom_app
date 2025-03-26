@@ -43,10 +43,60 @@ def on_batch_update(doc,method):
 		generate_batch_barcode(doc)
 
 @frappe.whitelist()
-def on_sle_update(doc,method):
-	if check_enqueue():
-		if doc.item_code and doc.batch_no:
-			update_item_batch_qty(doc.item_code,doc.batch_no,doc.stock_uom)
+def on_sle_update(doc, method):
+    try:
+        frappe.logger().info("\n=== Starting SLE Update ===")
+        frappe.logger().info(f"Document: {doc.as_dict() if hasattr(doc, 'as_dict') else str(doc)}")
+        frappe.logger().info(f"Method: {method}")
+
+        # Check if the enqueue function is valid
+        try:
+            is_enqueued = check_enqueue()
+            frappe.logger().info(f"Check enqueue result: {is_enqueued}")
+        except Exception as e:
+            frappe.log_error(frappe.get_traceback(), "Error during enqueue check in on_sle_update")
+            frappe.logger().error(f"Failed to check enqueue. Error: {str(e)}")
+            raise frappe.ValidationError("Error during enqueue check.")
+
+        if is_enqueued:
+            # First, check if item_code and batch_no are directly available
+            if doc.item_code and hasattr(doc, 'batch_no') and doc.batch_no:
+                # If direct batch_no is available, update directly
+                update_item_batch_qty(doc.item_code, doc.batch_no, doc.stock_uom)
+                frappe.logger().info(f"Directly processed batch: {doc.batch_no} for item: {doc.item_code}")
+            # Otherwise, fall back to serial_and_batch_bundle method
+            elif doc.item_code and doc.serial_and_batch_bundle:
+                # Fetch the Serial and Batch Bundle document
+                try:
+                    batch_bundle = frappe.get_doc("Serial and Batch Bundle", doc.serial_and_batch_bundle)
+                    frappe.logger().info(f"Fetched Serial and Batch Bundle: {batch_bundle.name}")
+                    
+                    # Process each batch entry
+                    for entry in batch_bundle.entries:
+                        if entry.batch_no:
+                            update_item_batch_qty(doc.item_code, entry.batch_no, doc.stock_uom)
+                            frappe.logger().info(f"Successfully processed batch: {entry.batch_no} for item: {doc.item_code}")
+                        else:
+                            frappe.log_error("Batch number missing in batch bundle entry", "Missing Batch Number")
+                            frappe.logger().error(f"Entry with missing batch_no: {entry}")
+                except Exception as e:
+                    frappe.log_error(frappe.get_traceback(), "Error fetching or processing Serial and Batch Bundle")
+                    frappe.logger().error(f"Error in fetching or processing Serial and Batch Bundle. Details: {str(e)}")
+                    raise frappe.ValidationError("Error in processing Serial and Batch Bundle.")
+            else:
+                frappe.log_error("Missing required fields in SLE update", "Missing Fields in SLE Update")
+                frappe.logger().error(
+                    f"Missing required fields: "
+                    f"Item Code present: {bool(doc.item_code)}, "
+                    f"Direct Batch No present: {bool(hasattr(doc, 'batch_no') and doc.batch_no)}, "
+                    f"Serial and Batch Bundle present: {bool(doc.serial_and_batch_bundle)}"
+                )
+        else:
+            frappe.log_error("Enqueue check failed - skipping update", "Skipping SLE Update")
+            frappe.logger().info("Enqueue check failed - skipping update")
+    except Exception as e:
+        frappe.logger().error(f"Error in on_sle_update: {str(e)}")
+        frappe.log_error(frappe.get_traceback(), "on_sle_update error")
 
 def get_batch_info_update_qty(doc,batch_info = None):
 	if not batch_info:
