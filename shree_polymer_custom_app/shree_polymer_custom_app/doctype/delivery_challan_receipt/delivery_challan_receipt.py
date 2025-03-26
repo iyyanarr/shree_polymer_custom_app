@@ -1181,6 +1181,7 @@ def make_mb_stock_entry(sp_item_qty,sp_item_batch_no,sp_item_spp_batch_no,sp_ite
 					"conversion_factor_uom":1,
 					"is_finished_item":1,
 					"transfer_qty":sp_item_qty,
+					"use_serial_batch_fields":1,
 					"qty":sp_item_qty,
 					"spp_batch_number":sp_item_spp_batch_no,
 					"mix_barcode":sp_item_scan_barcode,
