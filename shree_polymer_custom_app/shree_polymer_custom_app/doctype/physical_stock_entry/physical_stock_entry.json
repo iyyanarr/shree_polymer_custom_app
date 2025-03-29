@@ -37,12 +37,12 @@
    "fieldname": "item_group",
    "fieldtype": "Select",
    "label": "Item Type",
-   "options": "Raw Material\nBatch\nMaster Batch\nFinal Batch\nCompound\nMat\nProducts\nFinished Product"
+   "options": "Raw Material\nCompound - Sheeting\nCompound\nBatch\nMaster Batch\nFinal Batch\nMat\nProducts\nFinished Product\nProducts Sales\nCut Bit"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-28 23:05:21.040577",
+ "modified": "2025-03-29 21:18:53.061178",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Physical Stock Entry",
