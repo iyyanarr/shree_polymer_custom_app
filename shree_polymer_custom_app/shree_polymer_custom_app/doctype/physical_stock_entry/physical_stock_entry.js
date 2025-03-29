@@ -83,9 +83,23 @@ frappe.ui.form.on('Physical Stock Entry', {
       primary_action(values) {
         // If we have a conversion field visible and filled, use it
         if (!dialog.get_field('physical_stock_in_nos').hidden && dialog.get_value('physical_stock_in_nos')) {
-          // Calculate the actual physical stock based on the Nos value and conversion factor
           let conversion_factor = dialog.conversion_factor || 1;
-          values.physical_stock = values.physical_stock_in_nos * conversion_factor;
+          let stock_uom = dialog.get_value('stock_uom');
+          let item_group = dialog.get_value('item_group');
+          
+          // For Product Sales items, the physical_stock_in_nos is the primary input (in Nos)
+          // We need to convert this to Kg for physical_stock
+          if (item_group === 'Product Sales') {
+            values.physical_stock = values.physical_stock_in_nos * conversion_factor;
+          }
+          // For other items, follow the existing logic
+          else if (stock_uom === 'Nos') {
+            // Using the formula nos/kg*qty
+            values.physical_stock = (1/conversion_factor) * values.physical_stock_in_nos;
+          } else {
+            // Standard conversion
+            values.physical_stock = values.physical_stock_in_nos * conversion_factor;
+          }
         }
         
         add_entry_to_child_table(frm, values);
@@ -124,9 +138,95 @@ function fetch_stock_information(dialog, frm) {
           // Check if item_code starts with any of the special prefixes: P, t.P, F, t.F, T
           let item_code = data.item_code || "";
           let stock_uom = data.stock_uom || "";
+          let returned_item_group = data.item_group || "";
           let needsConversion = false;
           
-          if (item_code.startsWith('P') || item_code.startsWith('t.P') || 
+          // Special handling for Product Sales items - these should be entered in Nos
+          if (returned_item_group === 'Product Sales') {
+            console.log("Product Sales item detected - will enter in Nos");
+            
+            // If stock_uom is Kg, show the conversion fields
+            if (stock_uom === 'Kg') {
+              needsConversion = true;
+              
+              // Change the labels to make it clear that Nos is the primary entry method
+              dialog.get_field('physical_stock').set_label('Physical Stock (Kg)');
+              dialog.get_field('physical_stock_in_nos').set_label('Physical Stock in Nos');
+              dialog.get_field('stock_in_nos').set_label('Stock in Nos');
+              
+              // Show Nos field and hide Kg field
+              dialog.get_field('physical_stock').toggle(false);
+              dialog.get_field('physical_stock_in_nos').toggle(true);
+              dialog.get_field('physical_stock_in_nos').df.reqd = true;
+              dialog.get_field('physical_stock').df.reqd = false;
+              
+              // Also show current stock in Nos
+              dialog.get_field('stock_in_nos').toggle(true);
+              
+              // Now handle the conversion just like before
+              let conversion_item_code = item_code;
+              
+              frappe.call({
+                method: "frappe.client.get",
+                args: {
+                  doctype: "Item",
+                  name: conversion_item_code
+                },
+                callback: function(item_r) {
+                  if (item_r.message) {
+                    let item = item_r.message;
+                    let conversion_factor = 1;
+                    let target_uom = 'Nos';
+                    
+                    // Find UOM conversion to Nos if it exists
+                    if (item.uoms && item.uoms.length > 0) {
+                      for (let uom of item.uoms) {
+                        if (uom.uom === target_uom) {
+                          conversion_factor = parseFloat(uom.conversion_factor) || 1;
+                          console.log(`Found ${target_uom} conversion factor:`, conversion_factor);
+                          break;
+                        }
+                      }
+                    }
+                    
+                    // Store conversion factor for later use
+                    dialog.conversion_factor = conversion_factor;
+                    dialog.target_uom = target_uom;
+                    
+                    // Convert current stock from Kg to Nos
+                    let stock_in_nos = data.qty / conversion_factor;
+                    dialog.set_value('stock_in_nos', stock_in_nos);
+                    
+                    // Set up handlers for conversion
+                    dialog.get_field('physical_stock').$input.off('change');
+                    dialog.get_field('physical_stock_in_nos').$input.off('change');
+                    
+                    // When Nos changes, update Kg
+                    dialog.get_field('physical_stock_in_nos').$input.on('change', function() {
+                      let nos_value = dialog.get_value('physical_stock_in_nos');
+                      let kg_value = nos_value * conversion_factor;
+                      dialog.set_value('physical_stock', kg_value);
+                    });
+                    
+                    // When Kg changes, update Nos
+                    dialog.get_field('physical_stock').$input.on('change', function() {
+                      let kg_value = dialog.get_value('physical_stock');
+                      let nos_value = kg_value / conversion_factor;
+                      dialog.set_value('physical_stock_in_nos', nos_value);
+                    });
+                    
+                    // Focus on Nos field for entry
+                    dialog.get_field('physical_stock_in_nos').$input.focus();
+                  }
+                }
+              });
+            } else {
+              // Product Sales item with non-Kg UOM - just focus on physical_stock field
+              dialog.get_field('physical_stock').$input.focus();
+            }
+          } 
+          // Regular conversion for special prefix items
+          else if (item_code.startsWith('P') || item_code.startsWith('t.P') || 
               item_code.startsWith('F') || item_code.startsWith('t.F') ||
               item_code.startsWith('T')) {
             needsConversion = true;
@@ -154,6 +254,7 @@ function fetch_stock_information(dialog, frm) {
               },
               callback: function(item_r) {
                 if (item_r.message) {
+                  // [Rest of the existing conversion code remains the same]
                   let item = item_r.message;
                   let conversion_factor = 1;
                   let target_uom = '';
@@ -174,6 +275,7 @@ function fetch_stock_information(dialog, frm) {
                     target_uom = 'Nos';
                   }
                   
+                  // [Continue with existing conversion code]
                   // Find UOM conversion to target UOM if it exists
                   if (item.uoms && item.uoms.length > 0) {
                     for (let uom of item.uoms) {
@@ -203,9 +305,9 @@ function fetch_stock_information(dialog, frm) {
                     converted_stock = data.qty / conversion_factor;
                     console.log(`Converting ${data.qty} Kg to ${converted_stock.toFixed(2)} Nos`);
                   } else if (stock_uom === 'Nos') {
-                    // Convert from Nos to Kg: Nos × conversion_factor
-                    converted_stock = data.qty * conversion_factor;
-                    console.log(`Converting ${data.qty} Nos to ${converted_stock.toFixed(2)} Kg`);
+                    // Using the formula nos/kg*qty where nos=1, kg=conversion_factor
+                    converted_stock = (1/conversion_factor) * data.qty;
+                    console.log(`Converting ${data.qty} Nos to ${converted_stock.toFixed(2)} Kg using formula: (1/${conversion_factor})*${data.qty}`);
                   } else {
                     // Default conversion
                     converted_stock = data.qty / conversion_factor;
@@ -223,10 +325,10 @@ function fetch_stock_information(dialog, frm) {
                     let converted_value;
                     
                     if (stock_uom === 'Kg') {
-                      // Convert from Kg to Nos (1 Nos = 532 Kg)
+                      // Convert from Kg to Nos
                       converted_value = physical_stock / conversion_factor;
                     } else if (stock_uom === 'Nos') {
-                      // Convert from Nos to Kg (1 Nos = 532 Kg)
+                      // Convert from Nos to Kg
                       converted_value = physical_stock * conversion_factor;
                     } else {
                       converted_value = physical_stock / conversion_factor;
@@ -241,11 +343,11 @@ function fetch_stock_information(dialog, frm) {
                     let physical_stock;
                     
                     if (stock_uom === 'Kg') {
-                      // Convert from Nos to Kg (1 Nos = 532 Kg)
+                      // Convert from Nos to Kg
                       physical_stock = physical_stock_in_nos * conversion_factor;
                     } else if (stock_uom === 'Nos') {
-                      // Convert from Kg to Nos (1 Nos = 532 Kg)
-                      physical_stock = physical_stock_in_nos / conversion_factor;
+                      // Using the formula nos/kg*qty where nos=1, kg=conversion_factor
+                      physical_stock = (1/conversion_factor) * physical_stock_in_nos;
                     } else {
                       physical_stock = physical_stock_in_nos * conversion_factor;
                     }
@@ -263,13 +365,11 @@ function fetch_stock_information(dialog, frm) {
               }
             });
           } else {
-            // Hide the conversion fields for other items
+            // Non-special items - no conversion needed
             dialog.get_field('stock_in_nos').toggle(false);
             dialog.get_field('physical_stock_in_nos').toggle(false);
+            dialog.get_field('physical_stock').$input.focus();
           }
-          
-          // Automatically focus physical stock for faster data entry
-          dialog.get_field('physical_stock').$input.focus();
           
         } else if(r.message) {
           let msg = r.message.message || r.message.error;
@@ -286,17 +386,56 @@ function add_entry_to_child_table(frm, values) {
       let child_entry = frm.add_child('details');
   
       if (child_entry) {
+        // Set common fields
         child_entry.batch_number = values.batch_or_mixed_barcode;
         child_entry.item_code = values.item_code;
         child_entry.item_name = values.item_name;
         child_entry.item_group = values.item_group;
         child_entry.warehouse = values.warehouse;
-        child_entry.current_stock = values.current_stock;
-        child_entry.physical_stock = values.physical_stock;
         
-        // Store Nos value if available
-        if (values.physical_stock_in_nos) {
-          child_entry.physical_stock_in_nos = values.physical_stock_in_nos;
+        let stock_uom = values.stock_uom;
+        let item_group = values.item_group;
+        
+        // Set stock and physical stock values based on UOM and item type
+        if (stock_uom === 'Kg') {
+          // Stock UOM is Kg
+          child_entry.current_stock_kg = values.current_stock;
+          child_entry.physical_stock_kg = values.physical_stock;
+          
+          // If we have Nos values available, use them
+          if (values.stock_in_nos !== undefined) {
+            child_entry.current_stock = values.stock_in_nos;
+          }
+          
+          if (values.physical_stock_in_nos !== undefined) {
+            child_entry.physical_stock = values.physical_stock_in_nos;
+          }
+        } else if (stock_uom === 'Nos') {
+          // Stock UOM is Nos
+          child_entry.current_stock = values.current_stock;
+          child_entry.physical_stock = values.physical_stock;
+          
+          // If we have Kg values available, use them
+          if (values.stock_in_nos !== undefined) {
+            child_entry.current_stock_kg = values.stock_in_nos;
+          }
+          
+          if (values.physical_stock_in_nos !== undefined) {
+            child_entry.physical_stock_kg = values.physical_stock_in_nos;
+          }
+        } else {
+          // Other UOMs - just set the values we have
+          child_entry.current_stock = values.current_stock;
+          child_entry.physical_stock = values.physical_stock;
+          
+          // If we have converted values available, use them
+          if (values.stock_in_nos !== undefined) {
+            child_entry.current_stock_kg = values.stock_in_nos;
+          }
+          
+          if (values.physical_stock_in_nos !== undefined) {
+            child_entry.physical_stock_kg = values.physical_stock_in_nos;
+          }
         }
   
         frm.refresh_field('details');

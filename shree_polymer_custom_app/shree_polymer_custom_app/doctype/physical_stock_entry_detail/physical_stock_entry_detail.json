@@ -12,7 +12,9 @@
   "item_group",
   "warehouse",
   "current_stock",
-  "physical_stock"
+  "current_stock_kg",
+  "physical_stock",
+  "physical_stock_kg"
  ],
  "fields": [
   {
@@ -59,12 +61,24 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Physical Stock"
+  },
+  {
+   "fieldname": "current_stock_kg",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Current Stock Kg"
+  },
+  {
+   "fieldname": "physical_stock_kg",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Physical Stock Kg"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-28 15:07:05.059418",
+ "modified": "2025-03-29 22:46:09.954292",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Physical Stock Entry Detail",
