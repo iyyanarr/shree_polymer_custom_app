@@ -22,58 +22,105 @@ class CutBitTransfer(Document):
 	# 	self.items = items
 
 @frappe.whitelist()
-def validate_clip_barcode(batch_no,t_type,warehouse):
-	spp_settings = frappe.get_single("SPP Settings")
-	# if t_type == "Warming":
-	ct_type = "Clip"
-	s_warehouse = spp_settings.default_sheeting_warehouse
-	clip_mapping = frappe.db.sql(""" SELECT compound,spp_batch_number,qty FROM `tabItem Clip Mapping` CM 
-								 INNER JOIN `tabSheeting Clip` SC ON SC.name = CM.sheeting_clip 
-								 WHERE SC.barcode_text = %(mix_barcode)s AND CM.is_retired=0""",{"mix_barcode":batch_no},as_dict=1)
-	if clip_mapping:
-		batch_no = clip_mapping[0].compound+"_"+clip_mapping[0].spp_batch_number.split('-')[0]
-
-	if not clip_mapping:
-		# clip_mapping = frappe.db.sql(""" SELECT compound,spp_batch_number,qty FROM `tabItem Bin Mapping` CM 
-		# 							 INNER JOIN `tabBlanking Bin` SC ON SC.name = CM.blanking_bin 
-		# 							 WHERE SC.barcode_text = %(mix_barcode)s AND CM.is_retired=0""",{"mix_barcode":batch_no},as_dict=1)
-		clip_mapping = frappe.db.sql(""" SELECT compound,spp_batch_number,qty FROM `tabItem Bin Mapping` IBM 
-									 INNER JOIN `tabAsset` A ON A.name = IBM.blanking__bin 
-									 WHERE A.barcode_text = %(mix_barcode)s AND IBM.is_retired=0 """,{"mix_barcode":batch_no},as_dict=1)
-		if clip_mapping:
-			batch_no = clip_mapping[0].compound+"_"+clip_mapping[0].spp_batch_number.split('-')[0]
-			ct_type = "Bin"
-			# s_warehouse = spp_settings.default_blanking_warehouse
-			s_warehouse = spp_settings.unit_2_warehouse
-	stock_details = frappe.db.sql(""" SELECT S.name, SD.item_code,SD.item_name,SD.transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
-					  FROM `tabStock Entry Detail` SD
-					  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
-					  WHERE (SD.mix_barcode = %(mix_barcode)s OR SD.barcode_text = %(mix_barcode)s) AND SD.t_warehouse = %(t_warehouse)s 
-					  AND S.docstatus = 1  
-					  ORDER BY S.creation DESC limit 1 """,{'mix_barcode':batch_no,'t_warehouse':s_warehouse},as_dict=1)
-	if stock_details:
-		items = stock_details[0].item_code
-		s_query = "SELECT I.item_code,I.item_name,I.description,I.batch_no,SD.spp_batch_number,SD.mix_barcode,\
-					I.stock_uom as uom,I.qty FROM `tabItem Batch Stock Balance` I\
-					 INNER JOIN `tabBatch` B ON I.batch_no = B.name \
-					 INNER JOIN  `tabStock Entry Detail` SD ON SD.batch_no = B.name\
-					 WHERE I.item_code ='{item_codes}' AND  (SD.mix_barcode = '{mix_barcode}' OR SD.barcode_text = '{mix_barcode}')   AND \
-					 I.qty >0 AND I.warehouse ='{warehouse}' AND B.expiry_date>=curdate() ".format(cutbit_warehouse=spp_settings.default_cut_bit_warehouse,mix_barcode=batch_no,item_codes=items,warehouse=s_warehouse)
-		
-		st_details = frappe.db.sql(s_query,as_dict=1)
-		if not st_details:
-			s_query = "SELECT I.item_code,I.item_name,I.description,I.batch_no,SD.spp_batch_number,SD.mix_barcode,\
-					I.stock_uom as uom,I.qty FROM `tabItem Batch Stock Balance` I\
-					 INNER JOIN `tabBatch` B ON I.batch_no = B.name \
-					 INNER JOIN  `tabStock Entry Detail` SD ON SD.batch_no = B.name\
-					 WHERE I.item_code ='{item_codes}' AND  (SD.mix_barcode = '{mix_barcode}' OR SD.barcode_text = '{mix_barcode}')   AND \
-					 I.qty >0 AND I.warehouse ='{warehouse}' AND B.expiry_date>=curdate() ".format(cutbit_warehouse=spp_settings.default_cut_bit_warehouse,mix_barcode=batch_no,item_codes=items,warehouse=spp_settings.unit_2_warehouse)
-			st_details = frappe.db.sql(s_query,as_dict=1)
-		if st_details and clip_mapping:
-			st_details[0].qty = clip_mapping[0].qty
-		return {"status":"Success","stock":st_details,"source_warehouse":s_warehouse}
-
-	return  {"status":"Failed","message":"Scanned "+ct_type+" <b>"+batch_no+"</b> not exist in the <b>"+s_warehouse+"</b>"}
+def validate_clip_barcode(batch_no, t_type, warehouse):
+    frappe.logger().debug(f"DEBUG START: validate_clip_barcode called with batch_no={batch_no}, t_type={t_type}, warehouse={warehouse}")
+    
+    spp_settings = frappe.get_single("SPP Settings")
+    frappe.logger().debug(f"DEBUG: Retrieved SPP settings")
+    
+    # Default values
+    ct_type = "Clip"
+    s_warehouse = spp_settings.default_sheeting_warehouse
+    frappe.logger().debug(f"DEBUG: Initial warehouse set to {s_warehouse}")
+    
+    # Step 1: Check clip mapping
+    frappe.logger().debug(f"DEBUG: Checking clip mapping for barcode {batch_no}")
+    clip_mapping = frappe.db.sql(""" SELECT compound, spp_batch_number, qty FROM `tabItem Clip Mapping` CM 
+                                 INNER JOIN `tabSheeting Clip` SC ON SC.name = CM.sheeting_clip 
+                                 WHERE SC.barcode_text = %(mix_barcode)s AND CM.is_retired=0""", 
+                                {"mix_barcode": batch_no}, as_dict=1)
+    frappe.logger().debug(f"DEBUG: Clip mapping query result: {clip_mapping}")
+    
+    if clip_mapping:
+        old_batch_no = batch_no
+        batch_no = clip_mapping[0].compound + "_" + clip_mapping[0].spp_batch_number.split('-')[0]
+        frappe.logger().debug(f"DEBUG: Clip found - reformatted batch_no from {old_batch_no} to {batch_no}")
+    
+    # Step 2: Check bin mapping if no clip found
+    if not clip_mapping:
+        frappe.logger().debug(f"DEBUG: No clip mapping found, checking bin mapping")
+        clip_mapping = frappe.db.sql(""" SELECT compound, spp_batch_number, qty FROM `tabItem Bin Mapping` IBM 
+                                     INNER JOIN `tabAsset` A ON A.name = IBM.blanking__bin 
+                                     WHERE A.barcode_text = %(mix_barcode)s AND IBM.is_retired=0 """, 
+                                    {"mix_barcode": batch_no}, as_dict=1)
+        frappe.logger().debug(f"DEBUG: Bin mapping query result: {clip_mapping}")
+        
+        if clip_mapping:
+            old_batch_no = batch_no
+            batch_no = clip_mapping[0].compound + "_" + clip_mapping[0].spp_batch_number.split('-')[0]
+            ct_type = "Bin"
+            old_warehouse = s_warehouse
+            s_warehouse = spp_settings.unit_2_warehouse
+            frappe.logger().debug(f"DEBUG: Bin found - reformatted batch_no from {old_batch_no} to {batch_no}")
+            frappe.logger().debug(f"DEBUG: Changed type to {ct_type} and warehouse from {old_warehouse} to {s_warehouse}")
+    
+    # Step 3: Check stock details
+    frappe.logger().debug(f"DEBUG: Checking stock details with batch_no={batch_no}, warehouse={s_warehouse}")
+    stock_details = frappe.db.sql(""" SELECT S.name, SD.item_code, SD.item_name, SD.transfer_qty, SD.spp_batch_number, 
+                      SD.batch_no, SD.stock_uom 
+                      FROM `tabStock Entry Detail` SD
+                      INNER JOIN `tabStock Entry` S ON SD.parent = S.name
+                      WHERE (SD.mix_barcode = %(mix_barcode)s OR SD.barcode_text = %(mix_barcode)s) 
+                      AND SD.t_warehouse = %(t_warehouse)s 
+                      AND S.docstatus = 1  
+                      ORDER BY S.creation DESC limit 1 """,
+                     {'mix_barcode': batch_no, 't_warehouse': s_warehouse}, as_dict=1)
+    frappe.logger().debug(f"DEBUG: Stock details query result: {stock_details}")
+    
+    # Step 4: Process stock details if found
+    if stock_details:
+        items = stock_details[0].item_code
+        frappe.logger().debug(f"DEBUG: Stock details found for item_code={items}")
+        
+        # First stock balance query
+        frappe.logger().debug(f"DEBUG: Running first stock balance query for warehouse {s_warehouse}")
+        s_query = f"SELECT I.item_code, I.item_name, I.description, I.batch_no, SD.spp_batch_number, SD.mix_barcode, \
+                    I.stock_uom as uom, I.qty FROM `tabItem Batch Stock Balance` I \
+                    INNER JOIN `tabBatch` B ON I.batch_no = B.name \
+                    INNER JOIN `tabStock Entry Detail` SD ON SD.batch_no = B.name \
+                    WHERE I.item_code ='{items}' AND (SD.mix_barcode = '{batch_no}' OR SD.barcode_text = '{batch_no}') \
+                    AND I.qty > 0 AND I.warehouse ='{s_warehouse}' AND B.expiry_date >= curdate()"
+        
+        frappe.logger().debug(f"DEBUG: First query: {s_query}")
+        st_details = frappe.db.sql(s_query, as_dict=1)
+        frappe.logger().debug(f"DEBUG: First stock balance query result: {st_details}")
+        
+        # Second stock balance query if first returns no results
+        if not st_details:
+            frappe.logger().debug(f"DEBUG: No stock found in first query, trying with unit_2_warehouse")
+            s_query = f"SELECT I.item_code, I.item_name, I.description, I.batch_no, SD.spp_batch_number, SD.mix_barcode, \
+                        I.stock_uom as uom, I.qty FROM `tabItem Batch Stock Balance` I \
+                        INNER JOIN `tabBatch` B ON I.batch_no = B.name \
+                        INNER JOIN `tabStock Entry Detail` SD ON SD.batch_no = B.name \
+                        WHERE I.item_code ='{items}' AND (SD.mix_barcode = '{batch_no}' OR SD.barcode_text = '{batch_no}') \
+                        AND I.qty > 0 AND I.warehouse ='{spp_settings.unit_2_warehouse}' AND B.expiry_date >= curdate()"
+            
+            frappe.logger().debug(f"DEBUG: Second query: {s_query}")
+            st_details = frappe.db.sql(s_query, as_dict=1)
+            frappe.logger().debug(f"DEBUG: Second stock balance query result: {st_details}")
+        
+        # Override quantity if we have clip mapping
+        if st_details and clip_mapping:
+            old_qty = st_details[0].qty
+            st_details[0].qty = clip_mapping[0].qty
+            frappe.logger().debug(f"DEBUG: Overriding qty from {old_qty} to {clip_mapping[0].qty}")
+        
+        frappe.logger().debug(f"DEBUG: Returning success with stock={st_details} and source_warehouse={s_warehouse}")
+        return {"status": "Success", "stock": st_details, "source_warehouse": s_warehouse}
+    
+    # Step 5: Return failure if no stock found
+    frappe.logger().debug(f"DEBUG: No stock found, returning failure message for {ct_type} {batch_no} in {s_warehouse}")
+    return {"status": "Failed", "message": "Scanned " + ct_type + " <b>" + batch_no + "</b> not exist in the <b>" + s_warehouse + "</b>"}
 
 
 def create_stock_entry(mt_doc):
