@@ -107,6 +107,20 @@ frappe.ui.form.on('Physical Stock Entry', {
       }
     });
   
+    // Prevent dialog from closing on Enter key
+    dialog.$wrapper.find('.modal-dialog').keydown(function(e) {
+      if (e.which === 13) { // Enter key
+        e.preventDefault();
+        e.stopPropagation();
+        // Don't submit the dialog on enter, just trigger the field's onchange event
+        const barcodeField = dialog.get_field('batch_or_mixed_barcode');
+        if (document.activeElement === barcodeField.$input[0]) {
+          fetch_stock_information(dialog, frm);
+        }
+        return false;
+      }
+    });
+  
     dialog.show();
 }
 
