@@ -25,27 +25,14 @@ def get_filtered_stock_by_parameters(batch_or_mixed_barcode, item_group):
         print("Error: No warehouse mapping found")
         return {"error": "Warehouse mapping not found for the given item group"}
 
-    # If Raw Material (RW):
-    if item_group == 'Raw Material':
-        print("Processing Raw Material flow")
-        stock_balance = fetch_stock_from_warehouses(batch_or_mixed_barcode, warehouses)
+    # For all item types, prioritize U1-Store when checking inventory
+    stock_balance = fetch_stock_from_warehouses(batch_or_mixed_barcode, warehouses)
 
-        if not stock_balance:
-            print("No stock balance found for Raw Material")
-            return {"message": "No Item Batch Stock Balance data found for Raw Material and given batch."}
+    if not stock_balance:
+        print("No stock balance found for the batch in any warehouse")
+        return {"message": f"No stock found for {batch_or_mixed_barcode} in any configured warehouse."}
 
-        return stock_balance
-
-    # For other Item Types:
-    else:
-        print(f"Processing other item type: {item_group}")
-        stock_balance = fetch_stock_from_warehouses(batch_or_mixed_barcode, warehouses)
-
-        if not stock_balance:
-            print("No stock balance found for the batch")
-            return {"message": "No Item Batch Stock Balance data found for the retrieved batch number."}
-
-        return stock_balance
+    return stock_balance
 
 def get_warehouses_for_item_group(item_group):
     print(f"\nDebug: get_warehouses_for_item_group")
@@ -53,12 +40,16 @@ def get_warehouses_for_item_group(item_group):
     for key, value in WAREHOUSE_MAPPING.items():
         if key in item_group:
             print(f"Found warehouse mappings: {value}")
-            return value
+            # Ensure U1-Store is always prioritized first if it's in the list
+            sorted_warehouses = sorted(value, key=lambda x: 0 if 'U1-Store' in x else 1)
+            print(f"Prioritized warehouse order: {sorted_warehouses}")
+            return sorted_warehouses
     print("No warehouse mapping found")
     return None
 
 def fetch_stock_from_warehouses(batch_or_mixed_barcode, warehouses):
     for warehouse in warehouses:
+        print(f"Checking stock in warehouse: {warehouse}")
         stock_balance = frappe.db.get_value(
             'Item Batch Stock Balance',
             {'batch_no': batch_or_mixed_barcode, 'warehouse': warehouse},
@@ -68,4 +59,6 @@ def fetch_stock_from_warehouses(batch_or_mixed_barcode, warehouses):
         if stock_balance:
             print(f"Stock Balance found in {warehouse}: {stock_balance}")
             return stock_balance
+        else:
+            print(f"No stock found in {warehouse} for batch {batch_or_mixed_barcode}")
     return None

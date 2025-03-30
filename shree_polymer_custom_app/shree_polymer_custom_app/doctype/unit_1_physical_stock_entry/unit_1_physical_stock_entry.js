@@ -142,7 +142,8 @@ function fetch_stock_information(dialog, frm) {
     }
 
     frappe.call({
-      method: "shree_polymer_custom_app.shree_polymer_custom_app.doctype.physical_stock_entry.physical_stock_entry.get_filtered_stock_by_parameters",
+      // Update method to call the Unit-1 specific function
+      method: "shree_polymer_custom_app.shree_polymer_custom_app.doctype.unit_1_physical_stock_entry.unit_1_physical_stock_entry.get_filtered_stock_by_parameters",
       args: {
         batch_or_mixed_barcode: batch_or_mixed_barcode,
         item_group: item_group
@@ -151,6 +152,7 @@ function fetch_stock_information(dialog, frm) {
         console.log('**************************',r);
         if (r.message && !r.message.error && !r.message.message) {
           let data = r.message;
+          // Rest of the callback function remains the same
           dialog.set_value('item_code', data.item_code);
           dialog.set_value('item_name', data.item_name);
           dialog.set_value('stock_uom', data.stock_uom);
