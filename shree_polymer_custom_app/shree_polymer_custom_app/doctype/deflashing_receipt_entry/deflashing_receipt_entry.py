@@ -411,10 +411,10 @@ def update_job_cards(wo,actual_weight,doc_info,item):
 	for job_card in job_cards:
 		jc = frappe.get_doc("Job Card",job_card.name)
 		jc.append("time_logs",{
-			
-			"from_time":now(),
-			"completed_qty":flt("{:.3f}".format(actual_weight))
-			})
+			"from_time": now(),
+			"to_time": now(),
+			"completed_qty": flt("{:.3f}".format(actual_weight))
+		})
 		for time_log in jc.time_logs:
 			# time_log.employee = employee
 			time_log.completed_qty = flt("{:.3f}".format(actual_weight))
@@ -618,4 +618,4 @@ def validate_warehouse(bar_code):
 		frappe.response.status = "failed"
 		frappe.response.message = "Something went wrong"
 		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.deflashing_receipt_entry.deflashing_receipt_entry.validate_warehouse")
-	
+
