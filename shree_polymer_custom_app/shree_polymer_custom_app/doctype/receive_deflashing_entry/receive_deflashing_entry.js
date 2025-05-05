@@ -413,8 +413,8 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                                                     }
 
                                                     if (values.weight_kgs > values.observed_weight && absWeightDifference <= tolerance) {
-                                                        // Within tolerance: Add item with Received status
-                                                        frm.events.add_item_to_table(frm, item, values.observed_weight, values.observed_qty_nos, 'Received');
+                                                        // Within tolerance: Use SYSTEM weight instead of observed weight
+                                                        frm.events.add_item_to_table(frm, item, values.weight_kgs, values.system_qty_nos, 'Received');
                                                         dialog.hide();
                                                     } else if (values.weight_kgs > values.observed_weight && absWeightDifference > tolerance) {
                                                         // Exceeds tolerance: Show alert and create weight mismatch
@@ -431,8 +431,8 @@ frappe.ui.form.on('Receive Deflashing Entry', {
                                                             }
                                                         );
                                                     } else if (values.weight_kgs < values.observed_weight && absWeightDifference <= tolerance) {
-                                                        // Within tolerance: Add item with Received status
-                                                        frm.events.add_item_to_table(frm, item, values.observed_weight, values.observed_qty_nos, 'Received');
+                                                        // Within tolerance: Use SYSTEM weight instead of observed weight
+                                                        frm.events.add_item_to_table(frm, item, values.weight_kgs, values.system_qty_nos, 'Received');
                                                         dialog.hide();
                                                     } else if (values.weight_kgs < values.observed_weight && absWeightDifference > tolerance) {
                                                         // Exceeds tolerance: Show alert and create weight mismatch
