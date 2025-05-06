@@ -55,6 +55,10 @@ def convert_no_into_kgs(self):
 
 def rollback_entries(self,msg = None):
 	try:
+		pass  # Add your logic here
+	except Exception as e:
+		frappe.log_error(message=frappe.get_traceback(), title="Error in try block")
+		frappe.msgprint("An error occurred.")
 		if self.stock_entry_reference:
 			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{self.stock_entry_reference}' ")
 			frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  name=%(name)s""",{"name":self.stock_entry_reference})
@@ -283,58 +287,56 @@ def check_customer_item(item):
 @frappe.whitelist()
 def validate_lot_barcode(batch_no,item = None):
 	try:
-		""" Validate job card """
-		rept_entry = frappe.db.get_all("Inspection Entry",{"lot_no":batch_no,"docstatus":1,"inspection_type":"Final Visual Inspection"},["vs_pdir_stock_entry_ref","name"])
-		if rept_entry:
-			stock_entry_ref = None
-			lot_r__id = None
-			for k in rept_entry:
-				if k.vs_pdir_stock_entry_ref:
-					stock_entry_ref = k.vs_pdir_stock_entry_ref
-					lot_r__id = k.name
-			if not stock_entry_ref:
-				frappe.response.status = 'failed'
-				frappe.response.message = f"Stock Entry Reference not found in <b>Final Visual Inspection Entry</b> for the lot <b>{batch_no}</b>"
-			else:
-				product_details = frappe.db.sql(f""" SELECT  SED.t_warehouse as from_warehouse,SED.item_code,SED.batch_no,SED.spp_batch_number FROM `tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE ON SE.name=SED.parent
-													LEFT JOIN `tabJob Card` JC ON JC.work_order=SE.work_order LEFT JOIN `tabJob Card Time Log` LG ON LG.parent = JC.name 
-													LEFT JOIN `tabEmployee` E ON LG.employee = E.name WHERE SE.name='{stock_entry_ref}' AND SED.source_ref_document='Inspection Entry' AND SED.source_ref_id = '{lot_r__id}' """,as_dict=1)
-				if product_details:
-					stock_status = check_available_stock(product_details[0].get("from_warehouse"),product_details[0].get("item_code"),product_details[0].get("batch_no",""))
-					if stock_status.get('status') == "success":
-						product_details[0].qty_from_item_batch = stock_status.get('qty')
-						cust_item = check_customer_item(product_details[0].get("item_code"))
-						if cust_item.get('status') == 'success':
-							product_details[0]['items'] = cust_item.get('items')
-							packing__type_resp = attach_packing_type()
-							if packing__type_resp.get('status') == 'success':
-								product_details[0]['packing_types'] = packing__type_resp.get('message')
-								if item:
-									items_ = [x.get('item_code') for x in product_details[0]['items']]
-									if item in items_:
-										frappe.response.status = "success"
-										frappe.response.message = product_details[0]
-									else:
-										frappe.response.status = 'failed'
-										frappe.response.message = f"The Customer item - <b>{item}</b> not matched with any of the scanned lot - <b>{batch_no}</b> customer items..!"	
-								else:
+		# Find manufacturing stock entry with 'F' prefixed batch number
+		modified_batch_no = 'F' + batch_no
+		stock_entry = frappe.db.get_all("Stock Entry", 
+			{"stock_entry_type": "Manufacture", "docstatus": 1},
+			["name"])
+		
+		if stock_entry:
+			stock_entry_ref = stock_entry[0].name
+			product_details = frappe.db.sql(f""" SELECT SED.t_warehouse as from_warehouse, SED.item_code, SED.batch_no, SED.spp_batch_number 
+												FROM `tabStock Entry Detail` SED 
+												INNER JOIN `tabStock Entry` SE ON SE.name=SED.parent
+												WHERE SE.name='{stock_entry_ref}' AND SE.stock_entry_type='Manufacture' 
+												AND (SED.batch_no='{modified_batch_no}' OR SED.batch_no='{batch_no}') """, as_dict=1)
+			
+			if product_details:
+				stock_status = check_available_stock(product_details[0].get("from_warehouse"), product_details[0].get("item_code"), product_details[0].get("batch_no",""))
+				if stock_status.get('status') == "success":
+					product_details[0].qty_from_item_batch = stock_status.get('qty')
+					cust_item = check_customer_item(product_details[0].get("item_code"))
+					if cust_item.get('status') == 'success':
+						product_details[0]['items'] = cust_item.get('items')
+						packing__type_resp = attach_packing_type()
+						if packing__type_resp.get('status') == 'success':
+							product_details[0]['packing_types'] = packing__type_resp.get('message')
+							if item:
+								items_ = [x.get('item_code') for x in product_details[0]['items']]
+								if item in items_:
 									frappe.response.status = "success"
 									frappe.response.message = product_details[0]
+								else:
+									frappe.response.status = 'failed'
+									frappe.response.message = f"The Customer item - <b>{item}</b> not matched with any of the scanned lot - <b>{batch_no}</b> customer items..!"	
 							else:
-								frappe.response.status = packing__type_resp.get('status')
-								frappe.response.message = packing__type_resp.get('message')	
+								frappe.response.status = "success"
+								frappe.response.message = product_details[0]
 						else:
-							frappe.response.status = cust_item.get('status')
-							frappe.response.message = cust_item.get('message')
+							frappe.response.status = packing__type_resp.get('status')
+							frappe.response.message = packing__type_resp.get('message')	
 					else:
-						frappe.response.status = stock_status.get('status')
-						frappe.response.message = stock_status.get('message')
+						frappe.response.status = cust_item.get('status')
+						frappe.response.message = cust_item.get('message')
 				else:
-					frappe.response.status = 'failed'
-					frappe.response.message = f"There is no <b>Stock Entry</b> found for the scanned lot <b>{batch_no}</b>"
+					frappe.response.status = stock_status.get('status')
+					frappe.response.message = stock_status.get('message')
+			else:
+				frappe.response.status = 'failed'
+				frappe.response.message = f"There is no <b>Stock Entry</b> found for the scanned lot <b>{batch_no}</b>"
 		else:
 			frappe.response.status = 'failed'
-			frappe.response.message = f"There is no <b>Final Visual Inspection Entry</b> found for the lot <b>{batch_no}</b>"	
+			frappe.response.message = f"There is no <b>Manufacturing Stock Entry</b> found for the lot <b>{batch_no}</b>"	
 	except Exception:
 		frappe.response.status = "failed"
 		frappe.response.message = "Something went wrong"
