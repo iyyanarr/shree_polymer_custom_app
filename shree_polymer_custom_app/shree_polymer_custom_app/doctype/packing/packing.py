@@ -289,12 +289,42 @@ def validate_lot_barcode(batch_no,item = None):
 	try:
 		# Find manufacturing stock entry with 'F' prefixed batch number
 		modified_batch_no = 'F' + batch_no
-		stock_entry = frappe.db.get_all("Stock Entry", 
-			{"stock_entry_type": "Manufacture", "docstatus": 1},
-			["name"])
+		
+		# Changed query to directly find Stock Entries that contain this specific batch number
+		stock_entry = frappe.db.sql(f"""
+			SELECT DISTINCT SE.name
+			FROM `tabStock Entry` SE
+			INNER JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name
+			WHERE SE.stock_entry_type = 'Manufacture' 
+			AND SE.docstatus = 1
+			AND (SED.batch_no = '{batch_no}' OR SED.batch_no = '{modified_batch_no}')
+		""", as_dict=1)
 		
 		if stock_entry:
 			stock_entry_ref = stock_entry[0].name
+			
+			# Add debug logging to diagnose the issue
+			frappe.log_error(
+				message=f"Validating lot: {batch_no}, Modified batch: {modified_batch_no}, Stock Entry: {stock_entry_ref}",
+				title="Batch Validation Debug"
+			)
+			
+			# Check if any Stock Entry Detail exists with the batch_no
+			batch_exists_check = frappe.db.sql(f"""
+				SELECT SED.name, SED.batch_no
+				FROM `tabStock Entry Detail` SED 
+				INNER JOIN `tabStock Entry` SE ON SE.name=SED.parent
+				WHERE SE.name='{stock_entry_ref}' AND SE.stock_entry_type='Manufacture'
+			""", as_dict=1)
+			
+			# Log all available batch numbers in this stock entry for debugging
+			if batch_exists_check:
+				batches_in_entry = [b.get('batch_no') for b in batch_exists_check]
+				frappe.log_error(
+					message=f"Available batches in stock entry: {batches_in_entry}",
+					title="Batch Numbers in Stock Entry"
+				)
+			
 			product_details = frappe.db.sql(f""" SELECT 'U2-Store - SPP INDIA' as from_warehouse, SED.item_code, SED.batch_no, SED.spp_batch_number 
 												FROM `tabStock Entry Detail` SED 
 												INNER JOIN `tabStock Entry` SE ON SE.name=SED.parent
@@ -332,9 +362,19 @@ def validate_lot_barcode(batch_no,item = None):
 					frappe.response.status = stock_status.get('status')
 					frappe.response.message = stock_status.get('message')
 			else:
+				# More detailed error message showing the searched batch numbers
+				frappe.log_error(
+					message=f"No Stock Entry details found for batch: {batch_no} or modified batch: {modified_batch_no} in stock entry: {stock_entry_ref}",
+					title="Batch Not Found in Stock Entry Detail"
+				)
 				frappe.response.status = 'failed'
-				frappe.response.message = f"There is no <b>Stock Entry</b> found for the scanned lot <b>{batch_no}</b>"
+				frappe.response.message = f"There is no <b>Stock Entry Detail</b> found for the scanned lot <b>{batch_no}</b>. \
+					Searched for batch numbers: {batch_no} and {modified_batch_no}"
 		else:
+			frappe.log_error(
+				message=f"No Manufacturing Stock Entry found for batch: {batch_no} or modified batch: {modified_batch_no}",
+				title="No Stock Entry Found for Batch"
+			)
 			frappe.response.status = 'failed'
 			frappe.response.message = f"There is no <b>Manufacturing Stock Entry</b> found for the lot <b>{batch_no}</b>"	
 	except Exception:
