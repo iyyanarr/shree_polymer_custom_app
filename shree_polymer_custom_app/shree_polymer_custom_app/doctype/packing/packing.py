@@ -295,7 +295,7 @@ def validate_lot_barcode(batch_no,item = None):
 		
 		if stock_entry:
 			stock_entry_ref = stock_entry[0].name
-			product_details = frappe.db.sql(f""" SELECT SED.t_warehouse as from_warehouse, SED.item_code, SED.batch_no, SED.spp_batch_number 
+			product_details = frappe.db.sql(f""" SELECT 'U2-Store - SPP INDIA' as from_warehouse, SED.item_code, SED.batch_no, SED.spp_batch_number 
 												FROM `tabStock Entry Detail` SED 
 												INNER JOIN `tabStock Entry` SE ON SE.name=SED.parent
 												WHERE SE.name='{stock_entry_ref}' AND SE.stock_entry_type='Manufacture' 
