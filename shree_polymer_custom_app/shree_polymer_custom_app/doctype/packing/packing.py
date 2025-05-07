@@ -332,7 +332,8 @@ def validate_lot_barcode(batch_no,item = None):
 												INNER JOIN `tabStock Entry` SE ON SE.name=SED.parent
 												WHERE SE.name='{stock_entry_ref}' AND SE.stock_entry_type='Manufacture' 
 												AND SED.is_finished_item = 1
-												AND (SED.batch_no='{modified_batch_no}' OR SED.batch_no='{batch_no}') """, as_dict=1)
+												AND (SED.batch_no='{modified_batch_no}' OR SED.batch_no='{batch_no}')
+												AND (SED.t_warehouse='U1-Store - SPP INDIA' OR SED.t_warehouse='U2-Store - SPP INDIA') """, as_dict=1)
 			
 			if product_details:
 				stock_status = check_available_stock(product_details[0].get("from_warehouse"), product_details[0].get("item_code"), product_details[0].get("batch_no",""))
