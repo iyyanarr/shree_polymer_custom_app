@@ -111,61 +111,68 @@ def generate_barcode_serial_no(self):
 
 def make_repack_entry(mt_doc):
 	try:
-		spp_settings = frappe.get_single("SPP Settings")
-		if not spp_settings.unit_2_warehouse:
-			frappe.throw("Target warehouse details not found in <b>SPP Settings</p>")
+		# Use warehouse from the document itself instead of SPP Settings
+		if not mt_doc.warehouse:
+			frappe.throw("Warehouse details not found in the document")
+			
 		stock_entry = frappe.new_doc("Stock Entry")
 		stock_entry.purpose = "Repack"
 		stock_entry.company = "SPP"
 		stock_entry.naming_series = "MAT-STE-.YYYY.-"
 		stock_entry.stock_entry_type = "Repack"
-		stock_entry.from_warehouse = spp_settings.unit_2_warehouse
-		stock_entry.to_warehouse = spp_settings.unit_2_warehouse
+		stock_entry.from_warehouse = mt_doc.warehouse
+		stock_entry.to_warehouse = mt_doc.warehouse
+		
 		for x in mt_doc.items:
 			stock_entry.append("items",{
-				"item_code":x.product_ref,
-				"s_warehouse":spp_settings.unit_2_warehouse,
+				"item_code": x.product_ref,
+				"s_warehouse": mt_doc.warehouse,
 				"stock_uom": "Nos",
 				"to_uom": "Nos",
 				"uom": "Nos",
-				"is_finished_item":0,
-				"transfer_qty":flt(x.qty_nos,3),
-				"use_serial_batch_fields":1,
-				"qty":flt(x.qty_nos,3),
-				"batch_no":x.batch_no
-				})
+				"is_finished_item": 0,
+				"transfer_qty": flt(x.qty_nos,3),
+				"use_serial_batch_fields": 1,
+				"qty": flt(x.qty_nos,3),
+				"batch_no": x.batch_no
+			})
+			
 		stock_entry.append("items",{
-			"item_code":mt_doc.item,
-			"t_warehouse":spp_settings.unit_2_warehouse,
+			"item_code": mt_doc.item,
+			"t_warehouse": mt_doc.warehouse,
 			"stock_uom": "Nos",
 			"to_uom": "Nos",
 			"uom": "Nos",
-			"is_finished_item":1,
-			"transfer_qty":flt(mt_doc.total_qty_nos,3),
-			"use_serial_batch_fields":1,
-			"qty":flt(mt_doc.total_qty_nos,3),
-			# "spp_batch_number":x.spp_batch_no,
-			"mix_barcode": frappe.db.get_value(mt_doc.doctype,mt_doc.name,"barcode_text"),
-			"barcode_attach":frappe.db.get_value(mt_doc.doctype,mt_doc.name,"barcode"),
-			"barcode_text":frappe.db.get_value(mt_doc.doctype,mt_doc.name,"barcode_text"),
-			"source_ref_document":mt_doc.doctype,
-			"source_ref_id":mt_doc.name
+			"is_finished_item": 1,
+			"transfer_qty": flt(mt_doc.total_qty_nos,3),
+			"use_serial_batch_fields": 1,
+			"qty": flt(mt_doc.total_qty_nos,3),
+			"mix_barcode": frappe.db.get_value(mt_doc.doctype, mt_doc.name, "barcode_text"),
+			"barcode_attach": frappe.db.get_value(mt_doc.doctype, mt_doc.name, "barcode"),
+			"barcode_text": frappe.db.get_value(mt_doc.doctype, mt_doc.name, "barcode_text"),
+			"source_ref_document": mt_doc.doctype,
+			"source_ref_id": mt_doc.name
 		})
+		
 		stock_entry.insert(ignore_permissions=True)
-		frappe.db.set_value(mt_doc.doctype,mt_doc.name,"stock_entry_reference",stock_entry.name)
+		frappe.db.set_value(mt_doc.doctype, mt_doc.name, "stock_entry_reference", stock_entry.name)
 		frappe.db.commit()
-		st_entry = frappe.get_doc("Stock Entry",stock_entry.name)
-		st_entry.docstatus=1
+		
+		st_entry = frappe.get_doc("Stock Entry", stock_entry.name)
+		st_entry.docstatus = 1
 		st_entry.save(ignore_permissions=True)
+		
 		""" Update posting date and time """
 		frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{mt_doc.posting_date}' WHERE name = '{st_entry.name}' ")
 		""" End """
-		return {"status":"success","st_entry":st_entry}
+		
+		return {"status":"success", "st_entry":st_entry}
+		
 	except Exception as e:
 		frappe.db.rollback()
 		mt_doc.reload()
-		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.packing.packing.make_repack_entry")
-		return {"status":"failed","message":"Something went wrong, Not able to make <b>Stock Entry</b>"}
+		frappe.log_error(message=frappe.get_traceback(), title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.packing.packing.make_repack_entry")
+		return {"status":"failed", "message":"Something went wrong, Not able to make <b>Stock Entry</b>"}
 	
 def generate_w_serial_no(item_code,spp_batch_no):
 	try:

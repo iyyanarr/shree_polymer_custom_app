@@ -142,6 +142,7 @@ frappe.ui.form.on('Packing', {
 						frm.set_df_property("qty_kgs", "hidden", 1)
 					}
 					else if (r && r.status == "success") {
+						console.log(r.message)
 						frm.set_value("available_qty",parseInt(r.message.qty_from_item_batch))
 						refresh_field("available_qty")
 						frm.total_nos = 0
@@ -188,6 +189,7 @@ frappe.ui.form.on('Packing', {
 						frm.set_value("product_ref", r.message.item_code)
 						frm.set_value("spp_batch_no", r.message.spp_batch_number)
 						frm.set_value("batch_no", r.message.batch_no)
+						frm.set_value("warehouse", r.message.from_warehouse)
 						// frm.set_value("qty_nos", r.message.qty)
 						let items = []
 						if(r.message.items){

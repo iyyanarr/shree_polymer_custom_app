@@ -15,6 +15,7 @@
   "available_qty",
   "qty_kgs",
   "add",
+  "warehouse",
   "column_break_0byw9",
   "packing_type",
   "bom",
@@ -294,12 +295,19 @@
    "label": "UOM",
    "mandatory_depends_on": "eval:!doc.no_balance_lot && doc.scan_lot_no",
    "options": "Kgs\nNos"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-09-19 18:26:19.757482",
+ "modified": "2025-05-07 14:38:34.991254",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Packing",
@@ -319,6 +327,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
