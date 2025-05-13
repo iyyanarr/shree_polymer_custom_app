@@ -166,7 +166,7 @@ def validate_lot_mix_barcode(bar_code):
             if stock_entry_details:
                 # Check available stock
                 stock_status = check_available_stock(
-                    stock_entry_details[0].get("tar_warehouse"),
+                    stock_entry_details[0].get("from_warehouse"),
                     stock_entry_details[0].get("item_code"),
                     stock_entry_details[0].get("batch_no", "")
                 )
