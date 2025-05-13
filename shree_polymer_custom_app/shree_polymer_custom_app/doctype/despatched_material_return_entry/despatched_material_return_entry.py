@@ -93,17 +93,33 @@ def undo_dc_status(self):
 								AND spp_batch_no = '{x.spp_batch_no}' AND batch_no = '{x.batch_no}'
 								AND target_warehouse = '{x.source_warehouse_id}' """)
 		frappe.db.commit()
-
 def check_available_stock(warehouse,item,batch_no):
 	try:
-		qty = get_batch_qty(batch_no=batch_no, warehouse=warehouse, item_code=item)
-		if qty:
-			return {"status": "success", "qty": qty}
+		if batch_no:
+			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' AND batch_no='{batch_no}' """
 		else:
-			return {"status": "failed", "message": f"Stock is not available for the item <b>{item}</b>"}
-	except Exception:
-		frappe.log_error(message=frappe.get_traceback(), title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.despatched_material_return_entry.despatched_material_return_entry.check_available_stock")
-		return {"status": "failed", "message": "Something went wrong"}
+			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' """
+		qty = frappe.db.sql(query,as_dict=1)
+		if qty:
+			if qty[0].qty:
+				return {"status":"success","qty":qty[0].qty}
+			else:
+				return {"status":"failed","message":f"Stock is not available for the item <b>{item}</b>"}	
+		else:
+			return {"status":"failed","message":f"Stock is not available for the item <b>{item}</b>"}
+	except Exception:	
+		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.despatched_material_return_entry.despatched_material_return_entry.check_available_stock")
+		return {"status":"failed","message":"Something went wrong"}
+# def check_available_stock(warehouse,item,batch_no):
+# 	try:
+# 		qty = get_batch_qty(batch_no=batch_no, warehouse=warehouse, item_code=item)
+# 		if qty:
+# 			return {"status": "success", "qty": qty}
+# 		else:
+# 			return {"status": "failed", "message": f"Stock is not available for the item <b>{item}</b>"}
+# 	except Exception:
+# 		frappe.log_error(message=frappe.get_traceback(), title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.despatched_material_return_entry.despatched_material_return_entry.check_available_stock")
+# 		return {"status": "failed", "message": "Something went wrong"}
 
 # @frappe.whitelist()
 # def validate_lot_mix_barcode(bar_code):
