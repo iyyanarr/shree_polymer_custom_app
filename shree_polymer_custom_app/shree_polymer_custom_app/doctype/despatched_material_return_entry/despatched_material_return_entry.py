@@ -121,97 +121,50 @@ def check_available_stock(warehouse,item,batch_no):
 # 		frappe.log_error(message=frappe.get_traceback(), title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.despatched_material_return_entry.despatched_material_return_entry.check_available_stock")
 # 		return {"status": "failed", "message": "Something went wrong"}
 
-# @frappe.whitelist()
-# def validate_lot_mix_barcode(bar_code):
-# 	try:
-# 		if not frappe.db.get_value("Despatched Material Return Entry Item",{"lot_number":bar_code,"docstatus":1}):
-# 			query = f""" SELECT 
-# 							DNI.batch_no,DNI.amount,DNI.rate valuation_rate,DNI.target_warehouse from_warehouse,DNI.warehouse tar_warehouse,
-# 								  DNI.uom,DNI.qty,DNI.spp_batch_no,DNI.item_code,
-# 								  	DNI.is_return,DNI.is_received,DN.reference_document,DN.reference_name
-# 							FROM `tabDelivery Note Item` DNI INNER JOIN `tabDelivery Note` DN
-# 									ON DNI.parent = DN.name
-# 						 WHERE DNI.scan_barcode = '{bar_code}' AND DN.docstatus = 1 
-# 							AND DNI.is_received != 1 AND DNI.is_return != 1 """
-# 			spp_and_batch = frappe.db.sql(query, as_dict = 1)
-# 			if spp_and_batch:
-# 				stock_status = check_available_stock(spp_and_batch[0].get("from_warehouse"),spp_and_batch[0].get("item_code"),spp_and_batch[0].get("batch_no",""))
-# 				if stock_status.get('status') == "success":
-# 					frappe.response.uom = spp_and_batch[0].get("uom")
-# 					frappe.response.item = spp_and_batch[0].get("item_code")
-# 					frappe.response.qty = stock_status.get('qty')
-# 					frappe.response.spp_batch_number = spp_and_batch[0].get("spp_batch_no")
-# 					frappe.response.batch_no = spp_and_batch[0].get("batch_no")
-# 					frappe.response.from_warehouse = spp_and_batch[0].get("from_warehouse")
-# 					frappe.response.to_warehouse = spp_and_batch[0].get("tar_warehouse")
-# 					frappe.response.valuation_rate = spp_and_batch[0].get('valuation_rate')
-# 					frappe.response.amount = spp_and_batch[0].get('amount')
-# 					frappe.response.status = "success"
-# 				else:
-# 					frappe.response.status = stock_status.get('status')
-# 					frappe.response.message = stock_status.get('message')
-# 			else:
-# 				frappe.response.status = "failed"
-# 				frappe.response.message = "There is no valid <b>Delivery Note</b> found for the scanned lot"
-# 		else:
-# 			frappe.response.status = "failed"
-# 			frappe.response.message = f"The <b>Despatched Material Return Entry</b> for the lot - <b>{bar_code}</b> is already exists..!"
-# 	except Exception:
-# 		frappe.response.status = "failed"
-# 		frappe.response.message = "Something went wrong"
-# 		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.despatched_material_return_entry.despatched_material_return_entry.validate_lot_barcode")
 @frappe.whitelist()
 def validate_lot_mix_barcode(bar_code):
-    try:
-        # Check if barcode already exists in return entries
-        if not frappe.db.get_value("Despatched Material Return Entry Item", 
-                                 {"lot_number": bar_code, "docstatus": 1}):
-            # Query to get stock entry details
-            query = f""" SELECT 
-                            SEI.batch_no, SEI.amount, SEI.basic_rate as valuation_rate,
-                            SEI.s_warehouse as from_warehouse, SEI.t_warehouse as tar_warehouse,
-                            SEI.stock_uom as uom, SEI.qty, SEI.spp_batch_number as spp_batch_no,
-                            SEI.item_code, SE.docstatus
-                        FROM `tabStock Entry Detail` SEI 
-                        INNER JOIN `tabStock Entry` SE ON SEI.parent = SE.name
-                        WHERE SEI.spp_batch_number = '{bar_code}' 
-                            AND SE.docstatus = 1 """
-            
-            stock_entry_details = frappe.db.sql(query, as_dict=1)
-            
-            if stock_entry_details:
-                # Check available stock
-                stock_status = check_available_stock(
-                    stock_entry_details[0].get("from_warehouse"),
-                    stock_entry_details[0].get("item_code"),
-                    stock_entry_details[0].get("batch_no", "")
-                )
-                
-                if stock_status.get('status') == "success":
-                    # Set response with stock entry details
-                    frappe.response.uom = stock_entry_details[0].get("uom")
-                    frappe.response.item = stock_entry_details[0].get("item_code")
-                    frappe.response.qty = stock_status.get('qty')
-                    frappe.response.spp_batch_number = stock_entry_details[0].get("spp_batch_no")
-                    frappe.response.batch_no = stock_entry_details[0].get("batch_no")
-                    frappe.response.from_warehouse = stock_entry_details[0].get("from_warehouse")
-                    frappe.response.to_warehouse = stock_entry_details[0].get("tar_warehouse")
-                    frappe.response.valuation_rate = stock_entry_details[0].get('valuation_rate')
-                    frappe.response.amount = stock_entry_details[0].get('amount')
-                    frappe.response.status = "success"
-                else:
-                    frappe.response.status = stock_status.get('status')
-                    frappe.response.message = stock_status.get('message')
-            else:
-                frappe.response.status = "failed"
-                frappe.response.message = "There is no valid <b>Stock Entry</b> found for the scanned lot"
-        else:
-            frappe.response.status = "failed"
-            frappe.response.message = f"The <b>Despatched Material Return Entry</b> for the lot - <b>{bar_code}</b> already exists!"
-    except Exception:
-        frappe.response.status = "failed"
-        frappe.response.message = "Something went wrong"
-        frappe.log_error(
-            message=frappe.get_traceback(),
-            title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.despatched_material_return_entry.despatched_material_return_entry.validate_stock_entry_barcode"
-        )
+	try:
+		print(f"Debug: Received barcode - {bar_code}")
+		if not frappe.db.get_value("Despatched Material Return Entry Item", {"lot_number": bar_code, "docstatus": 1}):
+			query = f""" SELECT 
+							DDEI.batch_no, DDEI.amount, DDEI.valuation_rate, DDEI.source_warehouse_id from_warehouse, DDEI.warehouse_id tar_warehouse,
+								  'Nos' as uom, DDEI.qty, DDEI.spp_batch_no, DDEI.item item_code,
+									0 as is_return, 0 as is_received, 'Deflashing Despatch Entry' as reference_document, DDE.name as reference_name
+							FROM `tabDeflashing Despatch Entry Item` DDEI INNER JOIN `tabDeflashing Despatch Entry` DDE
+									ON DDEI.parent = DDE.name
+						 WHERE DDEI.lot_number = '{bar_code}' AND DDE.docstatus = 1 """
+			print(f"Debug: Executing query - {query}")
+			spp_and_batch = frappe.db.sql(query, as_dict=1)
+			print(f"Debug: Query result - {spp_and_batch}")
+			if spp_and_batch:
+				stock_status = check_available_stock(spp_and_batch[0].get("from_warehouse"), spp_and_batch[0].get("item_code"), spp_and_batch[0].get("batch_no", ""))
+				print(f"Debug: Stock status - {stock_status}")
+				if stock_status.get('status') == "success":
+					frappe.response.uom = spp_and_batch[0].get("uom")
+					frappe.response.item = spp_and_batch[0].get("item_code")
+					frappe.response.qty = stock_status.get('qty')
+					frappe.response.spp_batch_number = spp_and_batch[0].get("spp_batch_no")
+					frappe.response.batch_no = spp_and_batch[0].get("batch_no")
+					frappe.response.from_warehouse = spp_and_batch[0].get("from_warehouse")
+					frappe.response.to_warehouse = spp_and_batch[0].get("tar_warehouse")
+					frappe.response.valuation_rate = spp_and_batch[0].get('valuation_rate')
+					frappe.response.amount = spp_and_batch[0].get('amount')
+					frappe.response.status = "success"
+					print("Debug: Response prepared successfully")
+				else:
+					frappe.response.status = stock_status.get('status')
+					frappe.response.message = stock_status.get('message')
+					print(f"Debug: Stock status failed - {frappe.response.message}")
+			else:
+				frappe.response.status = "failed"
+				frappe.response.message = "There is no valid <b>Deflashing Despatch Entry</b> found for the scanned lot"
+				print(f"Debug: No valid Deflashing Despatch Entry found for barcode - {bar_code}")
+		else:
+			frappe.response.status = "failed"
+			frappe.response.message = f"The <b>Despatched Material Return Entry</b> for the lot - <b>{bar_code}</b> is already exists..!"
+			print(f"Debug: Entry already exists for barcode - {bar_code}")
+	except Exception as e:
+		frappe.response.status = "failed"
+		frappe.response.message = "Something went wrong"
+		print(f"Debug: Exception occurred - {str(e)}")
+		frappe.log_error(message=frappe.get_traceback(), title="validate_lot_mix_barcode_error")
