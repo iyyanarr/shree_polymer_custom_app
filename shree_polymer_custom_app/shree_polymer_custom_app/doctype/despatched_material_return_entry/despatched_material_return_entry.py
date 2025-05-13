@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, duration_to_seconds, flt,getdate
+from erpnext.stock.doctype.batch.batch import get_batch_qty
 
 class DespatchedMaterialReturnEntry(Document):
 	def validate(self):
@@ -95,21 +96,14 @@ def undo_dc_status(self):
 
 def check_available_stock(warehouse,item,batch_no):
 	try:
-		if batch_no:
-			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' AND batch_no='{batch_no}' """
-		else:
-			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' """
-		qty = frappe.db.sql(query,as_dict=1)
+		qty = get_batch_qty(batch_no=batch_no, warehouse=warehouse, item_code=item)
 		if qty:
-			if qty[0].qty:
-				return {"status":"success","qty":qty[0].qty}
-			else:
-				return {"status":"failed","message":f"Stock is not available for the item <b>{item}</b>"}	
+			return {"status": "success", "qty": qty}
 		else:
-			return {"status":"failed","message":f"Stock is not available for the item <b>{item}</b>"}
-	except Exception:	
-		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.despatched_material_return_entry.despatched_material_return_entry.check_available_stock")
-		return {"status":"failed","message":"Something went wrong"}
+			return {"status": "failed", "message": f"Stock is not available for the item <b>{item}</b>"}
+	except Exception:
+		frappe.log_error(message=frappe.get_traceback(), title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.despatched_material_return_entry.despatched_material_return_entry.check_available_stock")
+		return {"status": "failed", "message": "Something went wrong"}
 
 # @frappe.whitelist()
 # def validate_lot_mix_barcode(bar_code):
