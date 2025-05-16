@@ -31,10 +31,36 @@ class DespatchToU1Entry(Document):
 
 	def on_submit(self):
 		if self.items:
-			# res = make_material_transfer(self)	
-			# if not res:
-			# 	frappe.throw("Stock Entry creation error.")	
-			create_stock_entry(self)	
+			# Create stock entry and get the result
+			result = create_stock_entry(self)
+			
+			# If stock entry creation failed completely
+			if not result:
+				frappe.db.rollback()
+				throw("Stock Entry creation failed. This document cannot be submitted.")
+			
+			# Even if we got a stock entry name, verify it exists and is submitted
+			stock_entry_doc = frappe.db.get_value("Stock Entry", 
+				{"name": result, "docstatus": 1}, 
+				["name", "docstatus"], 
+				as_dict=1)
+				
+			if not stock_entry_doc:
+				frappe.db.rollback()
+				throw(f"Stock Entry {result} was created but not properly submitted. This document cannot be submitted.")
+				
+			# Verify stock ledger entries exist
+			stock_ledger_entries = frappe.db.exists(
+				"Stock Ledger Entry",
+				{"voucher_no": result, "is_cancelled": 0}
+			)
+			
+			if not stock_ledger_entries:
+				frappe.db.rollback()
+				throw(f"Stock Entry {result} was submitted but stock ledger entries were not created. This document cannot be submitted.")
+				
+			# If we got here, everything is good!
+			frappe.msgprint(f"Successfully created and validated Stock Entry: {result}")
 
 def create_stock_entry(self):
     try:
@@ -47,6 +73,8 @@ def create_stock_entry(self):
 
         # Set basic fields
         stock_entry.stock_entry_type = "Material Transfer"
+        stock_entry.company = frappe.defaults.get_user_default("company") or "SPP"
+        stock_entry.naming_series = "MAT-STE-.YYYY.-"
         posting_datetime = get_datetime(self.posting_date) if self.posting_date else get_datetime()
         stock_entry.posting_date = posting_datetime.date()
         stock_entry.posting_time = posting_datetime.time().strftime("%H:%M:%S")
@@ -68,6 +96,10 @@ def create_stock_entry(self):
         source_warehouse = spp_settings.unit_2_warehouse
         target_warehouse = spp_settings.p_target_warehouse
         logger().debug(f"Warehouses configured - Source: {source_warehouse}, Target: {target_warehouse}")
+        
+        # Set from_warehouse and to_warehouse in the main document
+        stock_entry.from_warehouse = source_warehouse
+        stock_entry.to_warehouse = target_warehouse
 
         # Dynamic address assignment
         bill_from_address = frappe.db.get_value("Address", {"address_title": "Shree Polymer Products - Factory 1"}, "name")
@@ -102,23 +134,53 @@ def create_stock_entry(self):
             logger().debug(f"Processing item {idx}/{len(self.items)}")
             logger().debug(f"Item details: {x.as_dict()}")
 
+            # Get stock UOM from item master if not available
+            stock_uom = x.qty_uom
+            if not stock_uom:
+                stock_uom = frappe.db.get_value("Item", x.product_ref, "stock_uom")
+                
+            # Get valuation rate if not available
+            valuation_rate = x.valuation_rate if hasattr(x, 'valuation_rate') and x.valuation_rate else 0
+            if not valuation_rate:
+                valuation_rate = frappe.db.get_value("Stock Ledger Entry",
+                    {"item_code": x.product_ref, "warehouse": source_warehouse, "is_cancelled": 0},
+                    "valuation_rate") or 0
+            
+            # Calculate amount
+            amount = flt(x.qty_nos) * flt(valuation_rate)
+            
+            # Calculate conversion factor
+            conversion_factor = 1.0
+            if x.qty_uom and stock_uom and x.qty_uom != stock_uom:
+                conversion_factor = frappe.db.get_value("UOM Conversion Detail",
+                    {"parent": x.product_ref, "uom": x.qty_uom},
+                    "conversion_factor") or 1.0
+
             item_data = {
                 "item_code": x.product_ref,
                 "s_warehouse": source_warehouse,
                 "t_warehouse": target_warehouse,
                 "qty": x.qty_nos,
+                "transfer_qty": x.qty_nos,  # Required for stock ledger
                 "uom": x.qty_uom,
-				"use_serial_batch_fields": 1,
+                "stock_uom": stock_uom,
+                "conversion_factor": conversion_factor,
+                "use_serial_batch_fields": 1,
                 "batch_no": x.batch_no,
                 "spp_batch_number": x.spp_batch_no,
-                "basic_rate": x.valuation_rate,
-                "amount": x.amount,
-                "scan_barcode": x.lot_no
+                "basic_rate": valuation_rate,
+                "basic_amount": amount,
+                "amount": amount,
+                "valuation_rate": valuation_rate,
+                "allow_zero_valuation_rate": 0,  # Force valuation
+                "scan_barcode": x.lot_no,
+                "source_ref_document": self.doctype,
+                "source_ref_id": self.name
             }
 
             stock_entry.append("items", item_data)
             item_count += 1
-            logger().debug(f"Item added: {x.product_ref} | Qty: {x.qty_nos}")
+            logger().debug(f"Item added: {x.product_ref} | Qty: {x.qty_nos} | Rate: {valuation_rate}")
 
         if item_count == 0:
             logger().warning("No items added to Stock Entry")
@@ -128,18 +190,32 @@ def create_stock_entry(self):
         stock_entry.custom_reference_doctype = self.doctype
         stock_entry.custom_reference_docname = self.name
         logger().debug(f"Set document references: {self.doctype} {self.name}")
+        
+        # Set purpose
+        stock_entry.purpose = "Material Transfer"
 
-        # Insert and submit
+        # Insert stock entry
         stock_entry.insert(ignore_permissions=True)
         logger().debug(f"Stock Entry inserted: {stock_entry.name}")
+        
+        # Set stock_entry_reference directly on the current document before submission
+        self.stock_entry_reference = stock_entry.name
+        frappe.db.set_value(self.doctype, self.name, "stock_entry_reference", stock_entry.name)
+        
+        # Also update references in child items before stock entry submission
+        for item in self.items:
+            frappe.db.set_value("Despatch To U1 Entry Item", item.name, "stock_entry_reference", stock_entry.name)
+        
+        # Run any required calculations before submission
+        stock_entry.calculate_rate_and_amount()
+        
+        # Now submit the stock entry - this will handle stock ledger creation and any required commits
         stock_entry.submit()
         logger().debug(f"Stock Entry submitted: {stock_entry.name}")
-
-        # Update reference in original document
-        frappe.db.set_value(self.doctype, self.name, "stock_entry_reference", stock_entry.name)
-        frappe.db.commit()
-        logger().debug("Reference updated in original document")
-
+        
+        # Do NOT call frappe.db.commit() here - let the transaction complete naturally
+        
+        # Reload to get the latest data
         self.reload()
         logger().debug("Document reloaded successfully")
         frappe.msgprint(f"Successfully created Stock Entry: {stock_entry.name}")
