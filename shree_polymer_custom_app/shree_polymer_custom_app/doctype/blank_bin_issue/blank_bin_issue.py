@@ -57,7 +57,7 @@ def validate_blank_issue_barcode(barcode,scan_type,docname,production_item = Non
 		elif scan_type == "scan_bin":
 			# bl_bin = frappe.db.sql(""" SELECT IBM.compound,IBM.spp_batch_number,IBM.qty,BB.name,BB.bin_weight,IBM.is_retired FROM `tabBlanking Bin` BB INNER JOIN `tabItem Bin Mapping` IBM ON BB.name=IBM.blanking_bin 
 			# 						WHERE barcode_text=%(barcode_text)s ORDER BY IBM.creation desc""",{"barcode_text":barcode},as_dict=1)
-			bl_bin = frappe.db.sql(""" SELECT IBM.compound,IBM.spp_batch_number,IBM.qty,A.name,A.bin_weight,IBM.is_retired,A.asset_name 
+			bl_bin = frappe.db.sql(""" SELECT IBM.compound,IBM.mat,IBM.spp_batch_number,IBM.qty,A.name,A.bin_weight,IBM.is_retired
 			  						FROM `tabAsset` A 
 			  							INNER JOIN `tabItem Bin Mapping` IBM ON A.name=IBM.blanking__bin 
 									WHERE A.barcode_text=%(barcode_text)s ORDER BY IBM.creation desc""",{"barcode_text":barcode},as_dict=1)
@@ -79,7 +79,7 @@ def validate_blank_issue_barcode(barcode,scan_type,docname,production_item = Non
 				else:
 					if bl_bin[0].mat != production_item:
 						frappe.response.status = 'failed'
-						frappe.response.message = f"Bin item {bl_bin[0].asset_name} doesn’t match job card item {production_item}."
+						frappe.response.message = f"Bin item {bl_bin[0].mat} doesn’t match job card item {production_item}."
 						return
 					c_resp = validate_compound(production_item,bl_bin[0])
 					if c_resp:
