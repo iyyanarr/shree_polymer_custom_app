@@ -77,6 +77,10 @@ def validate_blank_issue_barcode(barcode,scan_type,docname,production_item = Non
 					frappe.response.status = 'failed'
 					frappe.response.message = "Scanned Bin <b>"+barcode+"</b> not exist in the location <b>"+spp_settings.to_location+"</b>."
 				else:
+					if bl_bin[0].asset_name != production_item:
+						frappe.response.status = 'failed'
+						frappe.response.message = f"Bin item {bl_bin[0].asset_name} doesn’t match job card item {production_item}."
+						return
 					c_resp = validate_compound(production_item,bl_bin[0])
 					if c_resp:
 						frappe.response.status = 'success'
