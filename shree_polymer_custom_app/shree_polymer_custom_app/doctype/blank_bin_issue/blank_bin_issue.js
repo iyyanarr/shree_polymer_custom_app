@@ -196,8 +196,7 @@ frappe.ui.form.on('Blank Bin Issue', {
 								let flag = false
 								frm.doc.items.map(res =>{
 									// if (res.bin == r.message)
-									if (res.job_card ==frm.doc.job_card && res.bin==r.message)
-									{
+									if (res.bin == r.message) {
 										flag = true
 										frm.set_value("scan_bin", "");
 										frappe.validated = false

@@ -62,6 +62,18 @@ def validate_blank_issue_barcode(barcode,scan_type,docname,production_item = Non
 			  							INNER JOIN `tabItem Bin Mapping` IBM ON A.name=IBM.blanking__bin 
 									WHERE A.barcode_text=%(barcode_text)s ORDER BY IBM.creation desc""",{"barcode_text":barcode},as_dict=1)
 			if bl_bin:
+				# Prevent re-issuing the same bin across documents
+				existing = frappe.db.sql("""
+					SELECT I.name, B.name as parent
+					FROM `tabBlank Bin Issue Item` I
+					JOIN `tabBlank Bin Issue` B ON B.name = I.parent
+					WHERE I.is_completed=0 AND I.bin=%(bin)s AND B.name<>%(docname)s
+				""", {"bin": bl_bin[0].name, "docname": docname}, as_dict=True)
+				if existing:
+					frappe.response.status = 'failed'
+					frappe.response.message = f"Bin {barcode} is already issued in document {existing[0].parent}."
+					return
+				
 				if bl_bin[0].is_retired == 1:
 					frappe.response.status = 'failed'
 					frappe.response.message = "No item found in Scanned Bin."
