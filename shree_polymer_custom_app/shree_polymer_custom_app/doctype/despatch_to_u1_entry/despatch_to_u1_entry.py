@@ -74,6 +74,7 @@ def create_stock_entry(self):
         # Set basic fields
         stock_entry.stock_entry_type = "Material Transfer"
         stock_entry.company = frappe.defaults.get_user_default("company") or "SPP"
+        stock_entry.naming_series = "STE-.YYYY.-"
         posting_datetime = get_datetime(self.posting_date) if self.posting_date else get_datetime()
         stock_entry.posting_date = posting_datetime.date()
         stock_entry.posting_time = posting_datetime.time().strftime("%H:%M:%S")
