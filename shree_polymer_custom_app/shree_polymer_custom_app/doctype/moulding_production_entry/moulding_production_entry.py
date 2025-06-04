@@ -9,6 +9,7 @@ from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entr
 class MouldingProductionEntry(Document):
 	updated_batch_details = []
 	line_rejection_qty = 0.0
+	patrol_rejection_qty = 0.0
 	compound_available_qty = 0.0
 	# This function is used to sort the 'Asset' print cards 'check asset print formats for details'
 	def sort_bins_for_print(self,values):
@@ -43,6 +44,7 @@ class MouldingProductionEntry(Document):
 	
 	def validate(self):
 		self.validate_get_line_ins_qty()
+		self.validate_get_patrol_ins_qty()
 		if getdate(self.moulding_date) > getdate():
 			frappe.throw("The <b>Posting Date</b> can't be greater than <b>Today Date</b>..!")
 		if not self.curing_time:
@@ -75,7 +77,7 @@ class MouldingProductionEntry(Document):
 			frappe.throw(f"Source batch details not found..!")
 		self.cmpr_balbin_get_cmp_qty()
 		self.weight = flt(self.weight,3)
-		self.weight_without_shell  = flt(flt((self.weight + self.line_rejection_qty),3),3)
+		self.weight_without_shell  = flt(flt((self.weight + self.get_total_rejection_qty()),3),3)
 		s_resp = validate_shell(self)
 		# frappe.log_error(title='--validate shell--',message=s_resp)
 		if s_resp.get('status') == 'failed':
@@ -97,9 +99,9 @@ class MouldingProductionEntry(Document):
 				self.shell_qty_kgs = s_resp.get('total_shell_qty_in_kgs')
 				self.shell_qty_nos = s_resp.get('total_shell_qty_in_nos')
 				self.shell_item = s_resp.get('shell_item')
-				self.weight_without_shell = flt(flt((self.weight + self.line_rejection_qty),3) -  s_resp.get('total_shell_qty_in_kgs'),3)
+				self.weight_without_shell = flt(flt((self.weight + self.get_total_rejection_qty()),3) -  s_resp.get('total_shell_qty_in_kgs'),3)
 			else:
-				self.weight_without_shell = flt(flt((self.weight + self.line_rejection_qty),3),3)
+				self.weight_without_shell = flt(flt((self.weight + self.get_total_rejection_qty()),3),3)
 
 	def validate_inspection_qty(self,batch_no):
 		return {"status":"success"}	
@@ -131,7 +133,24 @@ class MouldingProductionEntry(Document):
 					# self.weight += flt(self.line_rejection_qty,3)
 				else:
 					frappe.throw(f"<b>Line Inspection</b> entry stock details not found..!")
-	
+					
+	def validate_get_patrol_ins_qty(self):
+		ins_info = frappe.db.get_value("Inspection Entry",{"lot_no":self.scan_lot_number,"docstatus":1,"inspection_type":"Patrol Inspection"},["stock_entry_reference","name"],as_dict = 1)
+		if ins_info:
+			if ins_info.stock_entry_reference:
+				query = f""" SELECT SED.qty FROM `tabStock Entry` SE INNER JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name 
+							WHERE SED.source_ref_document = "Inspection Entry" AND SED.source_ref_id = '{ins_info.name}' AND SE.name = '{ins_info.stock_entry_reference}' """
+				qty_info = frappe.db.sql(query, as_dict = 1)
+				if qty_info:
+					self.patrol_rejection_qty = flt(qty_info[0].qty,3)
+					# self.weight += flt(self.patrol_rejection_qty,3)
+				else:
+					frappe.throw(f"<b>Patrol Inspection</b> entry stock details not found..!")
+
+	def get_total_rejection_qty(self):
+		"""Get combined rejection quantity from both Line and Patrol inspections"""
+		return flt(self.line_rejection_qty + self.patrol_rejection_qty, 3)
+
 	def cmpr_balbin_get_cmp_qty(self):
 		import json
 		self.updated_batch_details = json.loads(self.batch_details)
@@ -148,8 +167,12 @@ class MouldingProductionEntry(Document):
 			if qty_val_resp.get('status') == 'success':
 				vcd = validate_comsumption_details(self)
 				if vcd.get('status') == 'success':
-					ins_info = frappe.db.get_value("Inspection Entry",{"lot_no":self.scan_lot_number,"docstatus":1,"inspection_type":"Line Inspection"},["stock_entry_reference","name"],as_dict = 1)
-					if ins_info:
+					# Check for both Line and Patrol Inspection entries
+					line_ins_info = frappe.db.get_value("Inspection Entry",{"lot_no":self.scan_lot_number,"docstatus":1,"inspection_type":"Line Inspection"},["stock_entry_reference","name"],as_dict = 1)
+					patrol_ins_info = frappe.db.get_value("Inspection Entry",{"lot_no":self.scan_lot_number,"docstatus":1,"inspection_type":"Patrol Inspection"},["stock_entry_reference","name"],as_dict = 1)
+					
+					# At least Line Inspection must exist
+					if line_ins_info:
 						resp_ = make_stock_entry(self)
 						if resp_.get('status') == 'failed':
 							rollback_entries(self,resp_.get('message'))
@@ -446,17 +469,17 @@ def validate_mat_qty(self):
 		spp_settings = frappe.get_single("SPP Settings")
 		if not spp_settings.maximum__allowed_qty and spp_settings.maximum__allowed_qty !=0:
 			return {"status":"failed","message":"The '%' of excess Qty allowed for the <b>Production Entry</b> not mapped in <b>SPP Settings</b>..!"}
-		if not total_consumed_qty == flt((self.weight + self.line_rejection_qty),3):
-			if flt((self.weight + self.line_rejection_qty),3) > total_consumed_qty :
+		if not total_consumed_qty == flt((self.weight + self.get_total_rejection_qty()),3):
+			if flt((self.weight + self.get_total_rejection_qty()),3) > total_consumed_qty :
 				if spp_settings.maximum__allowed_qty:
 					one_percen = flt(total_consumed_qty / 100,3)
-					actual_percen = flt(flt((self.weight + self.line_rejection_qty),3) / one_percen,3)
+					actual_percen = flt(flt((self.weight + self.get_total_rejection_qty()),3) / one_percen,3)
 					allowd_percen =  flt(100.0 + spp_settings.maximum__allowed_qty,3)
 					if actual_percen > allowd_percen:
 						total_with_extra_qty = flt(spp_settings.maximum__allowed_qty * one_percen,3)
-						return {"status":"failed","message":f"The <b>Produced Qty - {flt((self.weight + self.line_rejection_qty),3)} kgs</b> should be less than or equal to total <b>Available Qty -> {str(flt(self.compound_available_qty,3)) + '+ ' + str(total_with_extra_qty) } {' + ' + str(flt(self.shell_qty_kgs,3)) +' = ' +str(flt(total_consumed_qty + total_with_extra_qty,3)) if self.shell_qty_kgs else ' = ' +str(flt(total_consumed_qty + total_with_extra_qty,3))} Kgs</b>"}
+						return {"status":"failed","message":f"The <b>Produced Qty - {flt((self.weight + self.get_total_rejection_qty()),3)} kgs</b> should be less than or equal to total <b>Available Qty -> {str(flt(self.compound_available_qty,3)) + '+ ' + str(total_with_extra_qty) } {' + ' + str(flt(self.shell_qty_kgs,3)) +' = ' +str(flt(total_consumed_qty + total_with_extra_qty,3)) if self.shell_qty_kgs else ' = ' +str(flt(total_consumed_qty + total_with_extra_qty,3))} Kgs</b>"}
 				elif spp_settings.maximum__allowed_qty == 0:
-					return {"status":"failed","message":f"The <b>Produced Qty - {flt((self.weight + self.line_rejection_qty),3)} kgs</b> should be less than or equal to total <b>Available Qty -> {flt(self.compound_available_qty,3)} {'+ ' + str(flt(self.shell_qty_kgs,3))+ ' = ' +str(total_consumed_qty) if self.shell_qty_kgs else ''} Kgs</b>"}
+					return {"status":"failed","message":f"The <b>Produced Qty - {flt((self.weight + self.get_total_rejection_qty()),3)} kgs</b> should be less than or equal to total <b>Available Qty -> {flt(self.compound_available_qty,3)} {'+ ' + str(flt(self.shell_qty_kgs,3))+ ' = ' +str(total_consumed_qty) if self.shell_qty_kgs else ''} Kgs</b>"}
 		return {"status":'success'}
 	except Exception:
 		frappe.log_error(title="error in validate mat qty",message=frappe.get_traceback())
@@ -505,15 +528,15 @@ def validate_shell(self):
 def make_stock_entry(self):
 	try:
 		production__item =  frappe.db.get_value("Work Order",frappe.db.get_value("Job Card",self.job_card,"work_order"),"production_item")
-		batch__rep,batch__no = generate_batch_no(batch_id = "T"+self.scan_lot_number,item = production__item,qty = flt(flt((self.weight + self.line_rejection_qty),3),3))
+		batch__rep,batch__no = generate_batch_no(batch_id = "T"+self.scan_lot_number,item = production__item,qty = flt(flt((self.weight + self.get_total_rejection_qty()),3),3))
 		if batch__rep:
 			jc = frappe.get_doc("Job Card",self.job_card)
 			for time_log in jc.time_logs:
-				time_log.completed_qty = flt(flt((self.weight + self.line_rejection_qty),3),3)
+				time_log.completed_qty = flt(flt((self.weight + self.get_total_rejection_qty()),3),3)
 				time_log.time_in_mins = 1
 				time_log.employee = self.employee
-			jc.total_completed_qty = flt(flt((self.weight + self.line_rejection_qty),3),3)
-			jc.for_quantity = flt(flt((self.weight + self.line_rejection_qty),3),3)
+			jc.total_completed_qty = flt(flt((self.weight + self.get_total_rejection_qty()),3),3)
+			jc.for_quantity = flt(flt((self.weight + self.get_total_rejection_qty()),3),3)
 			jc.number_of_lifts = self.number_of_lifts
 			jc.no_of_running_cavities = self.no_of_running_cavities
 			jc.cure_time = self.curing_time
@@ -531,7 +554,7 @@ def make_stock_entry(self):
 			work_order = frappe.get_doc("Work Order", work_order_id)
 			if work_order.operations:
 				for operation in work_order.operations:
-					frappe.db.set_value("Work Order Operation",operation.name,"completed_qty",flt(flt((self.weight + self.line_rejection_qty),3),3))
+					frappe.db.set_value("Work Order Operation",operation.name,"completed_qty",flt(flt((self.weight + self.get_total_rejection_qty()),3),3))
 					frappe.db.commit()
 			stock_entry = frappe.new_doc("Stock Entry")
 			stock_entry.purpose = "Manufacture"
@@ -548,7 +571,7 @@ def make_stock_entry(self):
 			stock_entry.set_posting_time = 0
 			stock_entry.use_multi_level_bom = work_order.use_multi_level_bom
 			stock_entry.stock_entry_type = "Manufacture"
-			stock_entry.fg_completed_qty = flt(flt((self.weight + self.line_rejection_qty),3),3)
+			stock_entry.fg_completed_qty = flt(flt((self.weight + self.get_total_rejection_qty()),3),3)
 			if work_order.bom_no:
 				stock_entry.inspection_required = frappe.db.get_value(
 					"BOM", work_order.bom_no, "inspection_required"
