@@ -127,21 +127,19 @@ class MouldingProductionEntry(Document):
         # return {"status":"success"}
 
     def validate_get_line_ins_qty(self):
-        ins_info = frappe.db.get_value("Inspection Entry", {
-            "lot_no": self.scan_lot_number,
-            "docstatus": 1,
-            "inspection_type": ["in", ["Line Inspection", "Patrol Inspection"]]
-        }, ["stock_entry_reference", "name"], as_dict=1)
-    if ins_info:
-        if ins_info.stock_entry_reference:
-            query = f""" SELECT SED.qty FROM `tabStock Entry` SE INNER JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name 
-                            WHERE SED.source_ref_document = "Inspection Entry" AND SED.source_ref_id = '{ins_info.name}' AND SE.name = '{ins_info.stock_entry_reference}' """
-            qty_info = frappe.db.sql(query, as_dict=1)
-            if qty_info:
-                self.line_rejection_qty = flt(qty_info[0].qty, 3)
-            else:
-                frappe.throw(
-                    f"<b>Line/Patrol Inspection</b> entry stock details not found..!")
+        ins_info = frappe.db.get_value("Inspection Entry", {"lot_no": self.scan_lot_number, "docstatus": 1, "inspection_type": "Line Inspection"}, [
+                                       "stock_entry_reference", "name"], as_dict=1)
+        if ins_info:
+            if ins_info.stock_entry_reference:
+                query = f""" SELECT SED.qty FROM `tabStock Entry` SE INNER JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name 
+							WHERE SED.source_ref_document = "Inspection Entry" AND SED.source_ref_id = '{ins_info.name}' AND SE.name = '{ins_info.stock_entry_reference}' """
+                qty_info = frappe.db.sql(query, as_dict=1)
+                if qty_info:
+                    self.line_rejection_qty = flt(qty_info[0].qty, 3)
+                    # self.weight += flt(self.line_rejection_qty,3)
+                else:
+                    frappe.throw(
+                        f"<b>Line Inspection</b> entry stock details not found..!")
 
     def cmpr_balbin_get_cmp_qty(self):
         import json
@@ -933,102 +931,108 @@ def validate_operator(operator, supervisor=None):
 
 @frappe.whitelist()
 def validate_lot_number(batch_no):
-    try:
-        job_card = frappe.db.get_value(
-            "Job Card", {"batch_code": batch_no, "operation": "Moulding"}, 'status')
-        if not job_card:
-            return {"status": "Failed", "message": "The scanned lot barcode is <b>invalid</b>..!."}
-        if job_card == "Completed":
-            return {"status": "Failed", "message": "The <b>Moulding Operation</b> for the scanned lot was completed..!"}
-        check_inspection_entry = frappe.db.get_value("Inspection Entry",
-                                                     {
-                                                         "lot_no": batch_no,
-                                                         "docstatus": 1,
-                                                         "inspection_type": ["in", ["Line Inspection", "Patrol Inspection"]]
-                                                     })
-        if check_inspection_entry:
-            check_lot_issue = frappe.db.sql(""" SELECT BI.bin,BI.name as blank_bin_issue_item_name,B.name as blank_bin_issue_name,
+	try:
+		job_card = frappe.db.get_value(
+			"Job Card", {"batch_code": batch_no, "operation": "Moulding"}, 'status')
+		if not job_card:
+			return {"status": "Failed", "message": "The scanned lot barcode is <b>invalid</b>..!."}
+		if job_card == "Completed":
+			return {"status": "Failed", "message": "The <b>Moulding Operation</b> for the scanned lot was completed..!"}
+
+		check_line_inspe_entry = frappe.db.get_value("Inspection Entry", {
+													 "lot_no": batch_no, "docstatus": 1, "inspection_type": "Line Inspection"})
+		check_patrol_inspe_entry = frappe.db.get_value("Inspection Entry", {
+													   "lot_no": batch_no, "docstatus": 1, "inspection_type": "Patrol Inspection"})
+
+		missing_inspections = []
+		if not check_line_inspe_entry:
+			missing_inspections.append("Line Inspection")
+		if not check_patrol_inspe_entry:
+			missing_inspections.append("Patrol Inspection")
+
+		if missing_inspections:
+			return {"status": "Failed", "message": f"The following inspections are missing: {', '.join(missing_inspections)}"}
+
+		check_lot_issue = frappe.db.sql(""" SELECT BI.bin,BI.name as blank_bin_issue_item_name,B.name as blank_bin_issue_name,
 							B.job_card,JB.name as job_card,B.scan_bin,JB.mould_reference,JB.no_of_running_cavities
 							FROM `tabBlank Bin Issue Item` BI 
 							INNER JOIN `tabJob Card` JB ON JB.name= BI.job_card
 							INNER JOIN `tabBlank Bin Issue` B ON B.name = BI.parent
 							WHERE BI.is_completed = 0 AND JB.batch_code=%(lot_no)s 
 							AND B.docstatus = 1 ORDER BY B.creation ASC """, {"lot_no": batch_no}, as_dict=1)
-            if not check_lot_issue:
-                return {"status": "Failed", "message": "There is no entry for Blank Bin Issue for the scanned lot number."}
-            else:
-                if not check_lot_issue[0].mould_reference:
-                    return {"status": "Failed", "message": f"The <b>Mould Referenece</b> not found in <b>Job Card - {check_lot_issue[0].job_card}</b>"}
-                else:
-                    mould_ref = frappe.db.get_value(
-                        "Asset", check_lot_issue[0].mould_reference, "item_code")
-                    if mould_ref:
-                        if check_lot_issue[0].no_of_running_cavities:
-                            check_lot_issue[0].mould_reference = mould_ref
-                        else:
-                            return {"status": "Failed", "message": f"The <b>No.Of.Cavity</b> not found in the <b>Job Card - {check_lot_issue[0].job_card}</b>"}
-                    else:
-                        return {"status": "Failed", "message": f"The <b>Mould Referenece</b> not found in <b>Asset - {check_lot_issue[0].mould_reference}</b>"}
-                all_blank__bins = []
-                for bin__ in check_lot_issue:
-                    check_bin_release = frappe.db.sql(
-                        f" SELECT name item_bin_mapping_name,compound,spp_batch_number,qty FROM `tabItem Bin Mapping` WHERE blanking__bin = '{bin__.bin}' AND is_retired = 0 ", as_dict=1)
-                    if not check_bin_release:
-                        return {"status": "Failed", "message": f"The bin <b>{bin__.bin}</b> is already released manually, Please check <b>Item Bin Mapping</b>..!"}
-                    else:
-                        bin__.update(check_bin_release[0])
-                        if not bin__.compound:
-                            return {"status": "Failed", "message": f"There is no <b>Compound</b> found in bin <b>{bin__.bin}</b>."}
-                    batch_no = frappe.db.sql(
-                        f""" SELECT batch_no,docstatus,parenttype FROM `tabDelivery Note Item` WHERE spp_batch_no = '{bin__.spp_batch_number}'  """, as_dict=1)
-                    if not batch_no:
-                        spp_settings = frappe.get_single("SPP Settings")
-                        if not spp_settings.unit_2_warehouse:
-                            return {"status": "Failed", "message": f"The default <b>Unit - 1 Warehouse</b> not found in <b>SPP Settings</b>..!"}
-                        if not spp_settings.default_sheeting_warehouse:
-                            return {"status": "Failed", "message": f"The default <b>Sheeting Warehouse</b> not found in <b>SPP Settings</b>..!"}
-                        batch_no = frappe.db.sql(f""" SELECT SED.batch_no,SED.parenttype,SED.docstatus FROM `tabStock Entry` SE 
+		if not check_lot_issue:
+			return {"status": "Failed", "message": "There is no entry for Blank Bin Issue for the scanned lot number."}
+		else:
+			if not check_lot_issue[0].mould_reference:
+				return {"status": "Failed", "message": f"The <b>Mould Referenece</b> not found in <b>Job Card - {check_lot_issue[0].job_card}</b>"}
+			else:
+				mould_ref = frappe.db.get_value(
+					"Asset", check_lot_issue[0].mould_reference, "item_code")
+				if mould_ref:
+					if check_lot_issue[0].no_of_running_cavities:
+						check_lot_issue[0].mould_reference = mould_ref
+					else:
+						return {"status": "Failed", "message": f"The <b>No.Of.Cavity</b> not found in the <b>Job Card - {check_lot_issue[0].job_card}</b>"}
+				else:
+					return {"status": "Failed", "message": f"The <b>Mould Referenece</b> not found in <b>Asset - {check_lot_issue[0].mould_reference}</b>"}
+			all_blank__bins = []
+			for bin__ in check_lot_issue:
+				check_bin_release = frappe.db.sql(
+					f" SELECT name item_bin_mapping_name,compound,spp_batch_number,qty FROM `tabItem Bin Mapping` WHERE blanking__bin = '{bin__.bin}' AND is_retired = 0 ", as_dict=1)
+				if not check_bin_release:
+					return {"status": "Failed", "message": f"The bin <b>{bin__.bin}</b> is already released manually, Please check <b>Item Bin Mapping</b>..!"}
+				else:
+					bin__.update(check_bin_release[0])
+					if not bin__.compound:
+						return {"status": "Failed", "message": f"There is no <b>Compound</b> found in bin <b>{bin__.bin}</b>."}
+				batch_no = frappe.db.sql(
+					f""" SELECT batch_no,docstatus,parenttype FROM `tabDelivery Note Item` WHERE spp_batch_no = '{bin__.spp_batch_number}'  """, as_dict=1)
+				if not batch_no:
+					spp_settings = frappe.get_single("SPP Settings")
+					if not spp_settings.unit_2_warehouse:
+						return {"status": "Failed", "message": f"The default <b>Unit - 1 Warehouse</b> not found in <b>SPP Settings</b>..!"}
+					if not spp_settings.default_sheeting_warehouse:
+						return {"status": "Failed", "message": f"The default <b>Sheeting Warehouse</b> not found in <b>SPP Settings</b>..!"}
+					batch_no = frappe.db.sql(f""" SELECT SED.batch_no,SED.parenttype,SED.docstatus FROM `tabStock Entry` SE 
 													INNER JOIN `tabStock Entry Detail` SED ON SED.parent=SE.name WHERE SE.stock_entry_type="Material Transfer" 
 													AND SED.spp_batch_number = '{bin__.spp_batch_number}' AND SED.s_warehouse = '{spp_settings.default_sheeting_warehouse}' AND SED.t_warehouse = '{spp_settings.unit_2_warehouse}'  """, as_dict=1)
-                        if not batch_no:
-                            batch_no = frappe.db.sql(f""" SELECT SED.batch_no,SED.parenttype,SED.docstatus FROM `tabStock Entry` SE 
+					if not batch_no:
+						batch_no = frappe.db.sql(f""" SELECT SED.batch_no,SED.parenttype,SED.docstatus FROM `tabStock Entry` SE 
 													INNER JOIN `tabStock Entry Detail` SED ON SED.parent=SE.name WHERE SE.stock_entry_type="Repack" 
 													AND SED.spp_batch_number = '{bin__.spp_batch_number}' AND SED.t_warehouse = '{spp_settings.default_sheeting_warehouse}'  """, as_dict=1)
-                    if batch_no:
-                        if batch_no[0].docstatus == 1:
-                            bin__.batch_no__ = batch_no[0].batch_no
-                        else:
-                            return {"status": "Failed", "message": f"The <b>{batch_no[0].parenttype}</b> is not <b>submitted or cancelled</b>..!"}
-                    else:
-                        """ For get f name from bom """
-                        f__name = frappe.db.sql(""" SELECT BI.item_code FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name INNER JOIN `tabJob Card` J ON J.bom_no = B.name WHERE J.name=%(name)s AND B.is_active=1""", {
-                                                "name": bin__.job_card}, as_dict=1)
-                        if f__name:
-                            return {"status": "Failed", "message": f"The Batch No. not found for the item - <b>{f__name[0].item_code}</b>..!"}
-                        else:
-                            return {"status": "Failed", "message": f"The Batch No. not found for the source item..!"}
-                    all_blank__bins.append(bin__)
-                    """ End """
-                f__name = frappe.db.sql(""" SELECT B.item FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name INNER JOIN `tabJob Card` J ON J.bom_no = B.name WHERE J.name=%(name)s AND B.is_active=1""", {
-                                        "name": bin__.job_card}, as_dict=1)
-                if f__name:
-                    bom__ = frappe.db.sql(""" SELECT B.name,BI.item_code FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name WHERE B.item=%(bom_item)s AND B.is_Active=1 """, {
-                                          "bom_item": f__name[0].item}, as_dict=1)
-                    boms__item = []
-                    for bm in bom__:
-                        boms__item.append(bm.item_code)
-                    for c__bin in all_blank__bins:
-                        c__bin.item_to_produce = f__name[0].item
-                        if not c__bin.compound in boms__item:
-                            return {"status": "Failed", "message": f"There is no active BOM found for the bin <b>Compound - {check_lot_issue[0].compound}</b>"}
-                else:
-                    return {"status": "Failed", "message": f"BOM is not found for <b>Item to Produce</b>"}
-                return {"status": "Success", "message": all_blank__bins}
-        else:
-            return {"status": "Failed", "message": f"Neither {frappe.bold('Line Inspection')} nor {frappe.bold('Patrol Inspection')} for the scanned lot was found..!"}
-    except Exception:
-        frappe.log_error(
-            title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.moulding_production_entry.moulding_production_entry.validate_lot_number", message=frappe.get_traceback())
+				if batch_no:
+					if batch_no[0].docstatus == 1:
+						bin__.batch_no__ = batch_no[0].batch_no
+					else:
+						return {"status": "Failed", "message": f"The <b>{batch_no[0].parenttype}</b> is not <b>submitted or cancelled</b>..!"}
+				else:
+					""" For get f name from bom """
+					f__name = frappe.db.sql(""" SELECT BI.item_code FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name INNER JOIN `tabJob Card` J ON J.bom_no = B.name WHERE J.name=%(name)s AND B.is_active=1""", {
+											"name": bin__.job_card}, as_dict=1)
+					if f__name:
+						return {"status": "Failed", "message": f"The Batch No. not found for the item - <b>{f__name[0].item_code}</b>..!"}
+					else:
+						return {"status": "Failed", "message": f"The Batch No. not found for the source item..!"}
+				all_blank__bins.append(bin__)
+				""" End """
+			f__name = frappe.db.sql(""" SELECT B.item FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name INNER JOIN `tabJob Card` J ON J.bom_no = B.name WHERE J.name=%(name)s AND B.is_active=1""", {
+									"name": bin__.job_card}, as_dict=1)
+			if f__name:
+				bom__ = frappe.db.sql(""" SELECT B.name,BI.item_code FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name WHERE B.item=%(bom_item)s AND B.is_Active=1 """, {
+									  "bom_item": f__name[0].item}, as_dict=1)
+				boms__item = []
+				for bm in bom__:
+					boms__item.append(bm.item_code)
+				for c__bin in all_blank__bins:
+					c__bin.item_to_produce = f__name[0].item
+					if not c__bin.compound in boms__item:
+						return {"status": "Failed", "message": f"There is no active BOM found for the bin <b>Compound - {check_lot_issue[0].compound}</b>"}
+			else:
+				return {"status": "Failed", "message": f"BOM is not found for <b>Item to Produce</b>"}
+			return {"status": "Success", "message": all_blank__bins}
+	except Exception:
+		frappe.log_error(
+			title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.moulding_production_entry.moulding_production_entry.validate_lot_number", message=frappe.get_traceback())
 
 
 @frappe.whitelist()
