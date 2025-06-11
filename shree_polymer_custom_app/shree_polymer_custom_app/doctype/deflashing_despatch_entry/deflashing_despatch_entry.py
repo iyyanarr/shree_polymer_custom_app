@@ -285,7 +285,7 @@ def validate_lot_barcode(bar_code):
 					job_card = ins__prod_resp.get('job_card')
 					card_details = frappe.db.get_value("Job Card",job_card,["production_item","total_completed_qty","work_order"],as_dict=1)
 					query = f""" SELECT SED.t_warehouse as from_warehouse,SED.valuation_rate,SED.amount,SED.spp_batch_number,SED.mix_barcode,SED.batch_no,SED.qty FROM `tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE 
-								ON SED.parent=SE.name WHERE SED.item_code='{card_details.get("production_item")}' AND SE.work_order='{card_details.get("work_order")}' """
+								ON SED.parent=SE.name WHERE SED.item_code='{card_details.get("production_item")}' AND SE.work_order='{card_details.get("work_order")}' AND SE.docstatus = 1 """
 					spp_and_batch = frappe.db.sql(query,as_dict=1)
 					if spp_and_batch:
 						stock_status = check_available_stock(spp_and_batch[0].get("from_warehouse"),card_details.get("production_item"),spp_and_batch[0].get("batch_no",""))
