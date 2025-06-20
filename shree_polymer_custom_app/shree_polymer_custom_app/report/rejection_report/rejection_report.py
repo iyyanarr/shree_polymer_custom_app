@@ -373,7 +373,7 @@ def get_datas(filters):
 		if filters.get('deflashing_operator'):
 			condition += f""" AND VSINE.source_warehouse = '{filters.get('deflashing_operator')}' """
 		
-		# Ultra-simplified Final Rejection Report - just get the basic visual inspection data
+		# Final Rejection Report query - now with database indexes for fast performance
 		query = f""" SELECT 
 							VSINE.lot_no,
 							VSINE.product_ref_no AS item,
@@ -386,29 +386,37 @@ def get_datas(filters):
 							'' AS trimming_od_operator,
 							0 AS production_qty_nos,
 							0.0 AS compound_consumed_qty_kgs,
-							0.0 AS line_rejected_qty_nos,
-							0.0 AS line_rejection_percent,
-							0.0 AS line_inspected_qty_nos,
-							0.0 AS patrol_rejected_qty_nos,
-							0.0 AS patrol_rejection_percent,
-							0.0 AS patrol_inspected_qty_nos,
-							0.0 AS lot_rejected_qty_nos,
-							0.0 AS lot_rejection_percent,
-							0.0 AS lot_inspected_qty_nos,
-							0.0 AS incoming_rejected_qty_nos,
-							0.0 AS incoming_rejection_percent,
-							0.0 AS incoming_inspected_qty_nos,
+							COALESCE(LINE.total_rejected_qty, 0.0) AS line_rejected_qty_nos,
+							COALESCE(LINE.total_rejected_qty_in_percentage, 0.0) AS line_rejection_percent,
+							COALESCE(LINE.inspected_qty_nos, 0.0) AS line_inspected_qty_nos,
+							COALESCE(PINE.total_rejected_qty, 0.0) AS patrol_rejected_qty_nos,
+							COALESCE(PINE.total_rejected_qty_in_percentage, 0.0) AS patrol_rejection_percent,
+							COALESCE(PINE.inspected_qty_nos, 0.0) AS patrol_inspected_qty_nos,
+							COALESCE(LOINE.total_rejected_qty, 0.0) AS lot_rejected_qty_nos,
+							COALESCE(LOINE.total_rejected_qty_in_percentage, 0.0) AS lot_rejection_percent,
+							COALESCE(LOINE.inspected_qty_nos, 0.0) AS lot_inspected_qty_nos,
+							COALESCE(INE.total_rejected_qty, 0.0) AS incoming_rejected_qty_nos,
+							COALESCE(INE.total_rejected_qty_in_percentage, 0.0) AS incoming_rejection_percent,
+							COALESCE(INE.total_inspected_qty_nos, 0.0) AS incoming_inspected_qty_nos,
 							COALESCE(VSINE.total_rejected_qty, 0.0) AS final_rejected_qty_nos,
 							COALESCE(VSINE.total_rejected_qty_in_percentage, 0.0) AS final_rejection_percent,
 							COALESCE(VSINE.total_inspected_qty_nos, 0.0) AS final_inspected_qty_nos
 						FROM 
 							`tabInspection Entry` VSINE 
+							LEFT JOIN `tabInspection Entry` LINE ON LINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
+								AND LINE.inspection_type = "Line Inspection" AND LINE.docstatus = 1
+							LEFT JOIN `tabInspection Entry` PINE ON PINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
+								AND PINE.inspection_type = "Patrol Inspection" AND PINE.docstatus = 1
+							LEFT JOIN `tabInspection Entry` LOINE ON LOINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
+								AND LOINE.inspection_type = "Lot Inspection" AND LOINE.docstatus = 1
+							LEFT JOIN `tabInspection Entry` INE ON (INE.lot_no = VSINE.lot_no OR INE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1))
+								AND INE.inspection_type = "Incoming Inspection" AND INE.docstatus = 1
 						WHERE 
 							VSINE.docstatus = 1 
-							AND VSINE.inspection_type LIKE '%Visual%'
+							AND (VSINE.inspection_type = "Final Visual Inspection" OR VSINE.inspection_type = "Visual Inspection") 
 							{condition}
 						ORDER BY VSINE.posting_date DESC 
-						LIMIT 50 """	
+						LIMIT 500 """	
 		result__ = frappe.db.sql(query, as_dict=1)
 		if result__:
 			total_production_qty_nos = 0.0
