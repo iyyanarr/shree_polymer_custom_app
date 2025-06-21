@@ -373,7 +373,7 @@ def get_datas(filters):
 		# Final Rejection Report query - UNION of both historical and recent data 
 		# Historical data from tabInspection Entry (before May 2025) and recent data from tabSPP Inspection Entry (after May 2025)
 		query = f""" 
-		(SELECT 
+		(SELECT DISTINCT
 			VSINE.lot_no,
 			VSINE.product_ref_no AS item,
 			COALESCE(B.name, '') AS compound_bom_no,
@@ -436,7 +436,7 @@ def get_datas(filters):
 		
 		UNION ALL
 		
-		(SELECT 
+		(SELECT DISTINCT
 			VSINE.lot_no,
 			VSINE.product_ref_no AS item,
 			COALESCE(B.name, '') AS compound_bom_no,
