@@ -5,12 +5,9 @@ import frappe
 from frappe import _
 
 def execute(filters=None):
-	try:
-		columns, data = get_columns(filters), get_datas(filters)
-		return columns, data
-	except Exception as e:
-		frappe.log_error(f"Rejection Report Error: {str(e)}", "Rejection Report")
-		frappe.throw(_("Report generation failed. Please check the error log or contact administrator."))
+	columns = get_columns(filters)
+	data = get_datas(filters)
+	return columns, data
 
 def get_columns(filters):
 	c__ = []
@@ -374,18 +371,26 @@ def get_datas(filters):
 			condition += f""" AND VSINE.source_warehouse = '{filters.get('deflashing_operator')}' """
 		
 		# Final Rejection Report query - now with database indexes for fast performance
+		# Full query with all production, operator, and inspection data restored
 		query = f""" SELECT 
 							VSINE.lot_no,
 							VSINE.product_ref_no AS item,
-							'' AS compound_bom_no,
-							'' AS press_no,
-							'' AS moulding_operator,
+							COALESCE(CB.name, '') AS compound_bom_no,
+							COALESCE(BBIS.press, '') AS press_no,
+							COALESCE(MPE.employee, '') AS moulding_operator,
 							COALESCE(VSINE.source_warehouse, '') AS deflashing_operator,
-							'' AS mould_ref,
+							COALESCE(BBIS.mould, '') AS mould_ref,
 							'' AS trimming_id_operator,
 							'' AS trimming_od_operator,
-							0 AS production_qty_nos,
-							0.0 AS compound_consumed_qty_kgs,
+							COALESCE(ROUND(CAST(SED.qty as DECIMAL(10,3)) / 
+								CASE WHEN MSP.avg_blank_wtproduct_gms != 0 
+									THEN MSP.avg_blank_wtproduct_gms/1000 
+									ELSE 1 END, 0), 0) AS production_qty_nos,
+							COALESCE((SELECT CAST(MSED.qty as DECIMAL(10,3)) 
+								FROM `tabStock Entry Detail` MSED
+								INNER JOIN `tabItem` MI ON MI.name = MSED.item_code 
+								WHERE MI.item_group = 'Compound' AND MSED.parent = MSE.name 
+								LIMIT 1), 0.0) AS compound_consumed_qty_kgs,
 							COALESCE(LINE.total_rejected_qty, 0.0) AS line_rejected_qty_nos,
 							COALESCE(LINE.total_rejected_qty_in_percentage, 0.0) AS line_rejection_percent,
 							COALESCE(LINE.inspected_qty_nos, 0.0) AS line_inspected_qty_nos,
@@ -403,6 +408,19 @@ def get_datas(filters):
 							COALESCE(VSINE.total_inspected_qty_nos, 0.0) AS final_inspected_qty_nos
 						FROM 
 							`tabInspection Entry` VSINE 
+							LEFT JOIN `tabDeflashing Receipt Entry` DFR ON DFR.scan_lot_number = VSINE.lot_no AND DFR.docstatus = 1
+							LEFT JOIN `tabBOM Item` BI ON BI.item_code = DFR.item AND DFR.docstatus = 1
+							LEFT JOIN `tabBOM` B ON BI.parent = B.name AND B.is_active=1 AND B.is_default=1
+							LEFT JOIN `tabBOM` CB ON CB.Item = DFR.item AND CB.is_active=1 AND CB.is_default=1
+							LEFT JOIN `tabStock Entry` SE ON SE.name = DFR.stock_entry_reference AND SE.docstatus = 1
+							LEFT JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name AND SED.is_finished_item = 1
+							LEFT JOIN `tabBlank Bin Issue` BBIS ON 
+								BBIS.scan_production_lot = SUBSTRING_INDEX(VSINE.lot_no, '-', 1) AND BBIS.docstatus = 1
+							LEFT JOIN `tabMoulding Production Entry` MPE ON 
+								MPE.scan_lot_number = SUBSTRING_INDEX(VSINE.lot_no, '-', 1) AND MPE.docstatus = 1
+							LEFT JOIN `tabMould Specification` MSP ON MSP.mould_ref = BBIS.mould
+								AND MSP.spp_ref = MPE.item_to_produce AND MSP.mould_status = 'ACTIVE'
+							LEFT JOIN `tabStock Entry` MSE ON MSE.name = MPE.stock_entry_reference AND MSE.docstatus = 1
 							LEFT JOIN `tabInspection Entry` LINE ON LINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
 								AND LINE.inspection_type = "Line Inspection" AND LINE.docstatus = 1
 							LEFT JOIN `tabInspection Entry` PINE ON PINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
@@ -530,6 +548,9 @@ def get_datas(filters):
 									"total_rejection": (over_all_total_rejections_nos / over_all_total_inspected_nos )* 100})
 		return result__	
 	
+	# Default fallback if no report type matches
+	return []
+
 @frappe.whitelist()
 def get_moulds(doctype, mould, searchfield, start, page_len, filters):
 	search_condition = ""
