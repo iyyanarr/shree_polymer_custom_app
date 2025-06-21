@@ -370,70 +370,135 @@ def get_datas(filters):
 		if filters.get('deflashing_operator'):
 			condition += f""" AND VSINE.source_warehouse = '{filters.get('deflashing_operator')}' """
 		
-		# Final Rejection Report query - now with database indexes for fast performance
-		# Full query with all production, operator, and inspection data restored
-		query = f""" SELECT 
-						VSINE.lot_no,
-						VSINE.product_ref_no AS item,
-						COALESCE(B.name, '') AS compound_bom_no,
-						COALESCE(BBIS.press, '') AS press_no,
-						COALESCE(MPE.employee, '') AS moulding_operator,
-						COALESCE(VSINE.source_warehouse, '') AS deflashing_operator,
-						COALESCE(BBIS.mould, '') AS mould_ref,
-						COALESCE(LRT.operator_id, '') AS trimming_id_operator,
-						COALESCE(OLRT.operator_id, '') AS trimming_od_operator,
-						COALESCE(ROUND(CAST(SED.qty as DECIMAL(10,3)) / 
-							CASE WHEN MSP.avg_blank_wtproduct_gms != 0 
-								THEN MSP.avg_blank_wtproduct_gms/1000 
-								ELSE 1 END, 0), 0) AS production_qty_nos,
-						COALESCE((SELECT CAST(MSED.qty as DECIMAL(10,3)) 
-							FROM `tabStock Entry Detail` MSED
-							INNER JOIN `tabItem` MI ON MI.name = MSED.item_code 
-							WHERE MI.item_group = 'Compound' AND MSED.parent = MSE.name 
-							LIMIT 1), 0.0) AS compound_consumed_qty_kgs,
-						COALESCE(LINE.total_rejected_qty_in_percentage, 0.0) AS line_rejection_percent,
-						COALESCE(PINE.total_rejected_qty_in_percentage, 0.0) AS patrol_rejection_percent,
-						COALESCE(LOINE.total_rejected_qty_in_percentage, 0.0) AS lot_rejection_percent,
-						COALESCE(INE.total_rejected_qty_in_percentage, 0.0) AS incoming_rejection_percent,
-						COALESCE(VSINE.total_rejected_qty_in_percentage, 0.0) AS final_rejection_percent,
-						(((COALESCE(LINE.total_rejected_qty, 0.0) + COALESCE(PINE.total_rejected_qty, 0.0) + 
-						   COALESCE(LOINE.total_rejected_qty, 0.0) + COALESCE(INE.total_rejected_qty, 0.0) + 
-						   COALESCE(VSINE.total_rejected_qty, 0.0)) / 
-						  (COALESCE(LINE.inspected_qty_nos, 0.0) + COALESCE(PINE.inspected_qty_nos, 0.0) + 
-						   COALESCE(LOINE.inspected_qty_nos, 0.0) + COALESCE(INE.total_inspected_qty_nos, 0.0) + 
-						   COALESCE(VSINE.total_inspected_qty_nos, 0.0))) * 100) AS total_rejection_percent
-					FROM 
-						`tabInspection Entry` VSINE 
-						LEFT JOIN `tabStock Entry` SE ON SE.name = VSINE.vs_pdir_stock_entry_ref AND SE.docstatus = 1
-						LEFT JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name AND SED.t_warehouse IS NOT NULL
-						LEFT JOIN `tabBlank Bin Issue` BBIS ON 
-							BBIS.scan_production_lot = SUBSTRING_INDEX(VSINE.lot_no, '-', 1) AND BBIS.docstatus = 1
-						LEFT JOIN `tabMoulding Production Entry` MPE ON 
-							MPE.scan_lot_number = SUBSTRING_INDEX(VSINE.lot_no, '-', 1) AND MPE.docstatus = 1
-						LEFT JOIN `tabMould Specification` MSP ON MSP.mould_ref = BBIS.mould
-							AND MSP.spp_ref = MPE.item_to_produce AND MSP.mould_status = 'ACTIVE'
-						LEFT JOIN `tabBOM` B ON B.item = VSINE.product_ref_no AND B.is_active=1 AND B.is_default=1
-						LEFT JOIN `tabBOM Item` BI ON BI.parent = B.name 
-						LEFT JOIN `tabItem` MMI ON MMI.name = BI.item_code AND MMI.item_group = 'Compound'
-						LEFT JOIN `tabStock Entry` MSE ON MSE.name = MPE.stock_entry_reference AND MSE.docstatus = 1
-						LEFT JOIN `tabInspection Entry` LINE ON LINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
-							AND LINE.inspection_type = "Line Inspection" AND LINE.docstatus = 1
-						LEFT JOIN `tabInspection Entry` PINE ON PINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
-							AND PINE.inspection_type = "Patrol Inspection" AND PINE.docstatus = 1
-						LEFT JOIN `tabInspection Entry` LOINE ON LOINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
-							AND LOINE.inspection_type = "Lot Inspection" AND LOINE.docstatus = 1
-						LEFT JOIN `tabInspection Entry` INE ON (INE.lot_no = VSINE.lot_no OR INE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1))
-							AND INE.inspection_type = "Incoming Inspection" AND INE.docstatus = 1
-						LEFT JOIN `tabLot Resource Tagging` LRT ON LRT.scan_lot_no = VSINE.lot_no 
-							AND LRT.operation_type = 'ID Trimming' AND LRT.docstatus = 1
-						LEFT JOIN `tabLot Resource Tagging` OLRT ON OLRT.scan_lot_no = VSINE.lot_no 
-							AND OLRT.operation_type = 'OD Trimming' AND OLRT.docstatus = 1
-					WHERE 
-						VSINE.docstatus = 1 
-						AND (VSINE.inspection_type = "Final Visual Inspection" OR VSINE.inspection_type = "Visual Inspection") 
-						{condition}
-					ORDER BY VSINE.posting_date DESC 
-					LIMIT 500 """
+		# Final Rejection Report query - UNION of both historical and recent data 
+		# Historical data from tabInspection Entry (before May 2025) and recent data from tabSPP Inspection Entry (after May 2025)
+		query = f""" 
+		(SELECT 
+			VSINE.lot_no,
+			VSINE.product_ref_no AS item,
+			COALESCE(B.name, '') AS compound_bom_no,
+			COALESCE(BBIS.press, '') AS press_no,
+			COALESCE(MPE.employee, '') AS moulding_operator,
+			COALESCE(VSINE.source_warehouse, '') AS deflashing_operator,
+			COALESCE(BBIS.mould, '') AS mould_ref,
+			COALESCE(LRT.operator_id, '') AS trimming_id_operator,
+			COALESCE(OLRT.operator_id, '') AS trimming_od_operator,
+			COALESCE(ROUND(CAST(SED.qty as DECIMAL(10,3)) / 
+				CASE WHEN MSP.avg_blank_wtproduct_gms != 0 
+					THEN MSP.avg_blank_wtproduct_gms/1000 
+					ELSE 1 END, 0), 0) AS production_qty_nos,
+			COALESCE((SELECT CAST(MSED.qty as DECIMAL(10,3)) 
+				FROM `tabStock Entry Detail` MSED
+				INNER JOIN `tabItem` MI ON MI.name = MSED.item_code 
+				WHERE MI.item_group = 'Compound' AND MSED.parent = MSE.name 
+				LIMIT 1), 0.0) AS compound_consumed_qty_kgs,
+			COALESCE(LINE.total_rejected_qty_in_percentage, 0.0) AS line_rejection_percent,
+			COALESCE(PINE.total_rejected_qty_in_percentage, 0.0) AS patrol_rejection_percent,
+			COALESCE(LOINE.total_rejected_qty_in_percentage, 0.0) AS lot_rejection_percent,
+			COALESCE(INE.total_rejected_qty_in_percentage, 0.0) AS incoming_rejection_percent,
+			COALESCE(VSINE.total_rejected_qty_in_percentage, 0.0) AS final_rejection_percent,
+			COALESCE(LINE.total_rejected_qty, 0.0) AS line_rejected_qty_nos,
+			COALESCE(PINE.total_rejected_qty, 0.0) AS patrol_rejected_qty_nos,
+			COALESCE(LOINE.total_rejected_qty, 0.0) AS lot_rejected_qty_nos,
+			COALESCE(INE.total_rejected_qty, 0.0) AS incoming_rejected_qty_nos,
+			COALESCE(VSINE.total_rejected_qty, 0.0) AS final_rejected_qty_nos,
+			COALESCE(LINE.inspected_qty_nos, 0.0) AS line_inspected_qty_nos,
+			COALESCE(PINE.inspected_qty_nos, 0.0) AS patrol_inspected_qty_nos,
+			COALESCE(LOINE.inspected_qty_nos, 0.0) AS lot_inspected_qty_nos,
+			COALESCE(INE.total_inspected_qty_nos, 0.0) AS incoming_inspected_qty_nos,
+			COALESCE(VSINE.total_inspected_qty_nos, 0.0) AS final_inspected_qty_nos
+		FROM `tabInspection Entry` VSINE 
+			LEFT JOIN `tabStock Entry` SE ON SE.name = VSINE.vs_pdir_stock_entry_ref AND SE.docstatus = 1
+			LEFT JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name AND SED.t_warehouse IS NOT NULL
+			LEFT JOIN `tabBlank Bin Issue` BBIS ON 
+				BBIS.scan_production_lot = SUBSTRING_INDEX(VSINE.lot_no, '-', 1) AND BBIS.docstatus = 1
+			LEFT JOIN `tabMoulding Production Entry` MPE ON 
+				MPE.scan_lot_number = SUBSTRING_INDEX(VSINE.lot_no, '-', 1) AND MPE.docstatus = 1
+			LEFT JOIN `tabMould Specification` MSP ON MSP.mould_ref = BBIS.mould
+				AND MSP.spp_ref = MPE.item_to_produce AND MSP.mould_status = 'ACTIVE'
+			LEFT JOIN `tabBOM` B ON B.item = VSINE.product_ref_no AND B.is_active=1 AND B.is_default=1
+			LEFT JOIN `tabStock Entry` MSE ON MSE.name = MPE.stock_entry_reference AND MSE.docstatus = 1
+			LEFT JOIN `tabInspection Entry` LINE ON LINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
+				AND LINE.inspection_type = "Line Inspection" AND LINE.docstatus = 1
+			LEFT JOIN `tabInspection Entry` PINE ON PINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
+				AND PINE.inspection_type = "Patrol Inspection" AND PINE.docstatus = 1
+			LEFT JOIN `tabInspection Entry` LOINE ON LOINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
+				AND LOINE.inspection_type = "Lot Inspection" AND LOINE.docstatus = 1
+			LEFT JOIN `tabInspection Entry` INE ON (INE.lot_no = VSINE.lot_no OR INE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1))
+				AND INE.inspection_type = "Incoming Inspection" AND INE.docstatus = 1
+			LEFT JOIN `tabLot Resource Tagging` LRT ON LRT.scan_lot_no = VSINE.lot_no 
+				AND LRT.operation_type = 'ID Trimming' AND LRT.docstatus = 1
+			LEFT JOIN `tabLot Resource Tagging` OLRT ON OLRT.scan_lot_no = VSINE.lot_no 
+				AND OLRT.operation_type = 'OD Trimming' AND OLRT.docstatus = 1
+		WHERE VSINE.docstatus = 1 
+			AND VSINE.inspection_type = 'Final Visual Inspection' 
+			AND DATE(VSINE.posting_date) < '2025-05-02' {condition})
+		
+		UNION ALL
+		
+		(SELECT 
+			VSINE.lot_no,
+			VSINE.product_ref_no AS item,
+			COALESCE(B.name, '') AS compound_bom_no,
+			COALESCE(BBIS.press, '') AS press_no,
+			COALESCE(MPE.employee, '') AS moulding_operator,
+			COALESCE(VSINE.source_warehouse, '') AS deflashing_operator,
+			COALESCE(BBIS.mould, '') AS mould_ref,
+			COALESCE(LRT.operator_id, '') AS trimming_id_operator,
+			COALESCE(OLRT.operator_id, '') AS trimming_od_operator,
+			COALESCE(ROUND(CAST(SED.qty as DECIMAL(10,3)) / 
+				CASE WHEN MSP.avg_blank_wtproduct_gms != 0 
+					THEN MSP.avg_blank_wtproduct_gms/1000 
+					ELSE 1 END, 0), 0) AS production_qty_nos,
+			COALESCE((SELECT CAST(MSED.qty as DECIMAL(10,3)) 
+				FROM `tabStock Entry Detail` MSED
+				INNER JOIN `tabItem` MI ON MI.name = MSED.item_code 
+				WHERE MI.item_group = 'Compound' AND MSED.parent = MSE.name 
+				LIMIT 1), 0.0) AS compound_consumed_qty_kgs,
+			COALESCE(LINE.total_rejected_qty_in_percentage, 0.0) AS line_rejection_percent,
+			COALESCE(PINE.total_rejected_qty_in_percentage, 0.0) AS patrol_rejection_percent,
+			COALESCE(LOINE.total_rejected_qty_in_percentage, 0.0) AS lot_rejection_percent,
+			COALESCE(INE.total_rejected_qty_in_percentage, 0.0) AS incoming_rejection_percent,
+			COALESCE(VSINE.total_rejected_qty_in_percentage, 0.0) AS final_rejection_percent,
+			COALESCE(LINE.total_rejected_qty, 0.0) AS line_rejected_qty_nos,
+			COALESCE(PINE.total_rejected_qty, 0.0) AS patrol_rejected_qty_nos,
+			COALESCE(LOINE.total_rejected_qty, 0.0) AS lot_rejected_qty_nos,
+			COALESCE(INE.total_rejected_qty, 0.0) AS incoming_rejected_qty_nos,
+			COALESCE(VSINE.total_rejected_qty, 0.0) AS final_rejected_qty_nos,
+			COALESCE(LINE.inspected_qty_nos, 0.0) AS line_inspected_qty_nos,
+			COALESCE(PINE.inspected_qty_nos, 0.0) AS patrol_inspected_qty_nos,
+			COALESCE(LOINE.inspected_qty_nos, 0.0) AS lot_inspected_qty_nos,
+			COALESCE(INE.total_inspected_qty_nos, 0.0) AS incoming_inspected_qty_nos,
+			COALESCE(VSINE.total_inspected_qty_nos, 0.0) AS final_inspected_qty_nos
+		FROM `tabSPP Inspection Entry` VSINE 
+			LEFT JOIN `tabStock Entry` SE ON SE.name = VSINE.vs_pdir_stock_entry_ref AND SE.docstatus = 1
+			LEFT JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name AND SED.t_warehouse IS NOT NULL
+			LEFT JOIN `tabBlank Bin Issue` BBIS ON 
+				BBIS.scan_production_lot = SUBSTRING_INDEX(VSINE.lot_no, '-', 1) AND BBIS.docstatus = 1
+			LEFT JOIN `tabMoulding Production Entry` MPE ON 
+				MPE.scan_lot_number = SUBSTRING_INDEX(VSINE.lot_no, '-', 1) AND MPE.docstatus = 1
+			LEFT JOIN `tabMould Specification` MSP ON MSP.mould_ref = BBIS.mould
+				AND MSP.spp_ref = MPE.item_to_produce AND MSP.mould_status = 'ACTIVE'
+			LEFT JOIN `tabBOM` B ON B.item = VSINE.product_ref_no AND B.is_active=1 AND B.is_default=1
+			LEFT JOIN `tabStock Entry` MSE ON MSE.name = MPE.stock_entry_reference AND MSE.docstatus = 1
+			LEFT JOIN `tabInspection Entry` LINE ON LINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
+				AND LINE.inspection_type = "Line Inspection" AND LINE.docstatus = 1
+			LEFT JOIN `tabInspection Entry` PINE ON PINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
+				AND PINE.inspection_type = "Patrol Inspection" AND PINE.docstatus = 1
+			LEFT JOIN `tabInspection Entry` LOINE ON LOINE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1)
+				AND LOINE.inspection_type = "Lot Inspection" AND LOINE.docstatus = 1
+			LEFT JOIN `tabInspection Entry` INE ON (INE.lot_no = VSINE.lot_no OR INE.lot_no = SUBSTRING_INDEX(VSINE.lot_no, '-', 1))
+				AND INE.inspection_type = "Incoming Inspection" AND INE.docstatus = 1
+			LEFT JOIN `tabLot Resource Tagging` LRT ON LRT.scan_lot_no = VSINE.lot_no 
+				AND LRT.operation_type = 'ID Trimming' AND LRT.docstatus = 1
+			LEFT JOIN `tabLot Resource Tagging` OLRT ON OLRT.scan_lot_no = VSINE.lot_no 
+				AND OLRT.operation_type = 'OD Trimming' AND OLRT.docstatus = 1
+		WHERE VSINE.docstatus = 1 
+			AND VSINE.inspection_type = 'Final Visual Inspection' 
+			AND DATE(VSINE.posting_date) >= '2025-05-02' {condition})
+		
+		ORDER BY lot_no DESC 
+		LIMIT 500 """
 		result__ = frappe.db.sql(query, as_dict=1)
 		if result__:
 			total_production_qty_nos = 0.0
