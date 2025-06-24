@@ -509,48 +509,84 @@ frappe.ui.form.on('Receive Deflashing Entry', {
     create_weight_mismatch_tracker: function(frm, item, observed_weight, difference) {
         frappe.model.get_value('SPP Settings', {'name': 'SPP Settings'}, 'p_target_warehouse', function(d) {
             const warehouse = d.p_target_warehouse;
-        
-            frappe.call({
-                method: "frappe.client.insert",
-                args: {
-                    doc: {
-                        doctype: "Weight Mismatch Tracker",
-                        ref_production_entry: item.stock_entry_reference || "",
-                        ref_lot_number: item.lot_no || "",
-                        observed_weight: observed_weight,
-                        difference_in_weight: difference,
-                        item_code: item.product_ref,
-                        source_document: frm.doc.dd_number,
-                        dispatch_station: "U2 Store",
-                        receiving_station: "U1 Store",
-                        batch_number: item.batch_no,
-                        system_weight: item.weight_kgs,
-                        warehouse: warehouse,
-                        observed_by: frappe.session.user,
+            
+            // Function to create the weight mismatch tracker
+            const createTracker = function(productionEntryRef = null) {
+                frappe.call({
+                    method: "frappe.client.insert",
+                    args: {
+                        doc: {
+                            doctype: "Weight Mismatch Tracker",
+                            ref_production_entry: productionEntryRef || "",
+                            ref_lot_number: item.lot_no || "",
+                            observed_weight: observed_weight,
+                            difference_in_weight: difference,
+                            item_code: item.product_ref,
+                            source_document: frm.doc.dd_number,
+                            dispatch_station: "U2 Store",
+                            receiving_station: "U1 Store",
+                            batch_number: item.batch_no,
+                            system_weight: item.weight_kgs,
+                            warehouse: warehouse,
+                            observed_by: frappe.session.user,
+                        }
+                    },
+                    freeze: true,
+                    callback: function(response) {
+                        if (!response.exc) {
+                            frappe.msgprint({
+                                title: __("Success"),
+                                indicator: "green",
+                                message: __(
+                                    `Weight Mismatch Tracker <b>${response.message.name}</b> created successfully.`
+                                )
+                            });
+                            // Add item to table with Miss Match status
+                            frm.events.add_item_to_table(frm, item, observed_weight, observed_weight * (item.conversion_factor || 1), 'Miss Match');
+                        } else {
+                            frappe.msgprint({
+                                title: __("Error"),
+                                indicator: "red",
+                                message: __("Unable to create Weight Mismatch Tracker: " + (response.exc || "Unknown error"))
+                            });
+                        }
                     }
-                },
-                freeze: true,
-                callback: function(response) {
-                    if (!response.exc) {
-                        frappe.msgprint({
-                            title: __("Success"),
-                            indicator: "green",
-                            message: __(
-                                `Weight Mismatch Tracker <b>${response.message.name}</b> created successfully.`
-                            )
-                        });
-                        // Only add to table for specific conditions - handled in the dialog function
-                    } else {
-                        frappe.msgprint({
-                            title: __("Error"),
-                            indicator: "red",
-                            message: __("Unable to create Weight Mismatch Tracker.")
-                        });
-                    }
-                }
-            });
-        })
+                });
+            };
 
+            // Try to find the Moulding Production Entry from the stock entry if available
+            if (item.stock_entry_reference) {
+                frappe.call({
+                    method: 'frappe.client.get_value',
+                    args: {
+                        doctype: 'Stock Entry',
+                        name: item.stock_entry_reference,
+                        fieldname: ['reference_docname', 'reference_doctype']
+                    },
+                    callback: function(response) {
+                        let productionEntryRef = null;
+                        
+                        if (response && response.message) {
+                            const stockEntryData = response.message;
+                            // Check if the stock entry references a Moulding Production Entry
+                            if (stockEntryData.reference_doctype === 'Moulding Production Entry') {
+                                productionEntryRef = stockEntryData.reference_docname;
+                            }
+                        }
+                        
+                        // Create tracker with or without production entry reference
+                        createTracker(productionEntryRef);
+                    },
+                    error: function() {
+                        // If we can't fetch stock entry details, create without production entry reference
+                        createTracker();
+                    }
+                });
+            } else {
+                // No stock entry reference, create without production entry reference
+                createTracker();
+            }
+        });
     },
 
     add_item_to_table: function(frm, item, observed_weight,observed_qty_nos, status) {
