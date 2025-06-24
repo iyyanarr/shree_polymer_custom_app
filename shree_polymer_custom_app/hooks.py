@@ -60,7 +60,8 @@ doctype_js = {"Stock Entry" : "public/js/st_entry.js",
 # ------------
 
 # before_install = "shree_polymer_custom_app.install.before_install"
-# after_install = "shree_polymer_custom_app.install.after_install"
+after_install = "shree_polymer_custom_app.custom_role_permissions.restore_all_custom_permissions"
+after_migrate = "shree_polymer_custom_app.custom_role_permissions.restore_all_custom_permissions"
 
 # Uninstallation
 # ------------

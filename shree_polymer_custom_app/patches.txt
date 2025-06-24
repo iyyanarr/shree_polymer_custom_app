@@ -1,0 +1,1 @@
+shree_polymer_custom_app.patches.restore_batch_custom_permissions
