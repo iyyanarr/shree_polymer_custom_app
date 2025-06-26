@@ -161,6 +161,100 @@ def restore_batch_permissions():
         raise
 
 
+def restore_employee_permissions():
+    """
+    Restore custom role permissions for Employee doctype after migrations
+    """
+    try:
+        # Define your custom role permissions for Employee doctype
+        custom_employee_permissions = [
+            {
+                "role": "Blanker",
+                "doctype": "Employee",
+                "read": 1,
+                "write": 0,
+                "create": 0,
+                "delete": 0,
+                "submit": 0,
+                "cancel": 0,
+                "amend": 0,
+                "report": 1,
+                "export": 1,
+                "import": 0,
+                "set_user_permissions": 0,
+                "share": 0,
+                "print": 1,
+                "email": 0,
+                "if_owner": 0
+            }
+            # Add more roles for Employee if needed
+        ]
+        
+        for perm in custom_employee_permissions:
+            # Check if permission already exists
+            existing = frappe.db.exists("Custom DocPerm", {
+                "parent": perm["doctype"],
+                "role": perm["role"]
+            })
+            
+            if not existing:
+                # Create new custom permission
+                doc = frappe.new_doc("Custom DocPerm")
+                
+                # Set required fields for Custom DocPerm
+                doc.parent = perm["doctype"]
+                doc.role = perm["role"]
+                doc.read = perm.get("read", 0)
+                doc.write = perm.get("write", 0)
+                doc.create = perm.get("create", 0)
+                doc.delete = perm.get("delete", 0)
+                doc.submit = perm.get("submit", 0)
+                doc.cancel = perm.get("cancel", 0)
+                doc.amend = perm.get("amend", 0)
+                doc.report = perm.get("report", 0)
+                doc.export = perm.get("export", 0)
+                setattr(doc, "import", perm.get("import", 0))  # Use setattr for reserved keyword
+                doc.share = perm.get("share", 0)
+                doc.print = perm.get("print", 0)
+                doc.email = perm.get("email", 0)
+                doc.if_owner = perm.get("if_owner", 0)
+                doc.permlevel = perm.get("permlevel", 0)
+                
+                doc.insert(ignore_permissions=True)
+                frappe.logger().info(f"Created custom permission for role {perm['role']} on {perm['doctype']}")
+            else:
+                # Update existing permission
+                doc = frappe.get_doc("Custom DocPerm", existing)
+                
+                # Update fields
+                doc.read = perm.get("read", 0)
+                doc.write = perm.get("write", 0)
+                doc.create = perm.get("create", 0)
+                doc.delete = perm.get("delete", 0)
+                doc.submit = perm.get("submit", 0)
+                doc.cancel = perm.get("cancel", 0)
+                doc.amend = perm.get("amend", 0)
+                doc.report = perm.get("report", 0)
+                doc.export = perm.get("export", 0)
+                setattr(doc, "import", perm.get("import", 0))  # Use setattr for reserved keyword
+                doc.share = perm.get("share", 0)
+                doc.print = perm.get("print", 0)
+                doc.email = perm.get("email", 0)
+                doc.if_owner = perm.get("if_owner", 0)
+                doc.permlevel = perm.get("permlevel", 0)
+                
+                doc.save(ignore_permissions=True)
+                frappe.logger().info(f"Updated custom permission for role {perm['role']} on {perm['doctype']}")
+        
+        # Clear cache to apply changes
+        frappe.clear_cache(doctype="Employee")
+        frappe.db.commit()
+        
+    except Exception as e:
+        frappe.logger().error(f"Error restoring employee permissions: {str(e)}")
+        raise
+
+
 def restore_all_custom_permissions():
     """
     Restore all custom permissions after migration
@@ -168,6 +262,9 @@ def restore_all_custom_permissions():
     try:
         # Restore Batch permissions
         restore_batch_permissions()
+        
+        # Restore Employee permissions
+        restore_employee_permissions()
         
         # Add other doctype permission restoration here if needed
         # restore_other_doctype_permissions()
@@ -187,7 +284,7 @@ def export_custom_permissions_to_fixtures():
     try:
         # Get all custom permissions for core doctypes
         custom_perms = frappe.get_all("Custom DocPerm", 
-            filters={"parent": ["in", ["Batch"]]},  # Add other doctypes as needed
+            filters={"parent": ["in", ["Batch", "Employee"]]},  # Add other doctypes as needed
             fields=["name", "parent", "role", "read", "write", "create", "delete", 
                    "submit", "cancel", "amend", "report", "export", "import", 
                    "set_user_permissions", "share", "print", "email", "if_owner"]
