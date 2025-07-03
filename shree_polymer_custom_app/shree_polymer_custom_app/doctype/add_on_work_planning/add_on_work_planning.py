@@ -212,7 +212,7 @@ def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item):
 			asset_id = frappe.db.get_value("Asset",{"item_code":item.get('mould')})
 			if asset_id:
 				jc.mould_reference = asset_id 
-			mould_info = frappe.db.get_all("Mould Specification",filters={"mould_ref":item.get("mould"),"spp_ref":production_mat_item,"mould_status":"ACTIVE"},fields=["*"])
+			mould_info = frappe.db.get_all("Mould Specification",filters={"mould_ref":item.get("mould"),"spp_ref":production_mat_item,"mould_status":["in",["ACTIVE","SPARE","DEV"]]},fields=["*"])
 			if mould_info:
 				jc.no_of_running_cavities = mould_info[0].noof_cavities
 				jc.blank_type = mould_info[0].blank_type

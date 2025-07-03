@@ -220,7 +220,7 @@ def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item):
 			asset_id = frappe.db.get_value("Asset",{"item_code":item.get('mould')})
 			if asset_id:
 				jc.mould_reference = asset_id 
-			mould_info = frappe.db.get_all("Mould Specification",filters={"mould_ref":item.get("mould"),"spp_ref":production_mat_item,"mould_status":"ACTIVE"},fields=["*"])
+			mould_info = frappe.db.get_all("Mould Specification",filters={"mould_ref":item.get("mould"),"spp_ref":production_mat_item,"mould_status":["in",["ACTIVE","SPARE","DEV"]]},fields=["*"])
 			if mould_info:
 				jc.no_of_running_cavities = mould_info[0].noof_cavities
 				jc.blank_type = mould_info[0].blank_type
@@ -375,13 +375,13 @@ def validate_supervisor(supervisor):
 @frappe.whitelist()
 def get_mould_list(mat):
 	try:
-		mould_ref_list = frappe.db.get_all("Mould Specification",{"spp_ref":mat,"mould_status":"ACTIVE"},["mould_ref"])
+		mould_ref_list = frappe.db.get_all("Mould Specification",{"spp_ref":mat,"mould_status":["in",["ACTIVE","SPARE","DEV"]]},["mould_ref"])
 		if mould_ref_list:
 			frappe.response.status = "success"
 			frappe.response.message = mould_ref_list
 		else:
 			frappe.response.status = "failed"
-			frappe.response.message = f"There is no <b>Active Mould Specification</b> found for the Mat <b>{mat}</b>..!"
+			frappe.response.message = f"There is no <b>Active, Spare, or Dev Mould Specification</b> found for the Mat <b>{mat}</b>..!"
 	except Exception:
 		frappe.response.status = "failed"
 		frappe.response.message = "Something went wrong not able to fetch mould details..!"
