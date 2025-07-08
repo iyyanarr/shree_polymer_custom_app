@@ -490,25 +490,7 @@ def make_stock_entry(self):
 			if moulding_ref:
 				# on 8/3/23
 				# wt_per_pi_gms = frappe.db.get_value("Mould Specification",{"mould_ref":frappe.db.get_value("Asset",moulding_ref.mould_reference,"item_code")},"avg_blank_wtproduct_gms")
-				
-				# Get mould specification details including shell weight
-				mould_spec = frappe.db.get_value("Mould Specification",
-					{"mould_ref":frappe.db.get_value("Asset",moulding_ref.mould_reference,"item_code"),
-					 "spp_ref":moulding_ref.production_item,"mould_status":"ACTIVE"},
-					["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
-				
-				if mould_spec:
-					# For rejection entries, use only base weight without shell weight
-					base_wt_per_pi_gms = float(mould_spec.avg_blank_wtproduct_gms)
-					if mould_spec.shell_weight:
-						# Subtract shell weight to get only the compound/material weight
-						base_wt_per_pi_gms = base_wt_per_pi_gms - float(mould_spec.shell_weight)
-					
-					wt_per_pi_gms = base_wt_per_pi_gms
-				else:
-					wt_per_pi_gms = frappe.db.get_value("Mould Specification",
-						{"mould_ref":frappe.db.get_value("Asset",moulding_ref.mould_reference,"item_code"),
-						 "spp_ref":moulding_ref.production_item,"mould_status":"ACTIVE"},"avg_blank_wtproduct_gms")
+				wt_per_pi_gms = frappe.db.get_value("Mould Specification",{"mould_ref":frappe.db.get_value("Asset",moulding_ref.mould_reference,"item_code"),"spp_ref":moulding_ref.production_item,"mould_status":"ACTIVE"},"avg_blank_wtproduct_gms")
 				# end
 				# each_no_qty = flt(float(wt_per_pi_gms) / 1000 , 3) 
 				each_no_qty = float(wt_per_pi_gms) / 1000 
@@ -671,21 +653,10 @@ def validate_lot_number(batch_no,docname,inspection_type):
 							return {"status":"Failed","message":f"Multiple BOM's found for Item to Produce - <b>{bom[0].item}</b>"}
 						""" Add UOM for rejection in No's """
 						if check_lot_issue[0].mould_reference:
-							# Get mould specification details including shell weight
-							mould_spec = frappe.db.get_value("Mould Specification",
-								{"mould_ref":frappe.db.get_value("Asset",check_lot_issue[0].mould_reference,"item_code"),
-								 "spp_ref":check_lot_issue[0].production_item,"mould_status":"ACTIVE"},
-								["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
-							
-							if mould_spec and mould_spec.avg_blank_wtproduct_gms:
-								# For rejection entries, use only base weight without shell weight
-								base_wt_per_pi_gms = float(mould_spec.avg_blank_wtproduct_gms)
-								if mould_spec.shell_weight:
-									# Subtract shell weight to get only the compound/material weight
-									base_wt_per_pi_gms = base_wt_per_pi_gms - float(mould_spec.shell_weight)
-								
+							wt_per_pi_gms = frappe.db.get_value("Mould Specification",{"mould_ref":frappe.db.get_value("Asset",check_lot_issue[0].mould_reference,"item_code"),"spp_ref":check_lot_issue[0].production_item,"mould_status":"ACTIVE"},"avg_blank_wtproduct_gms")
+							if wt_per_pi_gms and float(wt_per_pi_gms):
 								""" This is equal to 1 No's """
-								check_lot_issue[0].one_no_qty_equal_kgs = float(base_wt_per_pi_gms) / 1000 
+								check_lot_issue[0].one_no_qty_equal_kgs = float(wt_per_pi_gms) / 1000 
 							else:
 								return {"status":"Failed","message":f"Avg Blank Wt/Product not found in <b>Mould Specification</b>"}
 						else:
@@ -762,20 +733,10 @@ def validate_lot_number(batch_no,docname,inspection_type):
 							if check_lot_issue[0].mould_reference:
 								item = frappe.db.get_value("Asset",check_lot_issue[0].mould_reference,"item_code")
 								if item:
-									# Get mould specification details including shell weight
-									mould_spec = frappe.db.get_value("Mould Specification",
-										{"mould_ref":item,"spp_ref":check_lot_issue[0].production_item,"mould_status":"ACTIVE"},
-										["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
-									
-									if mould_spec and mould_spec.avg_blank_wtproduct_gms:
-										# For rejection entries, use only base weight without shell weight
-										base_wt_per_pi_gms = float(mould_spec.avg_blank_wtproduct_gms)
-										if mould_spec.shell_weight:
-											# Subtract shell weight to get only the compound/material weight
-											base_wt_per_pi_gms = base_wt_per_pi_gms - float(mould_spec.shell_weight)
-										
+									wt_per_pi_gms = frappe.db.get_value("Mould Specification",{"mould_ref":item,"spp_ref":check_lot_issue[0].production_item,"mould_status":"ACTIVE"},"avg_blank_wtproduct_gms")
+									if wt_per_pi_gms and float(wt_per_pi_gms):
 										""" This is equal to 1 No's """
-										check_lot_issue[0].one_no_qty_equal_kgs = float(base_wt_per_pi_gms) / 1000 
+										check_lot_issue[0].one_no_qty_equal_kgs = float(wt_per_pi_gms) / 1000 
 									else:
 										return {"status":"Failed","message":f"Avg Blank Wt/Product not found in <b>Mould Specification</b>"}
 								else:
