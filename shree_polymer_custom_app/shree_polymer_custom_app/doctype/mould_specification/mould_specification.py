@@ -16,6 +16,8 @@ class MouldSpecification(Document):
 		if self.blank_specifications:
 			wtpiece_avg_gms = 0.0
 			wtlift_avg_gms = 0.0
+			total_wt_piece_sum = 0.0  # Sum of all Wt/Piece
+			
 			for bl_spec in self.blank_specifications:
 				bl_spec.wtlift_min_gms = round(bl_spec.wtpiece_min_gms * float(self.no_of_piece),3)
 				bl_spec.wtlift_max_gms = round(bl_spec.wtpiece_max_gms * float(self.no_of_piece),3)
@@ -23,10 +25,20 @@ class MouldSpecification(Document):
 				bl_spec.wtlift_avg_gms = round(((bl_spec.wtlift_min_gms + bl_spec.wtlift_max_gms)/2),3) if bl_spec.wtlift_min_gms + bl_spec.wtlift_max_gms else 0
 				wtpiece_avg_gms += bl_spec.wtpiece_avg_gms
 				wtlift_avg_gms += bl_spec.wtlift_avg_gms
+				# Add to total sum for new calculation
+				total_wt_piece_sum += bl_spec.wtpiece_avg_gms
+				
 			self.wtpiece_avg_gms = round(wtpiece_avg_gms / len(self.blank_specifications),3)
 			self.wtlift_avg_gms = round(wtlift_avg_gms / len(self.blank_specifications),3)
-			self.avg_blank_wtproduct_gms = round(self.wtpiece_avg_gms / self.no_of_cavity_per_blank,3) if self.no_of_cavity_per_blank else wtlift_avg_gms
+			
+			# Fix: Calculate as Sum of 'Wt/Piece' x No. Of Piece / No. of Cavities
+			if self.noof_cavities and float(self.noof_cavities) > 0:
+				self.avg_blank_wtproduct_gms = round((total_wt_piece_sum * float(self.no_of_piece)) / float(self.noof_cavities), 3)
+			else:
+				self.avg_blank_wtproduct_gms = round(self.wtpiece_avg_gms / self.no_of_cavity_per_blank,3) if self.no_of_cavity_per_blank else wtlift_avg_gms
 		if self.shell_weight:
+			# Store the original avg_blank_wtproduct_gms for rejection calculations
+			# The shell weight will be handled separately in rejection logic
 			self.avg_blank_wtproduct_gms = float(self.avg_blank_wtproduct_gms) + self.shell_weight
 
 @frappe.whitelist()
