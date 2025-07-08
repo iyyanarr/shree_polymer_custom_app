@@ -36,10 +36,8 @@ class MouldSpecification(Document):
 				self.avg_blank_wtproduct_gms = round((total_wt_piece_sum * float(self.no_of_piece)) / float(self.noof_cavities), 3)
 			else:
 				self.avg_blank_wtproduct_gms = round(self.wtpiece_avg_gms / self.no_of_cavity_per_blank,3) if self.no_of_cavity_per_blank else wtlift_avg_gms
-		if self.shell_weight:
-			# Store the original avg_blank_wtproduct_gms for rejection calculations
-			# The shell weight will be handled separately in rejection logic
-			self.avg_blank_wtproduct_gms = float(self.avg_blank_wtproduct_gms) + self.shell_weight
+		# Note: Shell weight is stored separately and handled in rejection calculations
+		# The avg_blank_wtproduct_gms should contain only the compound/material weight
 
 @frappe.whitelist()
 def get_work_mould_filters():
@@ -49,3 +47,94 @@ def get_work_mould_filters():
 	except Exception:
 		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.mould_specification.mould_specification.get_work_mould_filters")
 		frappe.response.status = 'failed'
+
+@frappe.whitelist()
+def fix_mould_specification_calculations():
+	"""
+	Data migration function to fix existing mould specification calculations
+	Remove shell weight from avg_blank_wtproduct_gms and recalculate properly
+	"""
+	try:
+		# Get all mould specifications
+		mould_specs = frappe.get_all("Mould Specification", 
+			fields=["name", "shell_weight", "avg_blank_wtproduct_gms"], 
+			filters={"docstatus": ["!=", 2]})
+		
+		updated_count = 0
+		
+		for spec in mould_specs:
+			if spec.shell_weight and spec.avg_blank_wtproduct_gms:
+				# Recalculate by triggering the validate method
+				doc = frappe.get_doc("Mould Specification", spec.name)
+				
+				# Store old value for comparison
+				old_value = doc.avg_blank_wtproduct_gms
+				
+				# Trigger validation to recalculate
+				doc.validate()
+				
+				# Save the document
+				doc.save()
+				
+				new_value = doc.avg_blank_wtproduct_gms
+				
+				print(f"Updated {spec.name}: {old_value} -> {new_value}")
+				updated_count += 1
+		
+		frappe.db.commit()
+		
+		message = f"Successfully updated {updated_count} mould specifications"
+		print(message)
+		return {"status": "success", "message": message}
+		
+	except Exception as e:
+		frappe.db.rollback()
+		frappe.log_error(
+			message=frappe.get_traceback(),
+			title="Fix Mould Specification Calculations Error"
+		)
+		error_msg = f"Error updating mould specifications: {str(e)}"
+		print(error_msg)
+		return {"status": "error", "message": error_msg}
+
+@frappe.whitelist()
+def check_mould_spec_calculation(mould_spec_name):
+	"""Check the calculation for a specific mould specification"""
+	try:
+		doc = frappe.get_doc("Mould Specification", mould_spec_name)
+		
+		result = {
+			"mould_ref": doc.mould_ref,
+			"spp_ref": doc.spp_ref,
+			"noof_cavities": doc.noof_cavities,
+			"no_of_piece": doc.no_of_piece,
+			"shell_weight": doc.shell_weight,
+			"current_avg_blank_wtproduct_gms": doc.avg_blank_wtproduct_gms
+		}
+		
+		if doc.blank_specifications:
+			total_wt_piece = sum([float(spec.wtpiece_avg_gms or 0) for spec in doc.blank_specifications])
+			expected_avg = (total_wt_piece * float(doc.no_of_piece)) / float(doc.noof_cavities)
+			material_weight_per_piece_kg = expected_avg / 1000
+			
+			result.update({
+				"total_wt_piece_sum": total_wt_piece,
+				"expected_avg_blank_wtproduct_gms": expected_avg,
+				"material_weight_per_piece_kg": material_weight_per_piece_kg,
+				"blank_specifications": [
+					{
+						"idx": spec.idx,
+						"blank_type": spec.blank_type,
+						"wtpiece_avg_gms": spec.wtpiece_avg_gms
+					} for spec in doc.blank_specifications
+				]
+			})
+		
+		return result
+		
+	except Exception as e:
+		frappe.log_error(
+			message=frappe.get_traceback(),
+			title="Check Mould Spec Calculation Error"
+		)
+		return {"error": str(e)}
