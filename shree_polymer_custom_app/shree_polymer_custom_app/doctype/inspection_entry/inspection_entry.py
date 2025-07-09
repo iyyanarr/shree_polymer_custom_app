@@ -499,7 +499,7 @@ def make_stock_entry(self):
 				
 				if mould_spec:
 					# For rejection entries, use only base weight without shell weight
-					base_wt_per_pi_gms = mould_spec.avg_blank_wtproduct_gms
+					base_wt_per_pi_gms = float(mould_spec.avg_blank_wtproduct_gms)
 					if mould_spec.shell_weight:
 						base_wt_per_pi_gms = base_wt_per_pi_gms + float(mould_spec.shell_weight)
 					
