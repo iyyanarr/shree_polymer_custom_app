@@ -768,10 +768,10 @@ def validate_lot_number(batch_no,docname,inspection_type):
 									
 									if mould_spec and mould_spec.avg_blank_wtproduct_gms:
 										# For rejection entries, use only base weight without shell weight
-										base_wt_per_pi_gms = mould_spec.avg_blank_wtproduct_gms
+										base_wt_per_pi_gms = float(mould_spec.avg_blank_wtproduct_gms)
 										if mould_spec.shell_weight:
 											# Subtract shell weight to get only the compound/material weight
-											base_wt_per_pi_gms = base_wt_per_pi_gms - mould_spec.shell_weight
+											base_wt_per_pi_gms = base_wt_per_pi_gms + float(mould_spec.shell_weight)
 										
 										""" This is equal to 1 No's """
 										check_lot_issue[0].one_no_qty_equal_kgs = float(base_wt_per_pi_gms) / 1000 
