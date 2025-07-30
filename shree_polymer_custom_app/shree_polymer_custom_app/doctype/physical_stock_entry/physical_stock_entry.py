@@ -36,63 +36,54 @@ def get_filtered_stock_by_parameters(batch_or_mixed_barcode, item_group):
         print("Error: No warehouse mapping found")
         return {"error": "Warehouse mapping not found for the given item group"}
 
-    # If Raw Material (RW):
-    if item_group == 'Raw Material':
-        print("Processing Raw Material flow")
+    # Direct batch lookup for specific item groups
+    if item_group in ['Raw Material', 'Batch', 'Final Batch']:
+        print(f"Processing {item_group} flow with direct batch lookup")
         stock_balance = frappe.db.get_value(
             'Item Batch Stock Balance',
             {'batch_no': batch_or_mixed_barcode, 'warehouse': warehouse},
             ['item_code', 'item_name', 'description', 'warehouse', 'batch_no', 'qty', 'stock_uom'],
             as_dict=True
         )
-        print(f"Raw Material Stock Balance: {stock_balance}")
+        print(f"{item_group} Stock Balance: {stock_balance}")
 
         if not stock_balance:
-            print("No stock balance found for Raw Material")
-            return {"message": "No Item Batch Stock Balance data found for Raw Material and given batch."}
+            print(f"No stock balance found for {item_group}")
+            return {"message": f"No Item Batch Stock Balance data found for {item_group} and given batch."}
 
         return stock_balance
-
-    # For other Item Types:
+    
+    # For all other item types, get batch number from stock entry first
     else:
-        print(f"Processing other item type: {item_group}")
-        # # Step 1: Query Stock Entry Detail to get Batch Number
-        # sed_result = frappe.db.sql("""
-        #     SELECT sed.batch_no, sed.item_code, sed.qty
-        #     FROM `tabStock Entry Detail` sed
-        #     INNER JOIN `tabItem` i ON i.item_code = sed.item_code
-        #     INNER JOIN `tabStock Entry` se ON se.name = sed.parent
-        #     WHERE sed.mix_barcode = %s
-        #         AND sed.item_group = %s
-        #         AND sed.batch_no IS NOT NULL AND sed.batch_no != ''
-        #         AND sed.is_finished_item = 1
-        #         AND se.stock_entry_type = 'Manufacture'
-        #     ORDER BY se.posting_date DESC, se.posting_time DESC
-        #     LIMIT 1
-        # """, (batch_or_mixed_barcode, item_group), as_dict=True)
-        # print(f"Stock Entry Detail Query Result: {sed_result}")
-
-        # if not sed_result:
-        #     print("No finished item batch found")
-        #     return {"message": "No Finished Item Batch found for the given barcode and item group."}
-
-        # batch_no = sed_result[0].batch_no
-        # print(f"Retrieved Batch Number: {batch_no}")
-
-        # Step 2: Fetch Item Batch Stock Balance using obtained batch_no
-        stock_balance = frappe.db.get_value(
-            'Item Batch Stock Balance',
-            {'batch_no':batch_or_mixed_barcode, 'warehouse': warehouse},
-            ['item_code', 'item_name', 'description', 'warehouse', 'batch_no', 'qty', 'stock_uom'],
+        print(f"Processing {item_group}: Looking up related stock entry for barcode: {batch_or_mixed_barcode}")
+        stock_entry = frappe.db.get_value(
+            'Stock Entry Detail',
+            {'mix_barcode': batch_or_mixed_barcode},
+            ['batch_no'],
             as_dict=True
         )
-        print(f"Final Stock Balance: {stock_balance}")
+        
+        if stock_entry and stock_entry.get('batch_no'):
+            search_batch = stock_entry.get('batch_no')
+            print(f"Found batch number {search_batch} from stock entry")
+            
+            # Fetch Item Batch Stock Balance using obtained batch_no
+            stock_balance = frappe.db.get_value(
+                'Item Batch Stock Balance',
+                {'batch_no': search_batch, 'warehouse': warehouse},
+                ['item_code', 'item_name', 'description', 'warehouse', 'batch_no', 'qty', 'stock_uom'],
+                as_dict=True
+            )
+            print(f"Final Stock Balance: {stock_balance}")
 
-        if not stock_balance:
-            print("No stock balance found for the batch")
-            return {"message": "No Item Batch Stock Balance data found for the retrieved batch number."}
+            if not stock_balance:
+                print(f"No stock balance found for the batch {search_batch}")
+                return {"message": f"No Item Batch Stock Balance data found for the retrieved batch number {search_batch}."}
 
-        return stock_balance
+            return stock_balance
+        else:
+            print(f"No stock entry found for mix_barcode: {batch_or_mixed_barcode}")
+            return {"message": f"No stock entry found for barcode {batch_or_mixed_barcode}"}
 
 def get_warehouse_for_item_group(item_group):
     print(f"\nDebug: get_warehouse_for_item_group")
