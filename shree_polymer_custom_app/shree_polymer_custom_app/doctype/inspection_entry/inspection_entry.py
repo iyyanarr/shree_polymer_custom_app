@@ -498,9 +498,10 @@ def make_stock_entry(self):
 					["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
 				
 				if mould_spec:
-					# For rejection entries, use only base weight without shell weight
+					# Calculate total weight including shell weight if present
 					base_wt_per_pi_gms = float(mould_spec.avg_blank_wtproduct_gms)
 					if mould_spec.shell_weight:
+						# Add shell weight to get total product weight
 						base_wt_per_pi_gms = base_wt_per_pi_gms + float(mould_spec.shell_weight)
 					
 					wt_per_pi_gms = base_wt_per_pi_gms
@@ -677,10 +678,10 @@ def validate_lot_number(batch_no,docname,inspection_type):
 								["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
 							
 							if mould_spec and mould_spec.avg_blank_wtproduct_gms:
-								# For rejection entries, use only base weight without shell weight
+								# Calculate total weight including shell weight if present
 								base_wt_per_pi_gms = float(mould_spec.avg_blank_wtproduct_gms)
 								if mould_spec.shell_weight:
-									# add shell  weight
+									# Add shell weight to get total product weight
 									base_wt_per_pi_gms = base_wt_per_pi_gms + float(mould_spec.shell_weight)
 								
 								""" This is equal to 1 No's """
@@ -767,10 +768,10 @@ def validate_lot_number(batch_no,docname,inspection_type):
 										["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
 									
 									if mould_spec and mould_spec.avg_blank_wtproduct_gms:
-										# For rejection entries, use only base weight without shell weight
+										# Calculate total weight including shell weight if present
 										base_wt_per_pi_gms = float(mould_spec.avg_blank_wtproduct_gms)
 										if mould_spec.shell_weight:
-											# Subtract shell weight to get only the compound/material weight
+											# Add shell weight to get total product weight
 											base_wt_per_pi_gms = base_wt_per_pi_gms + float(mould_spec.shell_weight)
 										
 										""" This is equal to 1 No's """

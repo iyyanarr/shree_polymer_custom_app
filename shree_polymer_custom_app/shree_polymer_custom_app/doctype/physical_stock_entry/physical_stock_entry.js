@@ -7,6 +7,9 @@ frappe.ui.form.on('Physical Stock Entry', {
   });
   
   function create_physical_stock_dialog(frm) {
+    let item_group = frm.doc.item_group;
+    let is_compound_sheeting = (item_group === 'Compound - Sheeting');
+    
     let dialog = new frappe.ui.Dialog({
       title: 'Enter Physical Stock Details',
       fields: [
@@ -14,9 +17,36 @@ frappe.ui.form.on('Physical Stock Entry', {
           label: 'Batch / Barcode',
           fieldname: 'batch_or_mixed_barcode',
           fieldtype: 'Data',
-          reqd: true,
+          reqd: !is_compound_sheeting,
+          hidden: is_compound_sheeting,
           onchange: () => {
             fetch_stock_information(dialog, frm);
+          }
+        },
+        {
+          label: 'Scan Bin',
+          fieldname: 'scan_bin',
+          fieldtype: 'Data',
+          reqd: false, // Not required by default
+          hidden: !is_compound_sheeting,
+          onchange: () => {
+            if (is_compound_sheeting) {
+              // No need to change the reqd property, validation will be handled by primary button
+              fetch_stock_information_compound_sheeting(dialog, frm, 'bin');
+            }
+          }
+        },
+        {
+          label: 'Scan Clip',
+          fieldname: 'scan_clip',
+          fieldtype: 'Data',
+          reqd: false, // Not required by default
+          hidden: !is_compound_sheeting,
+          onchange: () => {
+            if (is_compound_sheeting) {
+              // No need to change the reqd property, validation will be handled by primary button
+              fetch_stock_information_compound_sheeting(dialog, frm, 'clip');
+            }
           }
         },
         {
@@ -81,6 +111,15 @@ frappe.ui.form.on('Physical Stock Entry', {
       ],
       primary_action_label: 'Add',
       primary_action(values) {
+        // For Compound - Sheeting, use scan_bin or scan_clip as the batch identifier
+        if (is_compound_sheeting) {
+          if (values.scan_bin) {
+            values.batch_or_mixed_barcode = values.scan_bin;
+          } else if (values.scan_clip) {
+            values.batch_or_mixed_barcode = values.scan_clip;
+          }
+        }
+        
         // If we have a conversion field visible and filled, use it
         if (!dialog.get_field('physical_stock_in_nos').hidden && dialog.get_value('physical_stock_in_nos')) {
           let conversion_factor = dialog.conversion_factor || 1;
@@ -113,15 +152,69 @@ frappe.ui.form.on('Physical Stock Entry', {
         e.preventDefault();
         e.stopPropagation();
         // Don't submit the dialog on enter, just trigger the field's onchange event
-        const barcodeField = dialog.get_field('batch_or_mixed_barcode');
-        if (document.activeElement === barcodeField.$input[0]) {
-          fetch_stock_information(dialog, frm);
+        if (is_compound_sheeting) {
+          const scanBinField = dialog.get_field('scan_bin');
+          const scanClipField = dialog.get_field('scan_clip');
+          if (document.activeElement === scanBinField.$input[0]) {
+            fetch_stock_information_compound_sheeting(dialog, frm, 'bin');
+          } else if (document.activeElement === scanClipField.$input[0]) {
+            fetch_stock_information_compound_sheeting(dialog, frm, 'clip');
+          }
+        } else {
+          const barcodeField = dialog.get_field('batch_or_mixed_barcode');
+          if (document.activeElement === barcodeField.$input[0]) {
+            fetch_stock_information(dialog, frm);
+          }
         }
         return false;
       }
     });
-  
-    dialog.show();
+
+    // Apply side-by-side styling for Compound - Sheeting fields
+    if (is_compound_sheeting) {
+      // Add validation to ensure at least one of scan_bin or scan_clip has a value
+      dialog.set_df_property('scan_bin', 'reqd', false); // Start with neither as required
+      dialog.set_df_property('scan_clip', 'reqd', false);
+      
+      // Override the dialog's standard behavior for the primary button
+      const originalClickFunction = dialog.get_primary_btn().onclick;
+      dialog.get_primary_btn().onclick = function() {
+        // Custom validation to ensure at least one field has data
+        const scanBinValue = dialog.get_value('scan_bin');
+        const scanClipValue = dialog.get_value('scan_clip');
+        
+        if ((!scanBinValue || !scanBinValue.trim()) && 
+            (!scanClipValue || !scanClipValue.trim())) {
+          frappe.msgprint(__('Please scan either a Bin or a Clip'));
+          return false;
+        }
+        
+        // If validation passes, call the original click function
+        originalClickFunction();
+      };
+      
+      dialog.show();
+      setTimeout(() => {
+        // Add custom CSS to make scan fields side by side
+        const scanBinWrapper = dialog.get_field('scan_bin').$wrapper;
+        const scanClipWrapper = dialog.get_field('scan_clip').$wrapper;
+        
+        // Create a flex container
+        scanBinWrapper.css({
+          'display': 'inline-block',
+          'width': '48%',
+          'margin-right': '2%'
+        });
+        
+        scanClipWrapper.css({
+          'display': 'inline-block',
+          'width': '48%',
+          'vertical-align': 'top'
+        });
+      }, 100);
+    } else {
+      dialog.show();
+    }
 }
 
 function fetch_stock_information(dialog, frm) {
@@ -395,6 +488,173 @@ function fetch_stock_information(dialog, frm) {
     });
 }
 
+function fetch_stock_information_compound_sheeting(dialog, frm, scan_type) {
+    let scan_value = '';
+    let item_group = frm.doc.item_group;
+    
+    if (scan_type === 'bin') {
+        scan_value = dialog.get_value('scan_bin');
+    } else if (scan_type === 'clip') {
+        scan_value = dialog.get_value('scan_clip');
+    }
+    
+    if (!scan_value || !item_group) {
+        frappe.msgprint(__('Scan value or Item group missing.'));
+        return;
+    }
+
+    // Get the warehouse for this item group
+    let warehouse = get_warehouse_for_item_group(item_group);
+    console.log(`Using warehouse: ${warehouse} for item group: ${item_group}`);
+    
+    frappe.call({
+        method: "shree_polymer_custom_app.shree_polymer_custom_app.doctype.physical_stock_entry.physical_stock_entry.get_compound_sheeting_stock_info",
+        args: {
+            scan_value: scan_value,
+            scan_type: scan_type,
+            item_group: item_group
+        },
+        callback: function(r) {
+            console.log('=== COMPOUND SHEETING SCAN DEBUG INFO ===');
+            console.log('Full Response:', r);
+            
+            if (r.message) {
+                console.log('Response Message:', r.message);
+                
+                // Log debug info if available
+                if (r.message.debug_info) {
+                    console.log('=== DEBUG INFO BREAKDOWN ===');
+                    console.log('Scan Value:', r.message.debug_info.scan_value);
+                    console.log('Warehouse:', r.message.debug_info.warehouse);
+                    console.log('Steps Executed:', r.message.debug_info.steps);
+                    
+                    if (r.message.debug_info.sheeting_clip_data) {
+                        console.log('STEP 1 - Sheeting Clip Data:', r.message.debug_info.sheeting_clip_data);
+                    }
+                    
+                    if (r.message.debug_info.item_clip_mapping_data) {
+                        console.log('STEP 2 - Item Clip Mapping Data:', r.message.debug_info.item_clip_mapping_data);
+                    }
+                    
+                    if (r.message.debug_info.all_item_clip_mappings) {
+                        console.log('All Item Clip Mappings for this clip:', r.message.debug_info.all_item_clip_mappings);
+                    }
+                    
+                    if (r.message.debug_info.stock_entry_detail_data) {
+                        console.log('STEP 3 - Stock Entry Detail Data:', r.message.debug_info.stock_entry_detail_data);
+                    }
+                    
+                    if (r.message.debug_info.all_stock_entries) {
+                        console.log('All Stock Entries with SPP Batch Number:', r.message.debug_info.all_stock_entries);
+                    }
+                    
+                    if (r.message.batch_no) {
+                        console.log('FOUND BATCH NUMBER:', r.message.batch_no);
+                        console.log('ITEM CODE:', r.message.item_code);
+                        console.log('ITEM NAME:', r.message.item_name);
+                        console.log('STOCK UOM:', r.message.stock_uom);
+                        
+                        if (r.message.debug_info.stock_balance_data) {
+                            console.log('STEP 4 - Stock Balance Data:', r.message.debug_info.stock_balance_data);
+                            console.log('CURRENT STOCK:', r.message.qty, r.message.stock_uom, 'in', r.message.warehouse);
+                        } else if (r.message.debug_info.similar_batches) {
+                            console.log('Similar Batches Found:', r.message.debug_info.similar_batches);
+                        } else {
+                            console.log('NO STOCK BALANCE FOUND FOR BATCH:', r.message.batch_no);
+                        }
+                    }
+                    
+                    if (r.message.debug_info.stock_balance_data) {
+                        console.log('STEP 4 - Stock Balance Data:', r.message.debug_info.stock_balance_data);
+                    }
+                    
+                    if (r.message.debug_info.similar_batches) {
+                        console.log('Similar Batches Found:', r.message.debug_info.similar_batches);
+                    }
+                    
+                    if (r.message.debug_info.error) {
+                        console.log('ERROR:', r.message.debug_info.error);
+                    }
+                }
+            }
+            console.log('=== END DEBUG INFO ===');
+            
+            if (r.message) {
+                let data = r.message;
+                
+                // Check if we have item data from stock entry
+                if (data.item_code) {
+                    dialog.set_value('item_code', data.item_code);
+                    dialog.set_value('item_name', data.item_name);
+                    dialog.set_value('stock_uom', data.stock_uom);
+                    
+                    // If we have warehouse and quantity data
+                    if (data.warehouse && data.qty !== undefined) {
+                        dialog.set_value('warehouse', data.warehouse);
+                        dialog.set_value('current_stock', data.qty);
+                        console.log('STOCK BALANCE FOUND:', data.qty, data.stock_uom, 'in', data.warehouse);
+                    } else {
+                        // Set the warehouse from the mapping but zero quantity
+                        dialog.set_value('warehouse', get_warehouse_for_item_group('Compound - Sheeting'));
+                        dialog.set_value('current_stock', 0);
+                        console.log('NO STOCK FOUND FOR BATCH:', data.batch_no);
+                        
+                        // Show message but don't block the operation
+                        frappe.show_alert({
+                            message: __(`No current stock found for batch ${data.batch_no}, but you can still enter physical stock.`),
+                            indicator: 'yellow'
+                        }, 5);
+                    }
+                    
+                    // Focus on the physical stock field for entry
+                    dialog.get_field('physical_stock').$input.focus();
+                    
+                } else if (data.error) {
+                    frappe.msgprint(data.error);
+                } else if (data.message) {
+                    frappe.msgprint(data.message);
+                } else {
+                    frappe.msgprint(__('Could not retrieve item data for the scanned clip.'));
+                }
+            } else {
+                frappe.msgprint(__('No information found for Compound - Sheeting item.'));
+            }
+        }
+    });
+}
+
+// Helper function to get warehouse for item group (matches the Python version)
+function get_warehouse_for_item_group(item_group) {
+  const WAREHOUSE_MAPPING = {
+    'Raw Material': 'Incoming Store - SPP INDIA',
+    'Compound': 'U3-Store - SPP INDIA',
+    'Compound - Sheeting': 'Sheeting Warehouse - SPP INDIA',
+    'Batch': 'U3-Store - SPP INDIA',
+    'Final Batch': 'U3-Store - SPP INDIA',
+    'Master Batch': 'U3-Store - SPP INDIA',
+    'Mat': 'U2-Store - SPP INDIA',
+    'Products': 'U2-Store - SPP INDIA',
+    'Finished Product': 'U2-Store - SPP INDIA',
+    'Cut Bit': 'Cutbit Warehouse - SPP INDIA',
+    'Products Sales': 'U2-Store - SPP INDIA'
+  };
+  
+  // Direct lookup first (exact match)
+  if (WAREHOUSE_MAPPING[item_group]) {
+    return WAREHOUSE_MAPPING[item_group];
+  }
+  
+  // If no exact match, check if the item_group contains any of the keys
+  for (let key in WAREHOUSE_MAPPING) {
+    if (item_group.includes(key)) {
+      return WAREHOUSE_MAPPING[key];
+    }
+  }
+  
+  console.log(`No warehouse mapping found for item group: ${item_group}`);
+  return null;
+}
+
 function add_entry_to_child_table(frm, values) {
     if (frm && frm.doc) {
       let child_entry = frm.add_child('details');
@@ -406,6 +666,15 @@ function add_entry_to_child_table(frm, values) {
         child_entry.item_name = values.item_name;
         child_entry.item_group = values.item_group;
         child_entry.warehouse = values.warehouse;
+        
+        // Add scan_bin and scan_clip values if they exist (for Compound - Sheeting)
+        if (values.scan_bin) {
+          child_entry.scan_bin = values.scan_bin;
+        }
+        
+        if (values.scan_clip) {
+          child_entry.scan_clip = values.scan_clip;
+        }
         
         let stock_uom = values.stock_uom;
         let item_group = values.item_group;
