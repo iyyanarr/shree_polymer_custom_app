@@ -117,7 +117,7 @@ def get_compound_sheeting_stock_info(scan_value, scan_type, item_group):
     Args:
         scan_value: The scanned barcode/clip data
         scan_type: 'bin' or 'clip'
-        item_group: Should be 'Compound - Sheeting'
+        item_group: Should be 'Compound-Sheeting'
     """
     print(f"\n=== Debug: get_compound_sheeting_stock_info ===")
     print(f"Input - Scan Value: {scan_value}, Scan Type: {scan_type}, Item Group: {item_group}")
@@ -141,7 +141,7 @@ def get_compound_sheeting_stock_info(scan_value, scan_type, item_group):
     if scan_type == 'clip':
         return get_clip_data(scan_value, debug_info, warehouse)
     elif scan_type == 'bin':
-        return {"message": "Bin scanning not implemented yet", "debug_info": debug_info}
+        return get_bin_data(scan_value, debug_info, warehouse)
     else:
         return {"error": "Invalid scan type. Must be 'bin' or 'clip'", "debug_info": debug_info}
 
@@ -283,7 +283,7 @@ def handle_clip_scanning(scan_value, warehouse):
         stock_balance['clip_name'] = clip_name
         stock_balance['sheeting_clip'] = sheeting_clip_name
         stock_balance['spp_batch_number'] = spp_batch_number
-        stock_balance['item_group'] = 'Compound - Sheeting'
+        stock_balance['item_group'] = 'Compound-Sheeting'
         stock_balance['debug_info'] = debug_info
         
         print(f"Final stock balance for clip: {stock_balance}")
@@ -474,3 +474,136 @@ def get_clip_data(scan_value, debug_info, warehouse):
         print(f"Error in get_clip_data: {str(e)}")
         frappe.log_error(f"Error in get_clip_data: {str(e)}")
         return {"error": f"Error processing clip scan: {str(e)}", "debug_info": debug_info}
+
+def get_bin_data(scan_value, debug_info, warehouse):
+    """
+    Retrieve data for a scanned bin
+    1. Find the most recent Blanking DC Entry where the bin was used
+    2. Get batch and stock information from that entry
+    3. Return the relevant stock details
+    """
+    print(f"\n=== Debug: get_bin_data ===")
+    print(f"Scanning bin with value: {scan_value}, warehouse: {warehouse}")
+    
+    try:
+        # Step 1: Find the most recent Blanking DC Entry Item where this bin was used
+        print(f"Searching for most recent Blanking DC Entry with bin code: {scan_value}")
+        blanking_dc_items = frappe.db.sql("""
+            SELECT 
+                bdi.name, bdi.bin_code, bdi.asset_name, bdi.batch_no, 
+                bdi.spp_batch_number, bdi.scanned_item as item_code, 
+                bdi.gross_weight, bdi.net_weight, bdi.available_quantity,
+                bdi.sheeting_clip, bdi.mix_barcode, 
+                bdc.name as blanking_dc_entry, bdc.posting_date,
+                bdc.docstatus
+            FROM 
+                `tabBlanking DC Item` bdi
+            JOIN 
+                `tabBlanking DC Entry` bdc ON bdi.parent = bdc.name
+            WHERE 
+                bdi.bin_code = %s
+                AND bdc.docstatus = 1
+            ORDER BY 
+                bdc.posting_date DESC, bdc.modified DESC
+            LIMIT 1
+        """, (scan_value,), as_dict=True)
+        
+        debug_info["blanking_dc_item_data"] = blanking_dc_items[0] if blanking_dc_items else None
+        
+        if not blanking_dc_items:
+            print(f"No Blanking DC Entry found for bin code: {scan_value}")
+            debug_info["error"] = f"No Blanking DC Entry found for bin: {scan_value}"
+            return {"message": f"No Blanking DC Entry found for bin: {scan_value}", "debug_info": debug_info}
+        
+        # Get the first (most recent) entry
+        blanking_item = blanking_dc_items[0]
+        print(f"Found Blanking DC Entry: {blanking_item.blanking_dc_entry}, posted on {blanking_item.posting_date}")
+        
+        # Step 2: Get item details from the batch
+        batch_no = blanking_item.batch_no
+        item_code = blanking_item.item_code
+        
+        if not batch_no or not item_code:
+            print(f"Missing batch number or item code in Blanking DC Entry")
+            debug_info["error"] = "Missing batch number or item code in Blanking DC Entry"
+            return {"message": "Missing batch number or item code in Blanking DC Entry", "debug_info": debug_info}
+        
+        print(f"Found batch_no: {batch_no}, item_code: {item_code}")
+        
+        # Step 3: Get item name and other details
+        item_details = frappe.db.get_value(
+            'Item',
+            {'item_code': item_code},
+            ['item_name', 'stock_uom'],
+            as_dict=True
+        )
+        
+        debug_info["item_details"] = item_details
+        
+        if not item_details:
+            print(f"No item found with item code: {item_code}")
+            debug_info["error"] = f"No item found with item code: {item_code}"
+            return {"message": f"No item found with item code: {item_code}", "debug_info": debug_info}
+        
+        # Step 4: Get stock balance information
+        print(f"Searching for stock balance with batch_no: '{batch_no}' and warehouse: '{warehouse}'")
+        stock_balance = frappe.db.get_value(
+            'Item Batch Stock Balance',
+            {'batch_no': batch_no, 'warehouse': warehouse},
+            ['item_code', 'item_name', 'warehouse', 'batch_no', 'qty', 'stock_uom'],
+            as_dict=True
+        )
+        
+        debug_info["stock_balance_data"] = stock_balance
+        
+        if not stock_balance:
+            print(f"No stock balance found for batch: {batch_no}")
+            # Try to find similar batch numbers as a fallback
+            similar_batches = frappe.db.sql("""
+                SELECT item_code, item_name, warehouse, batch_no, qty, stock_uom
+                FROM `tabItem Batch Stock Balance`
+                WHERE warehouse = %s 
+                AND (batch_no LIKE %s OR batch_no LIKE %s)
+                ORDER BY batch_no
+            """, (warehouse, f"%{batch_no}%", f"{batch_no}%"), as_dict=True)
+            
+            debug_info["similar_batches"] = similar_batches
+            print(f"Found {len(similar_batches)} similar batches: {[b.batch_no for b in similar_batches]}")
+            
+            if similar_batches:
+                stock_balance = similar_batches[0]  # Use the first match
+                debug_info["using_similar_batch"] = True
+                print(f"Using similar batch: {stock_balance.batch_no}")
+        
+        # Return enhanced response with all collected information
+        response = {
+            "bin_code": blanking_item.bin_code,
+            "asset_name": blanking_item.asset_name,
+            "batch_no": batch_no,
+            "spp_batch_number": blanking_item.spp_batch_number,
+            "item_code": item_code,
+            "item_name": item_details.get('item_name'),
+            "stock_uom": item_details.get('stock_uom'),
+            "gross_weight": blanking_item.gross_weight,
+            "net_weight": blanking_item.net_weight,
+            "available_quantity": blanking_item.available_quantity,
+            "blanking_dc_entry": blanking_item.blanking_dc_entry,
+            "posting_date": blanking_item.posting_date,
+            "debug_info": debug_info
+        }
+        
+        if stock_balance:
+            # Add stock balance information
+            response["qty"] = stock_balance.get('qty')
+            response["warehouse"] = stock_balance.get('warehouse')
+            print(f"Found stock balance: {stock_balance.get('qty')} {stock_balance.get('stock_uom')}")
+        else:
+            response["message"] = f"No stock balance found for batch: {batch_no}"
+            print(f"No stock balance found for batch: {batch_no}")
+            
+        return response
+        
+    except Exception as e:
+        print(f"Error in get_bin_data: {str(e)}")
+        frappe.log_error(f"Error in get_bin_data: {str(e)}")
+        return {"error": f"Error processing bin scan: {str(e)}", "debug_info": debug_info}

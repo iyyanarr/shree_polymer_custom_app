@@ -38,10 +38,9 @@
   },
   {
    "fieldname": "item_group",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Item Group",
-   "options": "Item Group"
+   "label": "Item Group"
   },
   {
    "fieldname": "warehouse",
@@ -78,12 +77,13 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-29 22:46:09.954292",
+ "modified": "2025-07-31 15:36:10.070580",
  "modified_by": "Administrator",
  "module": "Shree Polymer Custom App",
  "name": "Physical Stock Entry Detail",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

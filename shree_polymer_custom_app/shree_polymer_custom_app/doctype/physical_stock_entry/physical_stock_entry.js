@@ -8,7 +8,10 @@ frappe.ui.form.on('Physical Stock Entry', {
   
   function create_physical_stock_dialog(frm) {
     let item_group = frm.doc.item_group;
-    let is_compound_sheeting = (item_group === 'Compound - Sheeting');
+    let is_compound_sheeting = (
+      item_group === 'Compound-Sheeting' ||
+      item_group === 'Compound - Sheeting'
+    );
     
     let dialog = new frappe.ui.Dialog({
       title: 'Enter Physical Stock Details',
@@ -138,6 +141,22 @@ frappe.ui.form.on('Physical Stock Entry', {
           } else {
             // Standard conversion
             values.physical_stock = values.physical_stock_in_nos * conversion_factor;
+          }
+        }
+        
+        // For bin scanning, transfer all the additional bin data to the values object
+        if (values.scan_bin && dialog.bin_code) {
+          // Add bin-related information to values object
+          values.bin_code = dialog.bin_code;
+          if (dialog.asset_name) values.asset_name = dialog.asset_name;
+          if (dialog.blanking_dc_entry) values.blanking_dc_entry = dialog.blanking_dc_entry;
+          if (dialog.available_quantity) values.available_quantity = dialog.available_quantity;
+          if (dialog.spp_batch_number) values.spp_batch_number = dialog.spp_batch_number;
+          if (dialog.batch_no) values.batch_no = dialog.batch_no;
+          
+          // Reference quantity from blanking DC
+          if (dialog.get_value('reference_qty')) {
+            values.reference_qty = dialog.get_value('reference_qty');
           }
         }
         
@@ -576,6 +595,43 @@ function fetch_stock_information_compound_sheeting(dialog, frm, scan_type) {
                         console.log('ERROR:', r.message.debug_info.error);
                     }
                 }
+                
+                // Add debug info for bin scanning
+                if (scan_type === 'bin' && r.message.debug_info) {
+                    console.log('=== BIN SCAN DEBUG INFO ===');
+                    
+                    if (r.message.debug_info.blanking_dc_item_data) {
+                        console.log('STEP 1 - Blanking DC Item Data:', r.message.debug_info.blanking_dc_item_data);
+                        console.log('Blanking DC Entry:', r.message.blanking_dc_entry);
+                        console.log('Posting Date:', r.message.posting_date);
+                        console.log('BIN CODE:', r.message.bin_code);
+                        console.log('ASSET NAME:', r.message.asset_name);
+                    }
+                    
+                    if (r.message.debug_info.item_details) {
+                        console.log('STEP 2 - Item Details:', r.message.debug_info.item_details);
+                      }
+                      
+                      if (r.message.batch_no) {
+                        console.log('FOUND BATCH NUMBER:', r.message.batch_no);
+                        console.log('SPP BATCH NUMBER:', r.message.spp_batch_number);
+                        console.log('ITEM CODE:', r.message.item_code);
+                        console.log('ITEM NAME:', r.message.item_name);
+                        console.log('STOCK UOM:', r.message.stock_uom);
+                        console.log('AVAILABLE QUANTITY:', r.message.available_quantity);
+                        console.log('GROSS WEIGHT:', r.message.gross_weight);
+                        console.log('NET WEIGHT:', r.message.net_weight);
+                      }
+                      
+                      if (r.message.debug_info.stock_balance_data) {
+                        console.log('STEP 3 - Stock Balance Data:', r.message.debug_info.stock_balance_data);
+                        console.log('CURRENT STOCK:', r.message.qty, r.message.stock_uom, 'in', r.message.warehouse);
+                      } else if (r.message.debug_info.similar_batches) {
+                        console.log('Similar Batches Found:', r.message.debug_info.similar_batches);
+                      }
+                      
+                      console.log('=== END BIN SCAN DEBUG INFO ===');
+                  }
             }
             console.log('=== END DEBUG INFO ===');
             
@@ -588,14 +644,44 @@ function fetch_stock_information_compound_sheeting(dialog, frm, scan_type) {
                     dialog.set_value('item_name', data.item_name);
                     dialog.set_value('stock_uom', data.stock_uom);
                     
-                    // If we have warehouse and quantity data
+                    // Additional information for bin scanning
+                    if (scan_type === 'bin' && data.bin_code) {
+                        // Format bin details for display in the console and to store in the dialog
+                        const binDetails = [
+                            `Bin: ${data.bin_code} (${data.asset_name || ''})`,
+                            `Blanking DC: ${data.blanking_dc_entry || ''} (${data.posting_date || ''})`,
+                            `SPP Batch: ${data.spp_batch_number || ''}`,
+                            `Available Qty: ${data.available_quantity || 0} ${data.stock_uom}`
+                        ].join('\n');
+                        
+                        // Log the details to console for debugging
+                        console.log('BIN DETAILS:');
+                        console.log(binDetails);
+                        
+                        // Store all bin-related data as custom properties on the dialog for later use
+                        dialog.bin_code = data.bin_code;
+                        dialog.asset_name = data.asset_name;
+                        dialog.blanking_dc_entry = data.blanking_dc_entry;
+                        dialog.posting_date = data.posting_date;
+                        dialog.spp_batch_number = data.spp_batch_number;
+                        dialog.batch_no = data.batch_no;
+                        dialog.available_quantity = data.available_quantity;
+                        
+                        // Show the blanking DC quantity in the Current Stock field
+                        if (data.available_quantity) {
+                            console.log(`Setting current stock to blanking DC available quantity: ${data.available_quantity}`);
+                            dialog.set_value('current_stock', data.available_quantity);
+                        }
+                    }
+                    
+                    // If we have warehouse and quantity data from stock balance
                     if (data.warehouse && data.qty !== undefined) {
                         dialog.set_value('warehouse', data.warehouse);
                         dialog.set_value('current_stock', data.qty);
                         console.log('STOCK BALANCE FOUND:', data.qty, data.stock_uom, 'in', data.warehouse);
                     } else {
                         // Set the warehouse from the mapping but zero quantity
-                        dialog.set_value('warehouse', get_warehouse_for_item_group('Compound - Sheeting'));
+                        dialog.set_value('warehouse', get_warehouse_for_item_group('Compound-Sheeting'));
                         dialog.set_value('current_stock', 0);
                         console.log('NO STOCK FOUND FOR BATCH:', data.batch_no);
                         
@@ -628,7 +714,7 @@ function get_warehouse_for_item_group(item_group) {
   const WAREHOUSE_MAPPING = {
     'Raw Material': 'Incoming Store - SPP INDIA',
     'Compound': 'U3-Store - SPP INDIA',
-    'Compound - Sheeting': 'Sheeting Warehouse - SPP INDIA',
+    'Compound-Sheeting': 'Sheeting Warehouse - SPP INDIA',
     'Batch': 'U3-Store - SPP INDIA',
     'Final Batch': 'U3-Store - SPP INDIA',
     'Master Batch': 'U3-Store - SPP INDIA',
@@ -670,10 +756,31 @@ function add_entry_to_child_table(frm, values) {
         // Add scan_bin and scan_clip values if they exist (for Compound - Sheeting)
         if (values.scan_bin) {
           child_entry.scan_bin = values.scan_bin;
+          
+          // Add additional bin details if available
+          if (values.bin_code) {
+            child_entry.bin_code = values.bin_code;
+            child_entry.asset_name = values.asset_name;
+          }
+          
+          // Add Blanking DC details if available
+          if (values.blanking_dc_entry) {
+            child_entry.blanking_dc_entry = values.blanking_dc_entry;
+            child_entry.reference_qty = values.available_quantity;
+          }
         }
         
         if (values.scan_clip) {
           child_entry.scan_clip = values.scan_clip;
+        }
+        
+        // If we have batch related info, save it as well
+        if (values.batch_no) {
+          child_entry.batch_no = values.batch_no;
+        }
+        
+        if (values.spp_batch_number) {
+          child_entry.spp_batch_number = values.spp_batch_number;
         }
         
         let stock_uom = values.stock_uom;
