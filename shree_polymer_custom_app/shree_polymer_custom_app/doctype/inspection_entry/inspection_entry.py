@@ -157,7 +157,7 @@ def rollback_vs_pdir(self,lrt = None):
 			
 def submit_moulding_entry(self):
 	try:
-		exe_insp = frappe.db.sql(f" SELECT name FROM `tabInspection Entry` WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Lot Inspection') AND docstatus = 1 AND lot_no='{self.lot_no}' ",as_dict = 1)	
+		exe_insp = frappe.db.sql(f" SELECT name FROM `tabInspection Entry` WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Lot Inspection' OR inspection_type = 'Patrol Inspection') AND docstatus = 1 AND lot_no='{self.lot_no}' ",as_dict = 1)	
 		if exe_insp and len(exe_insp)>=2:
 			rept_entry = frappe.db.get_all("Moulding Production Entry",{"scan_lot_number":self.lot_no,"docstatus":1},["name"])
 			if rept_entry:
@@ -664,7 +664,7 @@ def validate_lot_number(batch_no,docname,inspection_type):
 						 			INNER JOIN `tabItem` I ON I.name=B.item  
 						 		WHERE 
 						 			BI.item_code=%(item_code)s AND B.is_active=1 AND 
-						 			I.default_bom=B.name LIMIT 1 """,{"item_code":check_lot_issue[0].production_item},as_dict = 1)
+						 			I.default_bom=B.name LIMIT 1 """,{"item_code":check_lot_issue[0].production_item},as_dict=1)
 					if bom:
 						bom__ = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM` B WHERE B.item=%(bom_item)s AND B.is_Active=1 """,{"bom_item":bom[0].item},as_dict=1)
 						if len(bom__) > 1:
@@ -802,13 +802,18 @@ def validate_lot_number(batch_no,docname,inspection_type):
 						check_lot_issue[0].spp_batch_no = ""
 						if st_details:
 							check_lot_issue[0].spp_batch_no = st_details[0].spp_batch_number
-						chk_st_details = frappe.db.sql(""" SELECT SD.batch_no FROM `tabStock Entry Detail` SD
-													INNER JOIN `tabStock Entry` SE ON SE.name = SD.parent
-													INNER JOIN `tabWork Order` W ON W.name = SE.work_order
-													INNER JOIN `tabJob Card` JB ON JB.work_order = W.name
-													WHERE JB.batch_code = %(lot_no)s AND SD.t_warehouse is not null
-									 				LIMIT 1 
-													""",{"lot_no":batch_no},as_dict=1)
+						chk_st_details = frappe.db.sql(""" 
+										SELECT 
+											SD.batch_no 
+										FROM 
+											`tabStock Entry Detail` SD
+											INNER JOIN `tabStock Entry` SE ON SE.name = SD.parent
+											INNER JOIN `tabWork Order` W ON W.name = SE.work_order
+											INNER JOIN `tabJob Card` JB ON JB.work_order = W.name
+										WHERE 
+											JB.batch_code = %(lot_no)s AND SD.t_warehouse IS NOT NULL
+										LIMIT 1 
+										""",{"lot_no":batch_no},as_dict=1)
 						if chk_st_details:
 							item_batch_no = chk_st_details[0].batch_no
 						check_lot_issue[0].batch_no = item_batch_no
@@ -825,14 +830,14 @@ def validate_lot_number(batch_no,docname,inspection_type):
 				if not check_lot_issue:
 					return {"status":"Failed","message":f"Job Card not found for the scanned lot <b>{batch_no}</b>"}
 				else:
-					rept_entry = frappe.db.get_value("Deflashing Receipt Entry",{"lot_number":batch_no,"docstatus":1},["stock_entry_reference"],as_dict = 1)
+					rept_entry = frappe.db.get_all("Deflashing Receipt Entry",{"lot_number":batch_no,"docstatus":1},["stock_entry_reference"])
 					if rept_entry:
-						if not rept_entry.stock_entry_reference:
+						if not rept_entry[0].stock_entry_reference:
 							return {"status":"Failed","message":f"Stock Entry Reference not found in <b>Deflashing Receipt Entry</b> for the lot <b>{batch_no}</b>"}
 						else:
 							product_details = frappe.db.sql(f""" SELECT  JC.work_order,E.employee_name as employee,SED.item_code as production_item,JC.batch_code,JC.workstation,SED.qty as total_completed_qty,SED.batch_no,SED.spp_batch_number FROM `tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE ON SE.name=SED.parent
 																INNER JOIN `tabJob Card` JC ON JC.work_order=SE.work_order LEFT JOIN `tabJob Card Time Log` LG ON LG.parent = JC.name 
-																LEFT JOIN `tabEmployee` E ON LG.employee = E.name WHERE SE.name='{rept_entry.stock_entry_reference}' AND SED.deflash_receipt_reference='{batch_no}' LIMIT 1 """,as_dict=1)
+																LEFT JOIN `tabEmployee` E ON LG.employee = E.name WHERE SE.name='{rept_entry[0].stock_entry_reference}' AND SED.deflash_receipt_reference='{batch_no}' LIMIT 1 """,as_dict=1)
 							if product_details:
 								""" Multi Bom Validation """
 								bom__ = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM` B WHERE B.item=%(bom_item)s AND B.is_Active=1 """,{"bom_item":product_details[0].get("production_item")},as_dict=1)
@@ -1082,7 +1087,7 @@ def lrt_check_sublot(bar_code,operation_type):
 						if lot_info.get('data').get("source_ref_document") == "Deflashing Receipt Entry":
 							rept_entry = frappe.db.get_value("Deflashing Receipt Entry",{"lot_number":bar_code,"docstatus":1},"stock_entry_reference")
 							if rept_entry:
-								return lrt_return_response(bar_code,lot_info,operation_type)
+								return lrt_return_response(bar_code,lot_info,rept_entry)
 							else:
 								return {"status":'failed',"message":f"There is no <b>Deflashing Receipt Entry</b> found for the lot <b>{bar_code}</b>"}
 						else:
@@ -1104,13 +1109,8 @@ def lrt_check_sublot(bar_code,operation_type):
 	else:
 		return u1__resp
 
-def lrt_validate_dre_ins_jc(barcode,ignore_jobcard = None):
-	if ignore_jobcard:
-		check_exist = frappe.db.get_all("Inspection Entry",filters={"docstatus":1,"lot_no":barcode,"inspection_type":"Incoming Inspection"})
-		if check_exist:
-			return {"status":"success"}
-		else:
-			return {"status":'failed',"message":f'There is no <b>Incoming Inspection Entry</b> found for the scanned lot <b>{barcode}</b>'}
+def validate_ins_receipt_return(bar_code,lot_info,parent_lot):
+	rept_entry = frappe.db.get_all("Deflashing Receipt Entry",{"lot_number":parent_lot,"docstatus":1},["stock_entry_reference"])
 	else:
 		job_card = frappe.db.get_value("Job Card",{"batch_code":barcode,"operation":"Deflashing"},["name","production_item","bom_no","moulding_lot_number"],as_dict=1)
 		if job_card:
