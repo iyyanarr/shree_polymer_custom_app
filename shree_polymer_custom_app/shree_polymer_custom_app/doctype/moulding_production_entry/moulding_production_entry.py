@@ -128,7 +128,7 @@ class MouldingProductionEntry(Document):
 
     def validate_get_line_ins_qty(self):
         ins_info = frappe.db.get_all("Inspection Entry", {"lot_no": self.scan_lot_number, "docstatus": 1, "inspection_type": ["in",["Line Inspection","Patrol Inspection"]]}, [
-                                       "stock_entry_reference", "name","inspection_type"], as_dict=1)
+                                       "stock_entry_reference", "name","inspection_type"])
         
         total_rejected_qty = 0.0
         if ins_info:
