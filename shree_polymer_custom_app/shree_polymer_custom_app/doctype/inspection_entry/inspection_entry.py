@@ -157,7 +157,7 @@ def rollback_vs_pdir(self,lrt = None):
 			
 def submit_moulding_entry(self):
 	try:
-		exe_insp = frappe.db.sql(f" SELECT name FROM `tabInspection Entry` WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Lot Inspection' OR inspection_type = 'Patrol Inspection') AND docstatus = 1 AND lot_no='{self.lot_no}' ",as_dict = 1)	
+		exe_insp = frappe.db.sql(f" SELECT name FROM `tabInspection Entry` WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Lot Inspection' OR ) AND docstatus = 1 AND lot_no='{self.lot_no}' ",as_dict = 1)	
 		if exe_insp and len(exe_insp)>=2:
 			rept_entry = frappe.db.get_all("Moulding Production Entry",{"scan_lot_number":self.lot_no,"docstatus":1},["name"])
 			if rept_entry:
