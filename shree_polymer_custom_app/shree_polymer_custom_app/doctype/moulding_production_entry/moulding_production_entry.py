@@ -127,19 +127,22 @@ class MouldingProductionEntry(Document):
         # return {"status":"success"}
 
     def validate_get_line_ins_qty(self):
-        ins_info = frappe.db.get_value("Inspection Entry", {"lot_no": self.scan_lot_number, "docstatus": 1, "inspection_type": "Line Inspection"}, [
-                                       "stock_entry_reference", "name"], as_dict=1)
+        ins_info = frappe.db.get_all("Inspection Entry", {"lot_no": self.scan_lot_number, "docstatus": 1, "inspection_type": ["in",["Line Inspection","Patrol Inspection"]]}, [
+                                       "stock_entry_reference", "name","inspection_type"], as_dict=1)
+        
+        total_rejected_qty = 0.0
         if ins_info:
-            if ins_info.stock_entry_reference:
-                query = f""" SELECT SED.qty FROM `tabStock Entry` SE INNER JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name 
-							WHERE SED.source_ref_document = "Inspection Entry" AND SED.source_ref_id = '{ins_info.name}' AND SE.name = '{ins_info.stock_entry_reference}' """
-                qty_info = frappe.db.sql(query, as_dict=1)
-                if qty_info:
-                    self.line_rejection_qty = flt(qty_info[0].qty, 3)
-                    # self.weight += flt(self.line_rejection_qty,3)
-                else:
-                    frappe.throw(
-                        f"<b>Line Inspection</b> entry stock details not found..!")
+            for ins in ins_info:
+                if ins.stock_entry_reference:
+                    query = f""" SELECT SED.qty FROM `tabStock Entry` SE INNER JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name 
+                                WHERE SED.source_ref_document = "Inspection Entry" AND SED.source_ref_id = '{ins.name}' AND SE.name = '{ins.stock_entry_reference}' """
+                    qty_info = frappe.db.sql(query, as_dict=1)
+                    if qty_info:
+                        total_rejected_qty += flt(qty_info[0].qty, 3)
+                    else:
+                        frappe.throw(
+                            f"<b>{ins.inspection_type}</b> entry stock details not found for <b>{ins.name}</b>..!")
+        self.line_rejection_qty = total_rejected_qty
 
     def cmpr_balbin_get_cmp_qty(self):
         import json
@@ -633,7 +636,6 @@ def make_stock_entry(self):
             bcode_resp = generate_barcode(self.scan_lot_number)
             # for x in work_order.required_items:
             # 	stock_entry.append("items",{
-            # 		"item_code":x.item_code,
             resp__s = append_source_details(stock_entry, self, work_order)
             if resp__s:
                 stock_entry.append("items", {
@@ -953,7 +955,7 @@ def validate_lot_number(batch_no):
 		if missing_inspections:
 			return {"status": "Failed", "message": f"The following inspections are missing: {', '.join(missing_inspections)}"}
 
-		check_lot_issue = frappe.db.sql(""" SELECT BI.bin,BI.name as blank_bin_issue_item_name,B.name as blank_bin_issue_name,
+		check_lot_issue = frappe.db.sql(""" SELECT BI.bin,BI.name as blank_bin_issue_item_name,B.name as blanking_bin_issue_name,
 							B.job_card,JB.name as job_card,B.scan_bin,JB.mould_reference,JB.no_of_running_cavities
 							FROM `tabBlank Bin Issue Item` BI 
 							INNER JOIN `tabJob Card` JB ON JB.name= BI.job_card
