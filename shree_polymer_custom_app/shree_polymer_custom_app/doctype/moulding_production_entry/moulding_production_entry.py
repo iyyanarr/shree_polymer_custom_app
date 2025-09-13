@@ -421,23 +421,48 @@ def validate_comsumption_details(self):
         consumed_qty = 0.0
         weight = flt(self.weight_without_shell, 3)
         inital_validate = True
+        
+        # Create a mapping of bin codes to their actual remaining weights from balance_bins child table
+        balance_bin_weights = {}
+        if hasattr(self, 'balance_bins') and self.balance_bins:
+            for balance_bin in self.balance_bins:
+                balance_bin_weights[balance_bin.bin_code] = flt(balance_bin.net_weight, 3)
+        
+        # Handle balance bins separately - they need special treatment
         for is__bb in self.updated_batch_details:
             if is__bb.get('is_balance_bin'):
-                is__bb['consumed__qty_while_balance_bin'] = is__bb.get(
-                    'consumed__qty')
-                is__bb['balance__qty_while_balance_bin'] = is__bb.get(
-                    'balance__qty')
-                is__bb_compound_qty = flt(flt(is__bb.get(
-                    'consumed__qty') / self.compound_available_qty, 3) * flt(weight, 3), 3)
+                # Store original values for audit trail
+                is__bb['consumed__qty_while_balance_bin'] = is__bb.get('consumed__qty')
+                is__bb['balance__qty_while_balance_bin'] = is__bb.get('balance__qty')
+                
+                # Calculate proportional consumption for this production run ONLY
+                is__bb_compound_qty = flt(flt(is__bb.get('consumed__qty') / self.compound_available_qty, 3) * flt(weight, 3), 3)
                 is__bb['consumed__qty'] = is__bb_compound_qty
                 consumed_qty = flt(consumed_qty + is__bb_compound_qty, 3)
-                is__bb["balance__qty"] = flt(
-                    (flt(is__bb["qty"], 3) - is__bb_compound_qty), 3)
+                
+                # ✅ FIX: For balance bins, use actual measured remaining weight
+                bin_code = is__bb.get('bin')
+                if bin_code in balance_bin_weights:
+                    # Use the physically measured remaining weight
+                    is__bb["balance__qty"] = balance_bin_weights[bin_code]
+                    frappe.log_error(
+                        title="Balance Bin Corrected", 
+                        message=f"Bin {bin_code}: Used actual weight {balance_bin_weights[bin_code]} instead of calculated {flt((flt(is__bb['qty'], 3) - is__bb_compound_qty), 3)}"
+                    )
+                else:
+                    # Fallback to calculated method if balance bin data not found
+                    frappe.log_error(
+                        title="Balance Bin Missing Data", 
+                        message=f"Bin {bin_code}: No balance_bins data found, using calculated method"
+                    )
+                    is__bb["balance__qty"] = flt((flt(is__bb["qty"], 3) - is__bb_compound_qty), 3)
+        
+        # Handle fresh bins with existing logic
         if consumed_qty != weight:
             for k in self.updated_batch_details:
-                compound__qty = flt(
-                    (flt(k["qty"], 3) / self.compound_available_qty) * flt(weight, 3), 3)
+                # Only process fresh bins (not balance bins)
                 if not k.get('is_balance_bin'):
+                    compound__qty = flt((flt(k["qty"], 3) / self.compound_available_qty) * flt(weight, 3), 3)
                     if inital_validate and weight <= compound__qty:
                         consumed_qty = weight
                         k["consumed__qty"] = weight
@@ -461,10 +486,11 @@ def validate_comsumption_details(self):
                             required_qty = flt((weight - consumed_qty), 3)
                             consumed_qty += required_qty
                             k["consumed__qty"] = required_qty
-                            k["balance__qty"] = flt(
-                                (compound__qty - required_qty), 3)
+                            k["balance__qty"] = flt((compound__qty - required_qty), 3)
                             k["is__consumed"] = 1
                             break
+        
+        # ...existing validation code...
         vcwspps = validate_consumption_with_spp_settings(self)
         if vcwspps.get('status') == "success":
             self.updated_batch_details = json.dumps(self.updated_batch_details)
@@ -472,8 +498,7 @@ def validate_comsumption_details(self):
         else:
             return vcwspps
     except Exception:
-        frappe.log_error(title="validate_comsumption_details",
-                         message=frappe.get_traceback())
+        frappe.log_error(title="validate_comsumption_details", message=frappe.get_traceback())
         return {"status": "failed", "message": "Something went wrong, not able to calculate <b>Consumption Qty</b>..!"}
 
 
