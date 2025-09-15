@@ -435,27 +435,25 @@ def validate_comsumption_details(self):
                 is__bb['consumed__qty_while_balance_bin'] = is__bb.get('consumed__qty')
                 is__bb['balance__qty_while_balance_bin'] = is__bb.get('balance__qty')
                 
-                # Calculate proportional consumption for this production run ONLY
-                is__bb_compound_qty = flt(flt(is__bb.get('consumed__qty') / self.compound_available_qty, 3) * flt(weight, 3), 3)
+                # ✅ IMPORTANT: The JavaScript already set balance__qty to the physically measured net_weight
+                # We should preserve this value and use it to calculate the actual consumed compound weight
+                bin_code = is__bb.get('bin')
+                javascript_balance_qty = is__bb.get('balance__qty')  # This is the net_weight from JavaScript
+                
+                # Calculate actual consumed compound weight = Original bin qty - JavaScript balance qty
+                actual_consumed_compound_weight = flt(is__bb.get('qty') - javascript_balance_qty, 3)
+                
+                # Calculate proportional consumption for this production run using ACTUAL consumed compound weight
+                is__bb_compound_qty = flt(flt(actual_consumed_compound_weight / self.compound_available_qty, 3) * flt(weight, 3), 3)
                 is__bb['consumed__qty'] = is__bb_compound_qty
                 consumed_qty = flt(consumed_qty + is__bb_compound_qty, 3)
                 
-                # ✅ FIX: For balance bins, use actual measured remaining weight
-                bin_code = is__bb.get('bin')
-                if bin_code in balance_bin_weights:
-                    # Use the physically measured remaining weight
-                    is__bb["balance__qty"] = balance_bin_weights[bin_code]
-                    frappe.log_error(
-                        title="Balance Bin Corrected", 
-                        message=f"Bin {bin_code}: Used actual weight {balance_bin_weights[bin_code]} instead of calculated {flt((flt(is__bb['qty'], 3) - is__bb_compound_qty), 3)}"
-                    )
-                else:
-                    # Fallback to calculated method if balance bin data not found
-                    frappe.log_error(
-                        title="Balance Bin Missing Data", 
-                        message=f"Bin {bin_code}: No balance_bins data found, using calculated method"
-                    )
-                    is__bb["balance__qty"] = flt((flt(is__bb["qty"], 3) - is__bb_compound_qty), 3)
+                # ✅ PRESERVE the JavaScript balance__qty (which is the physically measured remaining weight)
+                # Don't override it - JavaScript already set it correctly to net_weight
+                frappe.log_error(
+                    title="Balance Bin Weight Preserved", 
+                    message=f"Bin {bin_code}: Preserved JavaScript balance_qty {javascript_balance_qty} kg. Actual consumed weight for calculation: {actual_consumed_compound_weight} kg (Original: {is__bb.get('qty')} - JS Balance: {javascript_balance_qty})"
+                )
         
         # Handle fresh bins with existing logic
         if consumed_qty != weight:
