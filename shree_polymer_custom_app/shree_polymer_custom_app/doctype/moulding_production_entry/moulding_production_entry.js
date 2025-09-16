@@ -60,7 +60,12 @@ frappe.ui.form.on('Moulding Production Entry', {
 						frm.set_value("compound",r.message.message[0].compound)
 						frm.set_value("mould_reference",r.message.message[0].mould_reference)
 						frm.set_value("no_of_cavity_in_mspec",r.message.message[0].no_of_running_cavities)
-						frm.set_value("availabe_qty",total_qty)
+						// ✅ FIX: Update availabe_qty calculation to account for balance bins
+						let actual_available_qty = 0
+						r.message.message.map(recp => {
+							actual_available_qty += recp.qty
+						})
+						frm.set_value("availabe_qty", actual_available_qty)
 						frm.set_value("batch_details",JSON.stringify(r.message.message))
 					}
 				}
@@ -220,8 +225,8 @@ frappe.ui.form.on('Moulding Production Entry', {
 						}
 						else {
 							flag = true
-							// res["consumed__qty"] = parseFloat((parseFloat(res.qty.toFixed(3)) - net_weight).toFixed(3))
-							res["consumed__qty"] = parseFloat((parseFloat(res.qty.toFixed(3))).toFixed(3))
+							 // ✅ FIX: Calculate actual consumed quantity (original - remaining)
+							res["consumed__qty"] = parseFloat((parseFloat(res.qty.toFixed(3)) - net_weight).toFixed(3))
 							res["balance__qty"] = net_weight
 							res["is__consumed"] = 1
 							res["is_balance_bin"] = 1
