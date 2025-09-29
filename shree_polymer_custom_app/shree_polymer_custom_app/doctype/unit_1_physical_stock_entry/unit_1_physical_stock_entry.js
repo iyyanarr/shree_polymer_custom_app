@@ -25,7 +25,37 @@ frappe.ui.form.on('Unit-1 Physical Stock Entry', {
           reqd: true,
           onchange: () => {
             fetch_stock_information(dialog, frm);
+          },
+          description: 'Automatically fetches on scan'
+        },
+        {
+          label: 'Manual Entry',
+          fieldtype: 'Section Break'
+        },
+        {
+          label: 'Manual Batch / Barcode',
+          fieldname: 'manual_batch_or_barcode',
+          fieldtype: 'Data',
+          reqd: false
+        },
+        {
+          fieldtype: 'Column Break'
+        },
+        {
+          label: 'Fetch Manual Entry',
+          fieldtype: 'Button',
+          click: () => {
+            const barcodeField = dialog.get_field('batch_or_mixed_barcode');
+            const manualField = dialog.get_field('manual_batch_or_barcode');
+            if (!barcodeField.get_value() && manualField.get_value()) {
+              barcodeField.set_value(manualField.get_value());
+            }
+            fetch_stock_information(dialog, frm);
           }
+        },
+        {
+          fieldtype: 'Section Break',
+          label: 'Details'
         },
         {
           label: 'Item Code',
