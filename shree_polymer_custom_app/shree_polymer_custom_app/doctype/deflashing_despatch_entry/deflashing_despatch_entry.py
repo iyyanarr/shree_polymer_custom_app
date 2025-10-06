@@ -24,34 +24,63 @@ class DeflashingDespatchEntry(Document):
 					moulding_entry = frappe.db.get_value(
 						"Moulding Production Entry",
 						{"scan_lot_number": item.lot_number},
-						["mould_reference"],
+						["mould_reference", "item_to_produce"],
 						as_dict=1
 					)
 					
-					if moulding_entry and moulding_entry.mould_reference:
-						# Get avg_blank_wt_per_piece from Mould (Asset)
-						mould_item = frappe.db.get_value("Asset", moulding_entry.mould_reference, "item_code")
-						
-						if mould_item:
-							# Get avg_blank_wt from Mould Specification List
-							avg_blank_wt = frappe.db.get_value(
-								"Mould Specification List",
-								{"parent": mould_item},
-								"avg_blank_wt"
-							)
-							
-							if avg_blank_wt and avg_blank_wt > 0:
-								# Formula: qty_in_nos = round((qty_in_kgs / avg_blank_wt) * 1000)
-								# avg_blank_wt is in grams, qty is in kgs, so multiply by 1000
-								item.qty_in_nos = round((item.qty / avg_blank_wt) * 1000)
-							else:
-								frappe.msgprint(f"Average Blank Weight not found for mould {mould_item} in lot {item.lot_number}")
-								item.qty_in_nos = 0
+					if not moulding_entry:
+						frappe.msgprint(f"⚠️ Moulding Production Entry not found for lot {item.lot_number}")
+						item.qty_in_nos = 0
+						continue
+					
+					if not moulding_entry.mould_reference:
+						frappe.msgprint(f"⚠️ Mould reference is empty for lot {item.lot_number}")
+						item.qty_in_nos = 0
+						continue
+					
+					# Get mould item_code from Asset
+					mould_item = frappe.db.get_value("Asset", moulding_entry.mould_reference, "item_code")
+					
+					if not mould_item:
+						# If item_code is not found in Asset, try using the asset name (mould_reference) directly
+						# This might be the mould item code itself
+						mould_item = moulding_entry.mould_reference
+					
+					# Get avg_blank_wt from Mould Specification using mould_ref and spp_ref
+					avg_blank_wt = frappe.db.get_value(
+						"Mould Specification",
+						{
+							"mould_ref": mould_item,
+							"spp_ref": moulding_entry.item_to_produce,
+							"mould_status": "ACTIVE"
+						},
+						"avg_blank_wtproduct_gms"
+					)
+					
+					if not avg_blank_wt:
+						frappe.msgprint(f"⚠️ Average Blank Weight not found for mould {mould_item} and item {moulding_entry.item_to_produce} in lot {item.lot_number}")
+						item.qty_in_nos = 0
+						continue
+					
+					 # Convert to float and validate
+					avg_blank_wt = float(avg_blank_wt)
+					
+					if avg_blank_wt <= 0:
+						frappe.msgprint(f"⚠️ Average Blank Weight is zero or negative ({avg_blank_wt}g) for mould {mould_item} in lot {item.lot_number}")
+						item.qty_in_nos = 0
+						continue
+					
+					# Formula: qty_in_nos = round((qty_in_kgs / avg_blank_wt) * 1000)
+					# avg_blank_wt is in grams, qty is in kgs, so multiply by 1000
+					item.qty_in_nos = round((item.qty / avg_blank_wt) * 1000)
+					frappe.msgprint(f"✅ Calculated qty_in_nos = {item.qty_in_nos} for lot {item.lot_number} (qty={item.qty} kg, avg_blank_wt={avg_blank_wt}g)")
+					
 				except Exception as e:
 					frappe.log_error(
 						message=frappe.get_traceback(),
 						title=f"Error calculating qty_in_nos for lot {item.lot_number}"
 					)
+					frappe.msgprint(f"❌ Error calculating qty_in_nos for lot {item.lot_number}: {str(e)}")
 					item.qty_in_nos = 0
 
 	def on_submit(self):
@@ -559,7 +588,3 @@ def validate_warehouse(bar_code):
 # 			else:
 # 				frappe.response.status = "failed"
 # 				frappe.response.message = "There is no <b>Moulding Production Entry</b> for the scanned lot"
-# 	except Exception:
-# 		frappe.response.status = "failed"
-# 		frappe.response.message = "Something went wrong"
-# 		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.deflashing_despatch_entry.deflashing_despatch_entry.validate_lot_barcode")
