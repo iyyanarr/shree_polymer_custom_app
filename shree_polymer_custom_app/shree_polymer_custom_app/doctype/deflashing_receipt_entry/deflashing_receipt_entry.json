@@ -22,6 +22,7 @@
   "warehouse",
   "lot_number",
   "product_weight",
+  "qty_in_nos",
   "column_break_9",
   "spp_batch_no",
   "item",
@@ -112,6 +113,13 @@
    "label": "Product Weight",
    "non_negative": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "qty_in_nos",
+   "fieldtype": "Float",
+   "label": "Qty in Nos",
+   "read_only": 1,
+   "precision": 0
   },
   {
    "fieldname": "scrap_weight",

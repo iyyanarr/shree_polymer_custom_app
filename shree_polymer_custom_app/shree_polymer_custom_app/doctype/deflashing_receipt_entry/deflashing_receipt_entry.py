@@ -19,6 +19,8 @@ class DeflashingReceiptEntry(Document):
 		# 	frappe.throw("The <b>Product Weight</b> and <b>Scrap Weight</b> can't be greater than the <b>Available Qty</b>")
 		if not self.product_weight:
 			frappe.throw("Please enter the <b>Product Weight<b>")
+		# Calculate qty_in_nos based on product_weight
+		self.calculate_qty_in_nos()
 		""" For maintaing the same lot number the source lot number saved in the job card i.e intead of sub lot number the parent lot number saved """
 		parent__lot = get_parent_lot(self.lot_number)
 		if parent__lot and parent__lot.get('status') == 'success':
@@ -31,6 +33,46 @@ class DeflashingReceiptEntry(Document):
 		# 		frappe.throw("The <b>Scrap Weight</b> can't be greater than or equal to the <b>Available Qty</b>")
 		# 	else:
 		# 		self.qty_without_scrap_weight = flt((self.qty - self.scrap_weight),3)
+
+	def calculate_qty_in_nos(self):
+		"""Calculate Qty in Nos based on BOM and UOM conversion"""
+		if self.product_weight and self.item:
+			try:
+				# Find BOM where the scanned item (e.g., T5050) is a BOM Item
+				bom = frappe.db.sql("""
+					SELECT B.item 
+					FROM `tabBOM Item` BI 
+					INNER JOIN `tabBOM` B ON BI.parent = B.name 
+					WHERE BI.item_code = %(item_code)s 
+					AND B.is_active = 1 
+					AND B.is_default = 1
+				""", {"item_code": self.item}, as_dict=1)
+				
+				if bom and bom[0].item:
+					# Get UOM conversion factor for the produced item (e.g., P5050)
+					produced_item = bom[0].item
+					conversion_detail = frappe.db.get_value(
+						"UOM Conversion Detail",
+						{"parent": produced_item, "uom": "Kg"},
+						"conversion_factor"
+					)
+					
+					if conversion_detail:
+						# Formula: qty_in_nos = round(product_weight * conversion_factor)
+						# conversion_factor tells us how many pieces = 1 kg
+						self.qty_in_nos = round(self.product_weight * conversion_detail)
+					else:
+						frappe.msgprint(f"UOM conversion factor not found for item {produced_item}")
+						self.qty_in_nos = 0
+				else:
+					frappe.msgprint(f"BOM not found for item {self.item}")
+					self.qty_in_nos = 0
+			except Exception as e:
+				frappe.log_error(
+					message=frappe.get_traceback(),
+					title=f"Error calculating qty_in_nos for item {self.item}"
+				)
+				self.qty_in_nos = 0
 
 	def on_submit(self):
 		wo = create_work_order(self)

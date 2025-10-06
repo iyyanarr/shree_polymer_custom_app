@@ -3,8 +3,8 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import cint, cstr, duration_to_seconds, flt,getdate
-from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series,get_details_by_lot_no,get_parent_lot
+from frappe.utils import cint, cstr, duration_to_seconds, flt, getdate
+from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series, get_details_by_lot_no, get_parent_lot
 
 class DeflashingDespatchEntry(Document):
 	def validate(self):
@@ -12,6 +12,47 @@ class DeflashingDespatchEntry(Document):
 			frappe.throw("The <b>Posting Date</b> can't be greater than <b>Today Date</b>..!")
 		if not self.items:
 			frappe.throw(" Scan and add some items before save.")
+		# Calculate qty_in_nos for all items
+		self.calculate_qty_in_nos()
+
+	def calculate_qty_in_nos(self):
+		"""Calculate Qty in Nos for each item based on mould specification"""
+		for item in self.items:
+			if item.qty and item.lot_number and item.item:
+				try:
+					# Get Moulding Production Entry for the lot
+					moulding_entry = frappe.db.get_value(
+						"Moulding Production Entry",
+						{"scan_lot_number": item.lot_number},
+						["mould_reference"],
+						as_dict=1
+					)
+					
+					if moulding_entry and moulding_entry.mould_reference:
+						# Get avg_blank_wt_per_piece from Mould (Asset)
+						mould_item = frappe.db.get_value("Asset", moulding_entry.mould_reference, "item_code")
+						
+						if mould_item:
+							# Get avg_blank_wt from Mould Specification List
+							avg_blank_wt = frappe.db.get_value(
+								"Mould Specification List",
+								{"parent": mould_item},
+								"avg_blank_wt"
+							)
+							
+							if avg_blank_wt and avg_blank_wt > 0:
+								# Formula: qty_in_nos = round((qty_in_kgs / avg_blank_wt) * 1000)
+								# avg_blank_wt is in grams, qty is in kgs, so multiply by 1000
+								item.qty_in_nos = round((item.qty / avg_blank_wt) * 1000)
+							else:
+								frappe.msgprint(f"Average Blank Weight not found for mould {mould_item} in lot {item.lot_number}")
+								item.qty_in_nos = 0
+				except Exception as e:
+					frappe.log_error(
+						message=frappe.get_traceback(),
+						title=f"Error calculating qty_in_nos for lot {item.lot_number}"
+					)
+					item.qty_in_nos = 0
 
 	def on_submit(self):
 		create_stock_entry(self)

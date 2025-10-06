@@ -17,6 +17,7 @@
   "job_card",
   "item",
   "qty",
+  "qty_in_nos",
   "amount",
   "warehouse_id",
   "source_warehouse_name",
@@ -80,6 +81,13 @@
    "fieldtype": "Float",
    "label": "Qty",
    "read_only": 1
+  },
+  {
+   "fieldname": "qty_in_nos",
+   "fieldtype": "Float",
+   "label": "Qty in Nos",
+   "read_only": 1,
+   "precision": 0
   },
   {
    "fieldname": "warehouse_code",
