@@ -129,15 +129,27 @@ AND B.is_default = 1
 	def calculate_scrap_tracking(self):
 		"""Calculate scrap tracking fields"""
 		try:
-			self.scrap_expected_per_piece_gms = self.blank_wt or 0
+			# Scrap Expected per piece (gms) = Blank Weight - Product Weight from UOM
+			# Example: 1.594 - 1.164 = 0.43 gms
+			if self.blank_wt and self.product_wt_from_uom:
+				self.scrap_expected_per_piece_gms = round(self.blank_wt - self.product_wt_from_uom, 3)
+			else:
+				self.scrap_expected_per_piece_gms = 0
 			
+			# Total Scrap Expected (Kg) = (Scrap per piece × Qty Received) ÷ 1000
+			# Example: (0.43 × 9287) / 1000 = 3.993 kg
 			if self.scrap_expected_per_piece_gms and self.qty_received_nos:
 				self.total_scrap_expected_kg = round((self.scrap_expected_per_piece_gms * self.qty_received_nos) / 1000, 3)
 			else:
 				self.total_scrap_expected_kg = 0
 			
+			# Actual Scrap (Kg) = scrap_weight (user entered)
 			self.actual_scrap_kg = self.scrap_weight or 0
-			self.scrap_difference_kg = round((self.total_scrap_expected_kg or 0) - (self.actual_scrap_kg or 0), 3)
+			
+			# Scrap Difference (Kg) = Actual Scrap - Total Scrap Expected
+			# Positive means more scrap than expected, negative means less
+			# Example: 4.009 - 3.998 = 0.011 kg (0.011 kg more scrap than expected)
+			self.scrap_difference_kg = round((self.actual_scrap_kg or 0) - (self.total_scrap_expected_kg or 0), 3)
 			
 		except Exception as e:
 			frappe.log_error(message=frappe.get_traceback(), title=f"Error calculating scrap tracking for lot {self.lot_number}")
