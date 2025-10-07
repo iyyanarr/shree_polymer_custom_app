@@ -84,13 +84,13 @@ class DeflashingReceiptEntry(Document):
 		if self.product_weight and self.item:
 			try:
 				bom = frappe.db.sql("""
-SELECT B.item 
-FROM `tabBOM Item` BI 
-INNER JOIN `tabBOM` B ON BI.parent = B.name 
-WHERE BI.item_code = %(item_code)s 
-AND B.is_active = 1 
-AND B.is_default = 1
-""", {"item_code": self.item}, as_dict=1)
+					SELECT B.item 
+					FROM `tabBOM Item` BI 
+					INNER JOIN `tabBOM` B ON BI.parent = B.name 
+					WHERE BI.item_code = %(item_code)s 
+					AND B.is_active = 1 
+					AND B.is_default = 1
+				""", {"item_code": self.item}, as_dict=1)
 				
 				if bom and bom[0].item:
 					produced_item = bom[0].item
@@ -101,19 +101,37 @@ AND B.is_default = 1
 					else:
 						self.product_wt_from_uom = 0
 					
-					moulding_entry = frappe.db.get_value("Moulding Production Entry", {"scan_lot_number": self.lot_number}, ["mould_reference", "item_to_produce"], as_dict=1)
+					# Use scan_lot_number instead of lot_number to match Moulding Production Entry
+					lot_to_search = self.scan_lot_number or self.lot_number
+					moulding_entry = frappe.db.get_value("Moulding Production Entry", {"scan_lot_number": lot_to_search}, ["mould_reference", "item_to_produce"], as_dict=1)
 					
 					if moulding_entry and moulding_entry.mould_reference:
 						mould_item = frappe.db.get_value("Asset", moulding_entry.mould_reference, "item_code")
 						if mould_item:
-							avg_blank_wt = frappe.db.get_value("Mould Specification", {"mould_ref": mould_item, "spp_ref": moulding_entry.item_to_produce, "mould_status": "ACTIVE"}, "avg_blank_wtproduct_gms")
-							self.blank_wt = float(avg_blank_wt) if avg_blank_wt else 0
+							# Fetch avg_blank_wtproduct_gms which is a Data field, not Float
+							avg_blank_wt = frappe.db.get_value("Mould Specification", 
+								{"mould_ref": mould_item, "spp_ref": moulding_entry.item_to_produce, "mould_status": "ACTIVE"}, 
+								"avg_blank_wtproduct_gms")
+							
+							# Handle Data field - convert string to float
+							if avg_blank_wt:
+								try:
+									self.blank_wt = float(str(avg_blank_wt).strip())
+								except (ValueError, TypeError):
+									frappe.log_error(f"Invalid blank weight value: {avg_blank_wt} for mould {mould_item}", "Blank Weight Conversion Error")
+									self.blank_wt = 0
+							else:
+								frappe.msgprint(f"Blank weight not found for Mould: {mould_item}, SPP Ref: {moulding_entry.item_to_produce}")
+								self.blank_wt = 0
 						else:
+							frappe.msgprint(f"Mould item not found for Asset: {moulding_entry.mould_reference}")
 							self.blank_wt = 0
 					else:
+						frappe.msgprint(f"Moulding Production Entry not found for lot: {lot_to_search}")
 						self.blank_wt = 0
 					
-					despatch_qty = frappe.db.get_value("Deflashing Despatch Entry Item", {"lot_number": self.lot_number}, "qty_in_nos")
+					# Fetch qty despatched from Deflashing Despatch Entry Item
+					despatch_qty = frappe.db.get_value("Deflashing Despatch Entry Item", {"lot_number": lot_to_search}, "qty_in_nos")
 					self.qty_despatched_nos = despatch_qty or 0
 					self.qty_received_nos = self.qty_in_nos or 0
 					self.difference_nos = (self.qty_despatched_nos or 0) - (self.qty_received_nos or 0)
