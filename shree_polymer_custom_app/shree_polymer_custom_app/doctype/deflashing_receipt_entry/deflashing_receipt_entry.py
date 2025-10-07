@@ -108,13 +108,16 @@ class DeflashingReceiptEntry(Document):
 						frappe.msgprint(f"Moulding Production Entry not found for lot: {lot_to_search}")
 						self.blank_wt = 0
 					
-					# Fetch qty despatched from Deflashing Despatch Entry Item
-					despatch_qty = frappe.db.get_value(
-						"Deflashing Despatch Entry Item", 
-						{"lot_number": lot_to_search}, 
-						"qty_in_nos"
-					)
-					self.qty_despatched_nos = despatch_qty or 0
+					# Calculate qty_despatched_nos using Receipt Entry's own qty
+					# Using the same formula as Deflashing Despatch Entry
+					# Formula: qty_in_nos = round((qty_in_kgs / avg_blank_wt_gms) × 1000)
+					if self.blank_wt and self.blank_wt > 0 and self.qty:
+						self.qty_despatched_nos = round((self.qty / self.blank_wt) * 1000)
+						frappe.logger().info(f"Calculated qty_despatched_nos: {self.qty_despatched_nos} = ({self.qty} / {self.blank_wt}) * 1000")
+					else:
+						frappe.msgprint(f"⚠️ Cannot calculate despatched quantity: Blank weight is {self.blank_wt}g, Qty is {self.qty}kg")
+						self.qty_despatched_nos = 0
+					
 					self.qty_received_nos = self.qty_in_nos or 0
 					
 					# Difference = Qty Received - Qty Despatched
