@@ -21,6 +21,10 @@ class DeflashingReceiptEntry(Document):
 			frappe.throw("Please enter the <b>Product Weight<b>")
 		# Calculate qty_in_nos based on product_weight
 		self.calculate_qty_in_nos()
+		# Calculate quantity tracking fields
+		self.calculate_quantity_tracking()
+		# Calculate scrap tracking fields
+		self.calculate_scrap_tracking()
 		""" For maintaing the same lot number the source lot number saved in the job card i.e intead of sub lot number the parent lot number saved """
 		parent__lot = get_parent_lot(self.lot_number)
 		if parent__lot and parent__lot.get('status') == 'success':
@@ -73,6 +77,74 @@ class DeflashingReceiptEntry(Document):
 					title=f"Error calculating qty_in_nos for item {self.item}"
 				)
 				self.qty_in_nos = 0
+
+
+	def calculate_quantity_tracking(self):
+		"""Calculate quantity tracking fields"""
+		if self.product_weight and self.item:
+			try:
+				bom = frappe.db.sql("""
+SELECT B.item 
+FROM `tabBOM Item` BI 
+INNER JOIN `tabBOM` B ON BI.parent = B.name 
+WHERE BI.item_code = %(item_code)s 
+AND B.is_active = 1 
+AND B.is_default = 1
+""", {"item_code": self.item}, as_dict=1)
+				
+				if bom and bom[0].item:
+					produced_item = bom[0].item
+					conversion_factor = frappe.db.get_value("UOM Conversion Detail", {"parent": produced_item, "uom": "Kg"}, "conversion_factor")
+					
+					if conversion_factor and float(conversion_factor) > 0:
+						self.product_wt_from_uom = round(1000 / float(conversion_factor), 3)
+					else:
+						self.product_wt_from_uom = 0
+					
+					moulding_entry = frappe.db.get_value("Moulding Production Entry", {"scan_lot_number": self.lot_number}, ["mould_reference", "item_to_produce"], as_dict=1)
+					
+					if moulding_entry and moulding_entry.mould_reference:
+						mould_item = frappe.db.get_value("Asset", moulding_entry.mould_reference, "item_code")
+						if mould_item:
+							avg_blank_wt = frappe.db.get_value("Mould Specification", {"mould_ref": mould_item, "spp_ref": moulding_entry.item_to_produce, "mould_status": "ACTIVE"}, "avg_blank_wtproduct_gms")
+							self.blank_wt = float(avg_blank_wt) if avg_blank_wt else 0
+						else:
+							self.blank_wt = 0
+					else:
+						self.blank_wt = 0
+					
+					despatch_qty = frappe.db.get_value("Deflashing Despatch Entry Item", {"lot_number": self.lot_number}, "qty_in_nos")
+					self.qty_despatched_nos = despatch_qty or 0
+					self.qty_received_nos = self.qty_in_nos or 0
+					self.difference_nos = (self.qty_despatched_nos or 0) - (self.qty_received_nos or 0)
+					
+			except Exception as e:
+				frappe.log_error(message=frappe.get_traceback(), title=f"Error calculating quantity tracking for lot {self.lot_number}")
+				self.product_wt_from_uom = 0
+				self.blank_wt = 0
+				self.qty_despatched_nos = 0
+				self.qty_received_nos = 0
+				self.difference_nos = 0
+
+	def calculate_scrap_tracking(self):
+		"""Calculate scrap tracking fields"""
+		try:
+			self.scrap_expected_per_piece_gms = self.blank_wt or 0
+			
+			if self.scrap_expected_per_piece_gms and self.qty_received_nos:
+				self.total_scrap_expected_kg = round((self.scrap_expected_per_piece_gms * self.qty_received_nos) / 1000, 3)
+			else:
+				self.total_scrap_expected_kg = 0
+			
+			self.actual_scrap_kg = self.scrap_weight or 0
+			self.scrap_difference_kg = round((self.total_scrap_expected_kg or 0) - (self.actual_scrap_kg or 0), 3)
+			
+		except Exception as e:
+			frappe.log_error(message=frappe.get_traceback(), title=f"Error calculating scrap tracking for lot {self.lot_number}")
+			self.scrap_expected_per_piece_gms = 0
+			self.total_scrap_expected_kg = 0
+			self.actual_scrap_kg = 0
+			self.scrap_difference_kg = 0
 
 	def on_submit(self):
 		wo = create_work_order(self)

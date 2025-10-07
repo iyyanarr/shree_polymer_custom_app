@@ -29,6 +29,19 @@
   "qty",
   "qty_without_scrap_weight",
   "scrap_weight",
+  "section_break_quantity_tracking",
+  "product_wt_from_uom",
+  "blank_wt",
+  "column_break_qty",
+  "qty_despatched_nos",
+  "qty_received_nos",
+  "difference_nos",
+  "section_break_scrap_tracking",
+  "scrap_expected_per_piece_gms",
+  "total_scrap_expected_kg",
+  "column_break_scrap",
+  "actual_scrap_kg",
+  "scrap_difference_kg",
   "amended_from"
  ],
  "fields": [
@@ -191,6 +204,78 @@
    "in_standard_filter": 1,
    "label": "Posting Date",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_quantity_tracking",
+   "fieldtype": "Section Break",
+   "label": "Quantity Tracking"
+  },
+  {
+   "fieldname": "product_wt_from_uom",
+   "fieldtype": "Float",
+   "label": "Product Weight from UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "blank_wt",
+   "fieldtype": "Float",
+   "label": "Blank Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_qty",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty_despatched_nos",
+   "fieldtype": "Float",
+   "label": "Qty Despatched (Nos)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_received_nos",
+   "fieldtype": "Float",
+   "label": "Qty Received (Nos)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "difference_nos",
+   "fieldtype": "Float",
+   "label": "Difference (Nos)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_scrap_tracking",
+   "fieldtype": "Section Break",
+   "label": "Scrap Tracking"
+  },
+  {
+   "fieldname": "scrap_expected_per_piece_gms",
+   "fieldtype": "Float",
+   "label": "Scrap Expected per Piece (gms)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_scrap_expected_kg",
+   "fieldtype": "Float",
+   "label": "Total Scrap Expected (kg)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_scrap",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "actual_scrap_kg",
+   "fieldtype": "Float",
+   "label": "Actual Scrap (kg)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scrap_difference_kg",
+   "fieldtype": "Float",
+   "label": "Scrap Difference (kg)",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
