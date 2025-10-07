@@ -106,23 +106,25 @@ class DeflashingReceiptEntry(Document):
 							["avg_blank_wtproduct_gms", "wtpiece_avg_gms"], as_dict=1)
 						
 						if mould_spec:
-							# Product Weight from UOM = Actual piece weight after deflashing (wtpiece_avg_gms)
-							if mould_spec.wtpiece_avg_gms:
+								# SWAPPED MAPPING FIX:
+								# Product Weight from UOM = avg_blank_wtproduct_gms (smaller value - finished product)
+								# Blank Weight = wtpiece_avg_gms (larger value - blank before deflashing)
+							if mould_spec.avg_blank_wtproduct_gms:
 								try:
-									self.product_wt_from_uom = float(str(mould_spec.wtpiece_avg_gms).strip())
+									self.product_wt_from_uom = float(str(mould_spec.avg_blank_wtproduct_gms).strip())
 								except (ValueError, TypeError):
-									frappe.log_error(f"Invalid piece weight value: {mould_spec.wtpiece_avg_gms} for mould {moulding_entry.mould_reference}", "Piece Weight Conversion Error")
+									frappe.log_error(f"Invalid piece weight value: {mould_spec.avg_blank_wtproduct_gms} for mould {moulding_entry.mould_reference}", "Piece Weight Conversion Error")
 									self.product_wt_from_uom = 0
 							else:
 								frappe.msgprint(f"Piece weight not found for Mould: {moulding_entry.mould_reference}, SPP Ref: {moulding_entry.item_to_produce}")
 								self.product_wt_from_uom = 0
 							
-							# Blank Weight = avg_blank_wtproduct_gms (weight before deflashing)
-							if mould_spec.avg_blank_wtproduct_gms:
+							# Blank Weight = wtpiece_avg_gms (larger value)
+							if mould_spec.wtpiece_avg_gms:
 								try:
-									self.blank_wt = float(str(mould_spec.avg_blank_wtproduct_gms).strip())
+									self.blank_wt = float(str(mould_spec.wtpiece_avg_gms).strip())
 								except (ValueError, TypeError):
-									frappe.log_error(f"Invalid blank weight value: {mould_spec.avg_blank_wtproduct_gms} for mould {moulding_entry.mould_reference}", "Blank Weight Conversion Error")
+									frappe.log_error(f"Invalid blank weight value: {mould_spec.wtpiece_avg_gms} for mould {moulding_entry.mould_reference}", "Blank Weight Conversion Error")
 									self.blank_wt = 0
 							else:
 								frappe.msgprint(f"Blank weight not found for Mould: {moulding_entry.mould_reference}, SPP Ref: {moulding_entry.item_to_produce}")
