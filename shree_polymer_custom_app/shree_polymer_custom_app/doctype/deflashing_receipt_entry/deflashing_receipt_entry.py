@@ -94,36 +94,46 @@ class DeflashingReceiptEntry(Document):
 				
 				if bom and bom[0].item:
 					produced_item = bom[0].item
-					conversion_factor = frappe.db.get_value("UOM Conversion Detail", {"parent": produced_item, "uom": "Kg"}, "conversion_factor")
-					
-					if conversion_factor and float(conversion_factor) > 0:
-						self.product_wt_from_uom = round(1000 / float(conversion_factor), 3)
-					else:
-						self.product_wt_from_uom = 0
 					
 					# Use scan_lot_number instead of lot_number to match Moulding Production Entry
 					lot_to_search = self.scan_lot_number or self.lot_number
 					moulding_entry = frappe.db.get_value("Moulding Production Entry", {"scan_lot_number": lot_to_search}, ["mould_reference", "item_to_produce"], as_dict=1)
 					
 					if moulding_entry and moulding_entry.mould_reference:
-						# Use mould_reference directly (e.g., TC-2437-A) instead of fetching item_code from Asset
-						# The mould_reference from Moulding Production Entry IS the mould_ref in Mould Specification
-						avg_blank_wt = frappe.db.get_value("Mould Specification", 
+							# Fetch both blank weight and piece weight from Mould Specification
+						mould_spec = frappe.db.get_value("Mould Specification", 
 							{"mould_ref": moulding_entry.mould_reference, "spp_ref": moulding_entry.item_to_produce, "mould_status": "ACTIVE"}, 
-							"avg_blank_wtproduct_gms")
+							["avg_blank_wtproduct_gms", "wtpiece_avg_gms"], as_dict=1)
 						
-						# Handle Data field - convert string to float
-						if avg_blank_wt:
-							try:
-								self.blank_wt = float(str(avg_blank_wt).strip())
-							except (ValueError, TypeError):
-								frappe.log_error(f"Invalid blank weight value: {avg_blank_wt} for mould {moulding_entry.mould_reference}", "Blank Weight Conversion Error")
+						if mould_spec:
+							# Product Weight from UOM = Actual piece weight after deflashing (wtpiece_avg_gms)
+							if mould_spec.wtpiece_avg_gms:
+								try:
+									self.product_wt_from_uom = float(str(mould_spec.wtpiece_avg_gms).strip())
+								except (ValueError, TypeError):
+									frappe.log_error(f"Invalid piece weight value: {mould_spec.wtpiece_avg_gms} for mould {moulding_entry.mould_reference}", "Piece Weight Conversion Error")
+									self.product_wt_from_uom = 0
+							else:
+								frappe.msgprint(f"Piece weight not found for Mould: {moulding_entry.mould_reference}, SPP Ref: {moulding_entry.item_to_produce}")
+								self.product_wt_from_uom = 0
+							
+							# Blank Weight = avg_blank_wtproduct_gms (weight before deflashing)
+							if mould_spec.avg_blank_wtproduct_gms:
+								try:
+									self.blank_wt = float(str(mould_spec.avg_blank_wtproduct_gms).strip())
+								except (ValueError, TypeError):
+									frappe.log_error(f"Invalid blank weight value: {mould_spec.avg_blank_wtproduct_gms} for mould {moulding_entry.mould_reference}", "Blank Weight Conversion Error")
+									self.blank_wt = 0
+							else:
+								frappe.msgprint(f"Blank weight not found for Mould: {moulding_entry.mould_reference}, SPP Ref: {moulding_entry.item_to_produce}")
 								self.blank_wt = 0
 						else:
-							frappe.msgprint(f"Blank weight not found for Mould: {moulding_entry.mould_reference}, SPP Ref: {moulding_entry.item_to_produce}")
+							frappe.msgprint(f"Mould Specification not found for Mould: {moulding_entry.mould_reference}, SPP Ref: {moulding_entry.item_to_produce}")
+							self.product_wt_from_uom = 0
 							self.blank_wt = 0
 					else:
 						frappe.msgprint(f"Moulding Production Entry not found for lot: {lot_to_search}")
+						self.product_wt_from_uom = 0
 						self.blank_wt = 0
 					
 					# Fetch qty despatched from Deflashing Despatch Entry Item
