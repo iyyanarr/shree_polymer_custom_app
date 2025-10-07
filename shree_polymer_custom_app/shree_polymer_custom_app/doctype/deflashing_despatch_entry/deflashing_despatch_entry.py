@@ -38,19 +38,12 @@ class DeflashingDespatchEntry(Document):
 						item.qty_in_nos = 0
 						continue
 					
-					# Get mould item_code from Asset
-					mould_item = frappe.db.get_value("Asset", moulding_entry.mould_reference, "item_code")
-					
-					if not mould_item:
-						# If item_code is not found in Asset, try using the asset name (mould_reference) directly
-						# This might be the mould item code itself
-						mould_item = moulding_entry.mould_reference
-					
-					# Get avg_blank_wt from Mould Specification using mould_ref and spp_ref
+					# Use mould_reference directly (e.g., TC-2437-A) instead of fetching item_code from Asset
+					# The mould_reference from Moulding Production Entry IS the mould_ref in Mould Specification
 					avg_blank_wt = frappe.db.get_value(
 						"Mould Specification",
 						{
-							"mould_ref": mould_item,
+							"mould_ref": moulding_entry.mould_reference,
 							"spp_ref": moulding_entry.item_to_produce,
 							"mould_status": "ACTIVE"
 						},
@@ -58,22 +51,26 @@ class DeflashingDespatchEntry(Document):
 					)
 					
 					if not avg_blank_wt:
-						frappe.msgprint(f"⚠️ Average Blank Weight not found for mould {mould_item} and item {moulding_entry.item_to_produce} in lot {item.lot_number}")
+						frappe.msgprint(f"⚠️ Average Blank Weight not found for mould {moulding_entry.mould_reference} and item {moulding_entry.item_to_produce} in lot {item.lot_number}")
 						item.qty_in_nos = 0
 						continue
 					
-					 # Convert to float and validate
-					avg_blank_wt = float(avg_blank_wt)
+					# Convert to float and validate
+					try:
+						avg_blank_wt = float(str(avg_blank_wt).strip())
+					except (ValueError, TypeError):
+						frappe.log_error(f"Invalid blank weight value: {avg_blank_wt} for mould {moulding_entry.mould_reference}", "Blank Weight Conversion Error")
+						item.qty_in_nos = 0
+						continue
 					
 					if avg_blank_wt <= 0:
-						frappe.msgprint(f"⚠️ Average Blank Weight is zero or negative ({avg_blank_wt}g) for mould {mould_item} in lot {item.lot_number}")
+						frappe.msgprint(f"⚠️ Average Blank Weight is zero or negative ({avg_blank_wt}g) for mould {moulding_entry.mould_reference} in lot {item.lot_number}")
 						item.qty_in_nos = 0
 						continue
 					
-					# Formula: qty_in_nos = round((qty_in_kgs / avg_blank_wt) * 1000)
+					# Formula: qty_in_nos = round((qty_in_kgs / avg_blank_wt_gms) * 1000)
 					# avg_blank_wt is in grams, qty is in kgs, so multiply by 1000
 					item.qty_in_nos = round((item.qty / avg_blank_wt) * 1000)
-					frappe.msgprint(f"✅ Calculated qty_in_nos = {item.qty_in_nos} for lot {item.lot_number} (qty={item.qty} kg, avg_blank_wt={avg_blank_wt}g)")
 					
 				except Exception as e:
 					frappe.log_error(
