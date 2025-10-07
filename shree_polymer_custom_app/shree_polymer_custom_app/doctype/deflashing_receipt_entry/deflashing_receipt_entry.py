@@ -13,36 +13,27 @@ class DeflashingReceiptEntry(Document):
 			frappe.throw(f"The <b>Deflashing Receipt Entry</b> for the lot number <b>{self.lot_number}</b> is already exists..! - <b>{exe_receipt}</b>")
 		if getdate(self.posting_date) > getdate():
 			frappe.throw("The <b>Posting Date</b> can't be greater than <b>Today Date</b>..!")
-		# self.qty_without_scrap_weight = flt(self.qty,3)
 		self.parent__lot_number = None
-		# if (flt((flt(self.product_weight, 3) + flt(self.scrap_weight, 3)),3)) > flt(self.qty, 3):
-		# 	frappe.throw("The <b>Product Weight</b> and <b>Scrap Weight</b> can't be greater than the <b>Available Qty</b>")
 		if not self.product_weight:
 			frappe.throw("Please enter the <b>Product Weight<b>")
-		# Calculate qty_in_nos based on product_weight
-		self.calculate_qty_in_nos()
-		# Calculate quantity tracking fields
-		self.calculate_quantity_tracking()
+		
+		# Calculate all quantity-related fields in one function
+		self.calculate_quantity_fields()
 		# Calculate scrap tracking fields
 		self.calculate_scrap_tracking()
+		
 		""" For maintaing the same lot number the source lot number saved in the job card i.e intead of sub lot number the parent lot number saved """
 		parent__lot = get_parent_lot(self.lot_number)
 		if parent__lot and parent__lot.get('status') == 'success':
 			self.parent__lot_number = parent__lot.get('lot_no')
 		else:
 			self.parent__lot_number = self.lot_number
-		""" For avoid no enough stock balance error the scrap stock qty consume from source batch """
-		# if self.scrap_weight and self.scrap_weight>0:
-		# 	if flt(self.scrap_weight,3) >= flt(self.qty,3):
-		# 		frappe.throw("The <b>Scrap Weight</b> can't be greater than or equal to the <b>Available Qty</b>")
-		# 	else:
-		# 		self.qty_without_scrap_weight = flt((self.qty - self.scrap_weight),3)
 
-	def calculate_qty_in_nos(self):
-		"""Calculate Qty in Nos based on BOM and UOM conversion"""
+	def calculate_quantity_fields(self):
+		"""Calculate all quantity-related fields: product_wt_from_uom, blank_wt, despatched/received quantities"""
 		if self.product_weight and self.item:
 			try:
-				# Find BOM where the scanned item (e.g., T5050) is a BOM Item
+				# Find BOM where the scanned item (e.g., T2438) is a BOM Item
 				bom = frappe.db.sql("""
 					SELECT B.item 
 					FROM `tabBOM Item` BI 
@@ -53,8 +44,9 @@ class DeflashingReceiptEntry(Document):
 				""", {"item_code": self.item}, as_dict=1)
 				
 				if bom and bom[0].item:
-					# Get UOM conversion factor for the produced item (e.g., P5050)
 					produced_item = bom[0].item
+					
+					# Get UOM conversion factor for the produced item (e.g., P2438)
 					conversion_detail = frappe.db.get_value(
 						"UOM Conversion Detail",
 						{"parent": produced_item, "uom": "Kg"},
@@ -62,90 +54,86 @@ class DeflashingReceiptEntry(Document):
 					)
 					
 					if conversion_detail:
-						# Formula: qty_in_nos = round(product_weight * conversion_factor)
-						# conversion_factor tells us how many pieces = 1 kg
-						self.qty_in_nos = round(self.product_weight * conversion_detail)
+						# Calculate Product Weight from UOM: Weight per piece in grams
+						# Formula: product_wt_from_uom = round(1000 / conversion_factor, 3)
+						# Example: round(1000 / 21, 3) = 47.619 gms
+						self.product_wt_from_uom = round(1000 / conversion_detail, 3)
+						
+						# Calculate Qty in Nos: How many pieces from product_weight
+						# Formula: qty_in_nos = round((product_weight / product_wt_from_uom) × 1000)
+						# Example: round((10.1 / 47.619) × 1000) = round(212.1) = 212 pieces
+						if self.product_wt_from_uom > 0:
+							self.qty_in_nos = round((self.product_weight / self.product_wt_from_uom) * 1000)
+						else:
+							self.qty_in_nos = 0
 					else:
 						frappe.msgprint(f"UOM conversion factor not found for item {produced_item}")
+						self.product_wt_from_uom = 0
 						self.qty_in_nos = 0
-				else:
-					frappe.msgprint(f"BOM not found for item {self.item}")
-					self.qty_in_nos = 0
-			except Exception as e:
-				frappe.log_error(
-					message=frappe.get_traceback(),
-					title=f"Error calculating qty_in_nos for item {self.item}"
-				)
-				self.qty_in_nos = 0
-
-
-	def calculate_quantity_tracking(self):
-		"""Calculate quantity tracking fields"""
-		if self.product_weight and self.item:
-			try:
-				bom = frappe.db.sql("""
-					SELECT B.item 
-					FROM `tabBOM Item` BI 
-					INNER JOIN `tabBOM` B ON BI.parent = B.name 
-					WHERE BI.item_code = %(item_code)s 
-					AND B.is_active = 1 
-					AND B.is_default = 1
-				""", {"item_code": self.item}, as_dict=1)
-				
-				if bom and bom[0].item:
-					produced_item = bom[0].item
 					
-					# Use scan_lot_number instead of lot_number to match Moulding Production Entry
+					# Fetch Blank Weight from Mould Specification (ONLY field used from Mould Spec)
 					lot_to_search = self.scan_lot_number or self.lot_number
-					moulding_entry = frappe.db.get_value("Moulding Production Entry", {"scan_lot_number": lot_to_search}, ["mould_reference", "item_to_produce"], as_dict=1)
+					moulding_entry = frappe.db.get_value(
+						"Moulding Production Entry", 
+						{"scan_lot_number": lot_to_search}, 
+						["mould_reference", "item_to_produce"], 
+						as_dict=1
+					)
 					
 					if moulding_entry and moulding_entry.mould_reference:
-							# Fetch both blank weight and piece weight from Mould Specification
-						mould_spec = frappe.db.get_value("Mould Specification", 
-							{"mould_ref": moulding_entry.mould_reference, "spp_ref": moulding_entry.item_to_produce, "mould_status": "ACTIVE"}, 
-							["avg_blank_wtproduct_gms", "wtpiece_avg_gms"], as_dict=1)
+						# Fetch ONLY avg_blank_wtproduct_gms from Mould Specification
+						avg_blank_wt = frappe.db.get_value(
+							"Mould Specification", 
+							{
+								"mould_ref": moulding_entry.mould_reference, 
+								"spp_ref": moulding_entry.item_to_produce, 
+								"mould_status": "ACTIVE"
+							}, 
+							"avg_blank_wtproduct_gms"
+						)
 						
-						if mould_spec:
-								# SWAPPED MAPPING FIX:
-								# Product Weight from UOM = avg_blank_wtproduct_gms (smaller value - finished product)
-								# Blank Weight = wtpiece_avg_gms (larger value - blank before deflashing)
-							if mould_spec.avg_blank_wtproduct_gms:
-								try:
-									self.product_wt_from_uom = float(str(mould_spec.avg_blank_wtproduct_gms).strip())
-								except (ValueError, TypeError):
-									frappe.log_error(f"Invalid piece weight value: {mould_spec.avg_blank_wtproduct_gms} for mould {moulding_entry.mould_reference}", "Piece Weight Conversion Error")
-									self.product_wt_from_uom = 0
-							else:
-								frappe.msgprint(f"Piece weight not found for Mould: {moulding_entry.mould_reference}, SPP Ref: {moulding_entry.item_to_produce}")
-								self.product_wt_from_uom = 0
-							
-							# Blank Weight = wtpiece_avg_gms (larger value)
-							if mould_spec.wtpiece_avg_gms:
-								try:
-									self.blank_wt = float(str(mould_spec.wtpiece_avg_gms).strip())
-								except (ValueError, TypeError):
-									frappe.log_error(f"Invalid blank weight value: {mould_spec.wtpiece_avg_gms} for mould {moulding_entry.mould_reference}", "Blank Weight Conversion Error")
-									self.blank_wt = 0
-							else:
-								frappe.msgprint(f"Blank weight not found for Mould: {moulding_entry.mould_reference}, SPP Ref: {moulding_entry.item_to_produce}")
+						if avg_blank_wt:
+							try:
+								self.blank_wt = float(str(avg_blank_wt).strip())
+							except (ValueError, TypeError):
+								frappe.log_error(
+									f"Invalid blank weight value: {avg_blank_wt} for mould {moulding_entry.mould_reference}", 
+									"Blank Weight Conversion Error"
+								)
 								self.blank_wt = 0
 						else:
-							frappe.msgprint(f"Mould Specification not found for Mould: {moulding_entry.mould_reference}, SPP Ref: {moulding_entry.item_to_produce}")
-							self.product_wt_from_uom = 0
+							frappe.msgprint(f"Blank weight not found for Mould: {moulding_entry.mould_reference}, SPP Ref: {moulding_entry.item_to_produce}")
 							self.blank_wt = 0
 					else:
 						frappe.msgprint(f"Moulding Production Entry not found for lot: {lot_to_search}")
-						self.product_wt_from_uom = 0
 						self.blank_wt = 0
 					
 					# Fetch qty despatched from Deflashing Despatch Entry Item
-					despatch_qty = frappe.db.get_value("Deflashing Despatch Entry Item", {"lot_number": lot_to_search}, "qty_in_nos")
+					despatch_qty = frappe.db.get_value(
+						"Deflashing Despatch Entry Item", 
+						{"lot_number": lot_to_search}, 
+						"qty_in_nos"
+					)
 					self.qty_despatched_nos = despatch_qty or 0
 					self.qty_received_nos = self.qty_in_nos or 0
-					self.difference_nos = (self.qty_despatched_nos or 0) - (self.qty_received_nos or 0)
+					
+					# Difference = Qty Received - Qty Despatched
+					# Positive means more received than despatched, negative means less received
+					self.difference_nos = (self.qty_received_nos or 0) - (self.qty_despatched_nos or 0)
+					
+				else:
+					frappe.msgprint(f"BOM not found for item {self.item}")
+					self.product_wt_from_uom = 0
+					self.blank_wt = 0
+					self.qty_despatched_nos = 0
+					self.qty_received_nos = 0
+					self.difference_nos = 0
 					
 			except Exception as e:
-				frappe.log_error(message=frappe.get_traceback(), title=f"Error calculating quantity tracking for lot {self.lot_number}")
+				frappe.log_error(
+					message=frappe.get_traceback(),
+					title=f"Error calculating quantity fields for item {self.item}"
+				)
 				self.product_wt_from_uom = 0
 				self.blank_wt = 0
 				self.qty_despatched_nos = 0
@@ -153,27 +141,35 @@ class DeflashingReceiptEntry(Document):
 				self.difference_nos = 0
 
 	def calculate_scrap_tracking(self):
-		"""Calculate scrap tracking fields"""
+		"""Calculate scrap tracking fields based on actual received quantities"""
 		try:
-			# Scrap Expected per piece (gms) = Blank Weight - Product Weight from UOM
-			# Example: 177 - 44.25 = 132.75 gms
+			# Scrap Expected per Piece (gms) = Blank Weight - Product Weight from UOM
+			# This represents how much scrap should be generated when deflashing one piece
+			# Formula: scrap_per_piece = blank_wt - product_wt_from_uom
+			# Example: If blank_wt = 50 gms and product_wt_from_uom = 47.619 gms
+			#          Then scrap_per_piece = 50 - 47.619 = 2.381 gms
 			if self.blank_wt and self.product_wt_from_uom:
 				self.scrap_expected_per_piece_gms = round(self.blank_wt - self.product_wt_from_uom, 3)
 			else:
 				self.scrap_expected_per_piece_gms = 0
 			
-			# Total Scrap Expected (Kg) = (Scrap per piece × Qty Despatched) ÷ 1000
-			# Example: (132.75 × 127) / 1000 = 16.859 kg
+			# Total Scrap Expected (Kg) = (Scrap Expected per piece (gms) × Qty Despatched (Nos)) / 1000
+			# This calculates expected scrap based on the pieces that were despatched for deflashing
+			# Formula: total_scrap_expected = round((scrap_expected_per_piece_gms × qty_despatched_nos) / 1000, 3)
+			# Example: If scrap_per_piece = 2.381 gms and qty_despatched = 443 pieces
+			#          Then total_scrap_expected = round((2.381 × 443) / 1000, 3) = 1.055 kg
 			if self.scrap_expected_per_piece_gms and self.qty_despatched_nos:
 				self.total_scrap_expected_kg = round((self.scrap_expected_per_piece_gms * self.qty_despatched_nos) / 1000, 3)
 			else:
 				self.total_scrap_expected_kg = 0
 			
-			# Actual Scrap (Kg) = scrap_weight (user entered)
+			# Actual Scrap (Kg) = User-entered scrap weight from the receipt
 			self.actual_scrap_kg = self.scrap_weight or 0
 			
 			# Scrap Difference (Kg) = Actual Scrap - Total Scrap Expected
-			# Positive means more scrap than expected, negative means less
+			# Positive difference = More scrap than expected (material loss)
+			# Negative difference = Less scrap than expected (material gain or under-reporting)
+			# Formula: scrap_difference = actual_scrap - total_scrap_expected
 			self.scrap_difference_kg = round((self.actual_scrap_kg or 0) - (self.total_scrap_expected_kg or 0), 3)
 			
 		except Exception as e:
