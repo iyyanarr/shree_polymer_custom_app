@@ -106,25 +106,21 @@ class DeflashingReceiptEntry(Document):
 					moulding_entry = frappe.db.get_value("Moulding Production Entry", {"scan_lot_number": lot_to_search}, ["mould_reference", "item_to_produce"], as_dict=1)
 					
 					if moulding_entry and moulding_entry.mould_reference:
-						mould_item = frappe.db.get_value("Asset", moulding_entry.mould_reference, "item_code")
-						if mould_item:
-							# Fetch avg_blank_wtproduct_gms which is a Data field, not Float
-							avg_blank_wt = frappe.db.get_value("Mould Specification", 
-								{"mould_ref": mould_item, "spp_ref": moulding_entry.item_to_produce, "mould_status": "ACTIVE"}, 
-								"avg_blank_wtproduct_gms")
-							
-							# Handle Data field - convert string to float
-							if avg_blank_wt:
-								try:
-									self.blank_wt = float(str(avg_blank_wt).strip())
-								except (ValueError, TypeError):
-									frappe.log_error(f"Invalid blank weight value: {avg_blank_wt} for mould {mould_item}", "Blank Weight Conversion Error")
-									self.blank_wt = 0
-							else:
-								frappe.msgprint(f"Blank weight not found for Mould: {mould_item}, SPP Ref: {moulding_entry.item_to_produce}")
+						# Use mould_reference directly (e.g., TC-2437-A) instead of fetching item_code from Asset
+						# The mould_reference from Moulding Production Entry IS the mould_ref in Mould Specification
+						avg_blank_wt = frappe.db.get_value("Mould Specification", 
+							{"mould_ref": moulding_entry.mould_reference, "spp_ref": moulding_entry.item_to_produce, "mould_status": "ACTIVE"}, 
+							"avg_blank_wtproduct_gms")
+						
+						# Handle Data field - convert string to float
+						if avg_blank_wt:
+							try:
+								self.blank_wt = float(str(avg_blank_wt).strip())
+							except (ValueError, TypeError):
+								frappe.log_error(f"Invalid blank weight value: {avg_blank_wt} for mould {moulding_entry.mould_reference}", "Blank Weight Conversion Error")
 								self.blank_wt = 0
 						else:
-							frappe.msgprint(f"Mould item not found for Asset: {moulding_entry.mould_reference}")
+							frappe.msgprint(f"Blank weight not found for Mould: {moulding_entry.mould_reference}, SPP Ref: {moulding_entry.item_to_produce}")
 							self.blank_wt = 0
 					else:
 						frappe.msgprint(f"Moulding Production Entry not found for lot: {lot_to_search}")
