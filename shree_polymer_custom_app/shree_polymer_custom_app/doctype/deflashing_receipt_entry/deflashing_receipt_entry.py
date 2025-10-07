@@ -81,23 +81,30 @@ class DeflashingReceiptEntry(Document):
 					)
 					
 					if moulding_entry and moulding_entry.mould_reference:
-						# Fetch ONLY avg_blank_wtproduct_gms from Mould Specification
-						avg_blank_wt = frappe.db.get_value(
+						# Fetch avg_blank_wtproduct_gms AND shell_weight from Mould Specification
+						mould_spec = frappe.db.get_value(
 							"Mould Specification", 
 							{
 								"mould_ref": moulding_entry.mould_reference, 
 								"spp_ref": moulding_entry.item_to_produce, 
 								"mould_status": "ACTIVE"
 							}, 
-							"avg_blank_wtproduct_gms"
+							["avg_blank_wtproduct_gms", "shell_weight"],
+							as_dict=True
 						)
 						
-						if avg_blank_wt:
+						if mould_spec and mould_spec.avg_blank_wtproduct_gms:
 							try:
-								self.blank_wt = float(str(avg_blank_wt).strip())
+								# Calculate total blank weight including shell weight if present
+								base_blank_wt = float(str(mould_spec.avg_blank_wtproduct_gms).strip())
+								if mould_spec.shell_weight:
+									# Add shell weight to get total blank weight
+									base_blank_wt = base_blank_wt + float(mould_spec.shell_weight)
+								
+								self.blank_wt = base_blank_wt
 							except (ValueError, TypeError):
 								frappe.log_error(
-									f"Invalid blank weight value: {avg_blank_wt} for mould {moulding_entry.mould_reference}", 
+									f"Invalid blank weight value: {mould_spec.avg_blank_wtproduct_gms} or shell_weight: {mould_spec.shell_weight} for mould {moulding_entry.mould_reference}", 
 									"Blank Weight Conversion Error"
 								)
 								self.blank_wt = 0
@@ -110,7 +117,8 @@ class DeflashingReceiptEntry(Document):
 					
 					# Calculate qty_despatched_nos using Receipt Entry's own qty
 					# Using the same formula as Deflashing Despatch Entry
-					# Formula: qty_in_nos = round((qty_in_kgs / avg_blank_wt_gms) × 1000)
+					# Formula: qty_in_nos = round((qty_in_kgs / blank_wt_gms) × 1000)
+					# Note: blank_wt now includes shell_weight if present
 					if self.blank_wt and self.blank_wt > 0 and self.qty:
 						self.qty_despatched_nos = round((self.qty / self.blank_wt) * 1000)
 						frappe.logger().info(f"Calculated qty_despatched_nos: {self.qty_despatched_nos} = ({self.qty} / {self.blank_wt}) * 1000")

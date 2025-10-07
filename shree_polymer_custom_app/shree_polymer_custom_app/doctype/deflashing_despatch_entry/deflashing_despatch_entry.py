@@ -38,28 +38,31 @@ class DeflashingDespatchEntry(Document):
 						item.qty_in_nos = 0
 						continue
 					
-					# Use mould_reference directly (e.g., TC-2437-A) instead of fetching item_code from Asset
-					# The mould_reference from Moulding Production Entry IS the mould_ref in Mould Specification
-					avg_blank_wt = frappe.db.get_value(
+					# Fetch avg_blank_wtproduct_gms AND shell_weight from Mould Specification
+					mould_spec = frappe.db.get_value(
 						"Mould Specification",
 						{
 							"mould_ref": moulding_entry.mould_reference,
 							"spp_ref": moulding_entry.item_to_produce,
 							"mould_status": "ACTIVE"
 						},
-						"avg_blank_wtproduct_gms"
+						["avg_blank_wtproduct_gms", "shell_weight"],
+						as_dict=True
 					)
 					
-					if not avg_blank_wt:
+					if not mould_spec or not mould_spec.avg_blank_wtproduct_gms:
 						frappe.msgprint(f"⚠️ Average Blank Weight not found for mould {moulding_entry.mould_reference} and item {moulding_entry.item_to_produce} in lot {item.lot_number}")
 						item.qty_in_nos = 0
 						continue
 					
-					# Convert to float and validate
+					# Convert to float and validate, including shell_weight if present
 					try:
-						avg_blank_wt = float(str(avg_blank_wt).strip())
+						avg_blank_wt = float(str(mould_spec.avg_blank_wtproduct_gms).strip())
+						if mould_spec.shell_weight:
+							# Add shell weight to get total blank weight
+							avg_blank_wt = avg_blank_wt + float(mould_spec.shell_weight)
 					except (ValueError, TypeError):
-						frappe.log_error(f"Invalid blank weight value: {avg_blank_wt} for mould {moulding_entry.mould_reference}", "Blank Weight Conversion Error")
+						frappe.log_error(f"Invalid blank weight value: {mould_spec.avg_blank_wtproduct_gms} or shell_weight: {mould_spec.shell_weight} for mould {moulding_entry.mould_reference}", "Blank Weight Conversion Error")
 						item.qty_in_nos = 0
 						continue
 					
@@ -69,7 +72,7 @@ class DeflashingDespatchEntry(Document):
 						continue
 					
 					# Formula: qty_in_nos = round((qty_in_kgs / avg_blank_wt_gms) * 1000)
-					# avg_blank_wt is in grams, qty is in kgs, so multiply by 1000
+					# avg_blank_wt is in grams (now includes shell_weight if present), qty is in kgs, so multiply by 1000
 					item.qty_in_nos = round((item.qty / avg_blank_wt) * 1000)
 					
 				except Exception as e:
