@@ -154,16 +154,16 @@ class DeflashingReceiptEntry(Document):
 		"""Calculate scrap tracking fields"""
 		try:
 			# Scrap Expected per piece (gms) = Blank Weight - Product Weight from UOM
-			# Example: 1.594 - 1.164 = 0.43 gms
+			# Example: 177 - 44.25 = 132.75 gms
 			if self.blank_wt and self.product_wt_from_uom:
 				self.scrap_expected_per_piece_gms = round(self.blank_wt - self.product_wt_from_uom, 3)
 			else:
 				self.scrap_expected_per_piece_gms = 0
 			
-			# Total Scrap Expected (Kg) = (Scrap per piece × Qty Received) ÷ 1000
-			# Example: (0.43 × 9287) / 1000 = 3.993 kg
-			if self.scrap_expected_per_piece_gms and self.qty_received_nos:
-				self.total_scrap_expected_kg = round((self.scrap_expected_per_piece_gms * self.qty_received_nos) / 1000, 3)
+			# Total Scrap Expected (Kg) = (Scrap per piece × Qty Despatched) ÷ 1000
+			# Example: (132.75 × 127) / 1000 = 16.859 kg
+			if self.scrap_expected_per_piece_gms and self.qty_despatched_nos:
+				self.total_scrap_expected_kg = round((self.scrap_expected_per_piece_gms * self.qty_despatched_nos) / 1000, 3)
 			else:
 				self.total_scrap_expected_kg = 0
 			
@@ -172,7 +172,6 @@ class DeflashingReceiptEntry(Document):
 			
 			# Scrap Difference (Kg) = Actual Scrap - Total Scrap Expected
 			# Positive means more scrap than expected, negative means less
-			# Example: 4.009 - 3.998 = 0.011 kg (0.011 kg more scrap than expected)
 			self.scrap_difference_kg = round((self.actual_scrap_kg or 0) - (self.total_scrap_expected_kg or 0), 3)
 			
 		except Exception as e:
