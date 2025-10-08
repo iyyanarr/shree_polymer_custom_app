@@ -1,3 +1,1 @@
 shree_polymer_custom_app.patches.restore_batch_custom_permissions
-shree_polymer_custom_app.patches.backfill_deflashing_despatch_qty_in_nos
-shree_polymer_custom_app.patches.backfill_deflashing_receipt_entry_fields

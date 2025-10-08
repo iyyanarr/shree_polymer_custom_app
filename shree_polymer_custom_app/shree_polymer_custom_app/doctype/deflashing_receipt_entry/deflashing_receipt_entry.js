@@ -39,7 +39,42 @@ frappe.ui.form.on('Deflashing Receipt Entry', {
 		
 		if(!frm.doc.product_weight && frm.doc.docstatus == 1){
 			frm.set_df_property("product_weight", "hidden", 1)
-		}
+			}
+		
+		// Add CSS styling for percentage fields
+		frm.events.apply_percentage_field_styling(frm);
+	},
+	apply_percentage_field_styling: function(frm) {
+		// Apply red color styling to the two percentage fields
+		setTimeout(() => {
+			// Style for Difference (Nos) Percentage
+			if (frm.fields_dict.difference_nos_percentage) {
+				$(frm.fields_dict.difference_nos_percentage.wrapper).find('.control-value').css({
+					'color': '#d32f2f',
+					'font-weight': '600',
+					'font-size': '14px'
+				});
+				$(frm.fields_dict.difference_nos_percentage.wrapper).find('input').css({
+					'color': '#d32f2f',
+					'font-weight': '600',
+					'font-size': '14px'
+				});
+			}
+			
+			// Style for Difference (Kg) Percentage
+			if (frm.fields_dict.difference_kg_percentage) {
+				$(frm.fields_dict.difference_kg_percentage.wrapper).find('.control-value').css({
+					'color': '#d32f2f',
+					'font-weight': '600',
+					'font-size': '14px'
+				});
+				$(frm.fields_dict.difference_kg_percentage.wrapper).find('input').css({
+					'color': '#d32f2f',
+					'font-weight': '600',
+					'font-size': '14px'
+				});
+			}
+		}, 300);
 	},
 	"scan_lot_number": (frm) => {
 		if ((frm.doc.scan_lot_number && frm.doc.scan_lot_number != undefined) && (frm.doc.scan_deflashing_vendor && frm.doc.scan_deflashing_vendor != undefined)){

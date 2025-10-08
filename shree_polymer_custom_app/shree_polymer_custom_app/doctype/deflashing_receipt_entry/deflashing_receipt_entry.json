@@ -36,12 +36,14 @@
   "qty_despatched_nos",
   "qty_received_nos",
   "difference_nos",
+  "difference_nos_percentage",
   "section_break_scrap_tracking",
   "scrap_expected_per_piece_gms",
   "total_scrap_expected_kg",
   "column_break_scrap",
   "actual_scrap_kg",
   "scrap_difference_kg",
+  "difference_kg_percentage",
   "amended_from"
  ],
  "fields": [
@@ -245,6 +247,12 @@
    "read_only": 1
   },
   {
+   "fieldname": "difference_nos_percentage",
+   "fieldtype": "Float",
+   "label": "Difference (Nos) Percentage",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_scrap_tracking",
    "fieldtype": "Section Break",
    "label": "Scrap Tracking"
@@ -275,6 +283,12 @@
    "fieldname": "scrap_difference_kg",
    "fieldtype": "Float",
    "label": "Scrap Difference (kg)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "difference_kg_percentage",
+   "fieldtype": "Float",
+   "label": "Difference (kg) Percentage",
    "read_only": 1
   }
  ],
