@@ -132,10 +132,10 @@ class DeflashingReceiptEntry(Document):
 					# Positive means more received than despatched, negative means less received
 					self.difference_nos = (self.qty_received_nos or 0) - (self.qty_despatched_nos or 0)
 					
-					# Difference (Nos) Percentage = Difference (Nos) / Qty Despatched (Nos)
-					# This shows the ratio of difference relative to despatched quantity
+					# Difference (Nos) Percentage = (Difference (Nos) / Qty Despatched (Nos)) × 100
+					# This shows the percentage of difference relative to despatched quantity
 					if self.qty_despatched_nos and self.qty_despatched_nos != 0:
-						self.difference_nos_percentage = flt((abs(self.difference_nos) / self.qty_despatched_nos), 3)
+						self.difference_nos_percentage = flt((abs(self.difference_nos) / self.qty_despatched_nos) * 100, 3)
 					else:
 						self.difference_nos_percentage = 0
 					
@@ -190,10 +190,10 @@ class DeflashingReceiptEntry(Document):
 			# Formula: scrap_difference = actual_scrap - total_scrap_expected
 			self.scrap_difference_kg = round((self.actual_scrap_kg or 0) - (self.total_scrap_expected_kg or 0), 3)
 			
-			# Difference (Kg) Percentage = Difference (Kg) / Total Scrap Expected (Kg)
-			# This shows the ratio of scrap difference relative to expected scrap
+			# Difference (Kg) Percentage = (Difference (Kg) / Total Scrap Expected (Kg)) × 100
+			# This shows the percentage of scrap difference relative to expected scrap
 			if self.total_scrap_expected_kg and self.total_scrap_expected_kg != 0:
-				self.difference_kg_percentage = flt((abs(self.scrap_difference_kg) / self.total_scrap_expected_kg), 2)
+				self.difference_kg_percentage = flt((abs(self.scrap_difference_kg) / self.total_scrap_expected_kg) * 100, 3)
 			else:
 				self.difference_kg_percentage = 0
 			
