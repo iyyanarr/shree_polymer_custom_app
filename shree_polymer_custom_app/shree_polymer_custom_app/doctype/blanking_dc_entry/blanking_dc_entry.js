@@ -62,7 +62,49 @@ frappe.ui.form.on('Blanking DC Entry', {
 		frm.events.view_stock_entry(frm)
 		if(frm.doc.docstatus == 1){
 			frm.set_df_property("blanking_entry_section","hidden",1)
-		}
+		 }
+		
+		// Set query filter for mould_ref based on t_item_to_produce and mould_status
+		frm.set_query("mould_ref", function() {
+			console.log("Mould Ref Query - t_item_to_produce:", frm.doc.t_item_to_produce);
+			console.log("Mould Ref Query - item_produced:", frm.doc.item_produced);
+			
+			// Use t_item_to_produce if available, otherwise use item_produced
+			let item_ref = frm.doc.t_item_to_produce || frm.doc.item_produced;
+			
+			if(item_ref) {
+				return {
+					filters: {
+						'spp_ref': item_ref,
+						'mould_status': 'Active'
+					}
+				};
+			}
+			return {
+				filters: {
+					'mould_status': 'Active'
+				}
+			};
+		});
+		
+		// Set query filter for mould_ref in child table
+		frm.set_query("mould_ref", "items", function(doc, cdt, cdn) {
+			let row = locals[cdt][cdn];
+			if(row.t_item_to_produce) {
+				return {
+					filters: {
+						'spp_ref': row.t_item_to_produce,
+						'mould_status': 'Active'
+					}
+				};
+			}
+			return {
+				filters: {
+					'mould_status': 'Active'
+				}
+			};
+		});
+		
 		 frm.set_query("employee", function() {
 	        return {
 	        	"query":"shree_polymer_custom_app.shree_polymer_custom_app.api.get_process_based_employess",
@@ -105,6 +147,10 @@ frappe.ui.form.on('Blanking DC Entry', {
 		if(frm.doc.docstatus == 0){
 		frm.trigger('add_html')
 		}
+	},
+	t_item_to_produce: function(frm) {
+		// Clear mould_ref when t_item_to_produce changes
+		frm.set_value('mould_ref', '');
 	},
 	"scan_clip":function(frm){
 		var scan_clip = frm.doc.scan_clip;
@@ -333,6 +379,7 @@ frappe.ui.form.on('Blanking DC Entry', {
 				var row = frappe.model.add_child(frm.doc, "Blanking DC Item", "items");
 	    		// row.item_produced = frm.doc.item_produced;
 				row.t_item_to_produce = frm.doc.t_item_to_produce;
+				row.mould_ref = frm.doc.mould_ref;
 	    		row.scanned_item = frm.doc.scanned_item;
 	    		row.spp_batch_number = frm.doc.spp_batch_number;
 	    		row.batch_no = frm.doc.batch_no;
@@ -348,6 +395,7 @@ frappe.ui.form.on('Blanking DC Entry', {
 	    		// frm.set_value("item_produced","");
 				frm.set_value("t_item_to_produce","");
 				frm.set_value("item_to_produce","");
+				frm.set_value("mould_ref","");
 	    		frm.set_value("scanned_item","");
 				frm.set_value("mix_barcode","");
 	    		frm.set_value("spp_batch_number","");
@@ -392,6 +440,7 @@ frappe.ui.form.on('Blanking DC Entry', {
 			var row = frappe.model.add_child(frm.doc, "Blanking DC Item", "items");
     		// row.item_produced = frm.doc.item_produced;
 			row.t_item_to_produce = frm.doc.t_item_to_produce;
+			row.mould_ref = frm.doc.mould_ref;
     		row.scanned_item = frm.doc.scanned_item;
     		row.spp_batch_number = frm.doc.spp_batch_number;
     		row.batch_no = frm.doc.batch_no;
@@ -406,6 +455,7 @@ frappe.ui.form.on('Blanking DC Entry', {
     		frm.refresh_field('items');
     		// frm.set_value("item_produced","");
 			frm.set_value("t_item_to_produce","");
+			frm.set_value("mould_ref","");
     		frm.set_value("scanned_item","");
 			frm.set_value("mix_barcode","");
     		frm.set_value("spp_batch_number","");
@@ -421,5 +471,13 @@ frappe.ui.form.on('Blanking DC Entry', {
     		frm.set_value("scan_clip","");
 
 		}
+	}
+});
+
+frappe.ui.form.on('Blanking DC Item', {
+	t_item_to_produce: function(frm, cdt, cdn) {
+		let row = locals[cdt][cdn];
+		// Clear mould_ref when t_item_to_produce changes
+		frappe.model.set_value(cdt, cdn, 'mould_ref', '');
 	}
 });

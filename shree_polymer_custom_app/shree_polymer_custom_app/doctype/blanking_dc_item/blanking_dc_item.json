@@ -15,6 +15,7 @@
   "stock_entry_reference",
   "column_break_6",
   "t_item_to_produce",
+  "mould_ref",
   "batch_no",
   "gross_weight",
   "net_weight",
@@ -131,6 +132,13 @@
    "label": "Item To Produce",
    "options": "Item",
    "read_only": 1
+  },
+  {
+   "fieldname": "mould_ref",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Mould Ref",
+   "options": "Mould Specification"
   }
  ],
  "index_web_pages_for_search": 1,

@@ -30,6 +30,7 @@
   "column_break_2",
   "mix_barcode",
   "t_item_to_produce",
+  "mould_ref",
   "bin_code",
   "asset_name",
   "bin_weight",
@@ -215,6 +216,12 @@
    "hidden": 1,
    "label": "Item To Produce",
    "read_only": 1
+  },
+  {
+   "fieldname": "mould_ref",
+   "fieldtype": "Link",
+   "label": "Mould Ref",
+   "options": "Mould Specification"
   },
   {
    "fieldname": "column_break_didkn",
