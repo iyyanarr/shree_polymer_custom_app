@@ -160,6 +160,12 @@ class MouldingProductionEntry(Document):
             if qty_val_resp.get('status') == 'success':
                 vcd = validate_comsumption_details(self)
                 if vcd.get('status') == 'success':
+                    # 🆕 NEW VALIDATION: Check actual warehouse stock before creating Stock Entry
+                    stock_val = validate_actual_warehouse_stock(self)
+                    if stock_val.get('status') == 'failed':
+                        frappe.throw(stock_val.get('message'))
+                    
+                    # Only proceed if stock validation passed
                     ins_info = frappe.db.get_value("Inspection Entry", {"lot_no": self.scan_lot_number, "docstatus": 1, "inspection_type": "Line Inspection"}, [
                                                    "stock_entry_reference", "name"], as_dict=1)
                     if ins_info:
@@ -547,6 +553,154 @@ def validate_mat_qty(self):
         frappe.log_error(title="error in validate mat qty",
                          message=frappe.get_traceback())
         return {"status": "failed", "message": "Something went wrong, not able to validate <b>Produced Qty</b>..!"}
+
+
+def validate_actual_warehouse_stock(self):
+    """
+    CONDITION 2: Validate that each batch has sufficient stock in the warehouse
+    
+    This function:
+    1. Reads calculated consumption details from validate_comsumption_details()
+    2. Queries actual warehouse stock for each batch
+    3. Compares required qty vs available qty
+    4. Returns error if insufficient stock found
+    
+    NOTE: This is a READ-ONLY validation function
+    - Does NOT create any documents
+    - Does NOT modify any data
+    - Does NOT trigger any automated flows
+    - Only STOPS submission if stock is insufficient
+    """
+    try:
+        import json
+        
+        # Step 1: Parse batch details (already calculated by validate_comsumption_details)
+        if isinstance(self.updated_batch_details, str):
+            batch_details = json.loads(self.updated_batch_details)
+        else:
+            batch_details = self.updated_batch_details
+        
+        # Step 2: Get source warehouse from Work Order
+        work_order = frappe.db.get_value("Job Card", self.job_card, "work_order")
+        if not work_order:
+            return {"status": "failed", "message": "Work Order not found for Job Card"}
+        
+        source_warehouse = frappe.db.get_value("Work Order", work_order, "source_warehouse")
+        if not source_warehouse:
+            return {"status": "failed", "message": f"Source warehouse not found in Work Order {work_order}"}
+        
+        # Step 3: Consolidate consumption by batch (handle multiple bins with same batch)
+        batch_consumption = {}
+        for batch in batch_details:
+            # Only check batches that will be consumed
+            if not batch.get('is__consumed'):
+                continue
+            
+            # Skip balance bins (already validated during scanning)
+            if batch.get('is_balance_bin'):
+                continue
+            
+            batch_no = batch.get('batch_no__')
+            consumed_qty = flt(batch.get('consumed__qty'), 3)
+            
+            # Skip if no batch or no consumption
+            if not batch_no or consumed_qty <= 0:
+                continue
+            
+            # Consolidate consumption for same batch from multiple bins
+            if batch_no in batch_consumption:
+                batch_consumption[batch_no]['consumed_qty'] = flt(
+                    batch_consumption[batch_no]['consumed_qty'] + consumed_qty, 3
+                )
+            else:
+                batch_consumption[batch_no] = {
+                    'batch_no': batch_no,
+                    'compound': batch.get('compound'),
+                    'consumed_qty': consumed_qty,
+                    'spp_batch_number': batch.get('spp_batch_number')
+                }
+        
+        # Step 4: Check warehouse stock for each batch
+        shortages = []
+        for batch_no, batch_info in batch_consumption.items():
+            # Query actual warehouse stock (READ-ONLY)
+            stock_query = """
+                SELECT IBSB.qty as available_qty, IBSB.warehouse
+                FROM `tabItem Batch Stock Balance` IBSB
+                WHERE IBSB.batch_no = %(batch_no)s
+                AND IBSB.item_code = %(compound)s
+                AND IBSB.warehouse = %(warehouse)s
+            """
+            
+            stock_result = frappe.db.sql(stock_query, {
+                'batch_no': batch_no,
+                'compound': batch_info['compound'],
+                'warehouse': source_warehouse
+            }, as_dict=1)
+            
+            if not stock_result:
+                # No stock found for this batch in warehouse
+                shortages.append({
+                    'batch_no': batch_no,
+                    'spp_batch_number': batch_info.get('spp_batch_number', 'N/A'),
+                    'required': batch_info['consumed_qty'],
+                    'available': 0.0,
+                    'shortage': batch_info['consumed_qty']
+                })
+            else:
+                available_qty = flt(stock_result[0].available_qty, 3)
+                required_qty = flt(batch_info['consumed_qty'], 3)
+                
+                # Check if stock is insufficient
+                if available_qty < required_qty:
+                    shortages.append({
+                        'batch_no': batch_no,
+                        'spp_batch_number': batch_info.get('spp_batch_number', 'N/A'),
+                        'required': required_qty,
+                        'available': available_qty,
+                        'shortage': flt(required_qty - available_qty, 3)
+                    })
+        
+        # Step 5: Return result
+        if shortages:
+            # Format error message as HTML table
+            error_message = "<b>Insufficient Stock in Warehouse</b><br><br>"
+            error_message += "<table border='1' style='border-collapse: collapse; width: 100%; font-size: 13px;'>"
+            error_message += "<thead><tr style='background-color: #f8f9fa;'>"
+            error_message += "<th style='padding: 8px; text-align: left; border: 1px solid #dee2e6;'>Batch No</th>"
+            error_message += "<th style='padding: 8px; text-align: left; border: 1px solid #dee2e6;'>SPP Batch No</th>"
+            error_message += "<th style='padding: 8px; text-align: right; border: 1px solid #dee2e6;'>Required (Kg)</th>"
+            error_message += "<th style='padding: 8px; text-align: right; border: 1px solid #dee2e6;'>Available (Kg)</th>"
+            error_message += "<th style='padding: 8px; text-align: right; border: 1px solid #dee2e6;'>Shortage (Kg)</th>"
+            error_message += "</tr></thead><tbody>"
+            
+            for shortage in shortages:
+                error_message += "<tr>"
+                error_message += f"<td style='padding: 8px; border: 1px solid #dee2e6;'>{shortage['batch_no']}</td>"
+                error_message += f"<td style='padding: 8px; border: 1px solid #dee2e6;'>{shortage['spp_batch_number']}</td>"
+                error_message += f"<td style='padding: 8px; text-align: right; border: 1px solid #dee2e6;'>{shortage['required']:.3f}</td>"
+                error_message += f"<td style='padding: 8px; text-align: right; border: 1px solid #dee2e6;'>{shortage['available']:.3f}</td>"
+                error_message += f"<td style='padding: 8px; text-align: right; border: 1px solid #dee2e6; color: #dc3545; font-weight: bold;'>{shortage['shortage']:.3f}</td>"
+                error_message += "</tr>"
+            
+            error_message += "</tbody></table>"
+            error_message += f"<br><b>Source Warehouse:</b> {source_warehouse}"
+            error_message += "<br><br><i>Please ensure sufficient stock is available before submitting.</i>"
+            
+            return {"status": "failed", "message": error_message}
+        
+        # All batches have sufficient stock
+        return {"status": "success"}
+        
+    except Exception as e:
+        frappe.log_error(
+            title="validate_actual_warehouse_stock - Error",
+            message=f"Error validating warehouse stock: {str(e)}\n{frappe.get_traceback()}"
+        )
+        return {
+            "status": "failed",
+            "message": "Error validating warehouse stock. Please contact system administrator."
+        }
 
 
 def validate_shell(self):
