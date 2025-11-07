@@ -188,115 +188,150 @@ class MouldingProductionEntry(Document):
             frappe.throw(cavity_val.get('message'))
 
     def manual_on_submit(self):
-        print("\n=== Starting Manual Submit Process ===")
-        print(f"Document ID: {self.name}")
-        print(f"Stock Entry Reference: {self.stock_entry_reference}")
-
-        if self.stock_entry_reference:
+        """
+        ⚠️ DEPRECATED METHOD - Stock Entry now submits immediately in make_stock_entry()
+        
+        This method is kept for:
+        1. Backward compatibility during migration period
+        2. Emergency recovery if Stock Entry is somehow still draft
+        3. Handling old Lot Inspections that still trigger this method
+        
+        NEW FLOW: Stock Entry is submitted immediately when Moulding Production Entry is submitted.
+        This eliminates the 24-54 hour delay and ensures real-time inventory recording.
+        """
+        
+        frappe.log_error(
+            title="⚠️ DEPRECATED: manual_on_submit Called",
+            message=f"""
+            manual_on_submit() was called for Moulding Production Entry: {self.name}
+            
+            This function is DEPRECATED as of November 2025.
+            Stock Entry should already be submitted immediately during Moulding Production submission.
+            
+            Details:
+            - Moulding Production Entry: {self.name}
+            - Stock Entry Reference: {self.stock_entry_reference}
+            - Called at: {now()}
+            
+            This may indicate:
+            - Old Lot Inspection triggering deprecated flow
+            - Stock Entry submission failed earlier (needs investigation)
+            - Migration not yet complete
+            
+            Action: Checking Stock Entry status and recovering if needed...
+            """
+        )
+        
+        if not self.stock_entry_reference:
+            frappe.log_error(
+                title="❌ manual_on_submit - No Stock Entry Reference",
+                message=f"No Stock Entry Reference found for Moulding Production Entry {self.name}"
+            )
+            frappe.throw("Stock Entry Reference not found in <b>Moulding Production Entry</b>")
+            return
+        
+        # Check current Stock Entry status
+        se_status = frappe.db.get_value("Stock Entry", self.stock_entry_reference, "docstatus")
+        
+        if se_status == 1:
+            # Already submitted - this is the expected state with new flow
+            frappe.log_error(
+                title="✅ manual_on_submit - Stock Entry Already Submitted",
+                message=f"""
+                Stock Entry {self.stock_entry_reference} is already submitted (docstatus=1).
+                This is the EXPECTED state with the new immediate submission flow.
+                
+                No action needed. The old trigger from Lot Inspection can be safely ignored.
+                """
+            )
+            print(f"\n✅ Stock Entry {self.stock_entry_reference} already submitted. No action needed.")
+            return
+            
+        elif se_status == 0:
+            # Still draft - this is UNEXPECTED, perform emergency recovery
+            frappe.log_error(
+                title="⚠️ EMERGENCY RECOVERY: Submitting Draft Stock Entry",
+                message=f"""
+                Stock Entry {self.stock_entry_reference} was found in DRAFT state (docstatus=0).
+                This is UNEXPECTED with the new flow and indicates a problem.
+                
+                Performing emergency recovery - submitting Stock Entry now...
+                
+                Investigation needed:
+                - Why did immediate submission fail?
+                - Check error logs from make_stock_entry()
+                - Verify Moulding Production Entry submission process
+                """
+            )
+            
+            print(f"\n⚠️ EMERGENCY RECOVERY: Stock Entry {self.stock_entry_reference} is still draft")
+            print("Attempting to submit now...")
+            
             try:
-                print(f"\nFetching Stock Entry: {self.stock_entry_reference}")
-                exe__stentry = frappe.get_doc(
-                    "Stock Entry", self.stock_entry_reference)
-                print(
-                    f"Stock Entry Status: docstatus={exe__stentry.docstatus}")
-
-                # Check for existing Serial and Batch Bundles
-                print("\nChecking existing Serial and Batch Bundles:")
-                for idx, item in enumerate(exe__stentry.items, 1):
-                    print(f"\nItem {idx}:")
-                    print(f"Item Code: {item.item_code}")
-                    print(f"Serial No: {item.serial_no}")
-                    print(f"Batch No: {item.batch_no}")
-                    print(
-                        f"Serial and Batch Bundle: {item.serial_and_batch_bundle}")
-
-                    # Check if bundle already exists
-                    if item.serial_and_batch_bundle:
-                        existing_bundle = frappe.db.exists(
-                            "Serial and Batch Bundle",
-                            item.serial_and_batch_bundle
-                        )
-                        print(f"Existing bundle found: {existing_bundle}")
-
-                        if existing_bundle:
-                            # Clear the serial and batch fields if bundle exists
-                            print(
-                                f"Clearing serial and batch fields for item {item.item_code}")
-                            item.serial_no = None
-                            item.batch_no = None
-                            print("Fields cleared")
-
+                exe__stentry = frappe.get_doc("Stock Entry", self.stock_entry_reference)
+                
                 # Update use_serial_batch_fields for all items
-                print("\nUpdating use_serial_batch_fields:")
                 for item in exe__stentry.items:
-                    previous_value = item.use_serial_batch_fields
                     item.use_serial_batch_fields = 1
-                    print(
-                        f"Item {item.item_code}: {previous_value} -> {item.use_serial_batch_fields}")
-
-                # Submit stock entry if needed
-                if exe__stentry.docstatus == 0 and exe__stentry.docstatus != 2 and exe__stentry.docstatus != 1:
-                    print("\nPreparing to submit Stock Entry...")
-                    print("Current docstatus:", exe__stentry.docstatus)
-                    exe__stentry.docstatus = 1
-
-                    try:
-                        print("Saving stock entry...")
-                        exe__stentry.save(ignore_permissions=True)
-                        print("Stock Entry submitted successfully")
-                    except Exception as save_error:
-                        print(f"Error during save: {str(save_error)}")
-                        raise
-
-                # Update moulding date
+                
+                # Submit Stock Entry
+                exe__stentry.docstatus = 1
+                exe__stentry.save(ignore_permissions=True)
+                
+                # Update posting date
                 if self.moulding_date:
-                    print(f"\nUpdating posting date to: {self.moulding_date}")
-                    update_query = f"""
-						UPDATE `tabStock Entry` 
-						SET posting_date = '{self.moulding_date}' 
-						WHERE name = '{exe__stentry.name}'
-					"""
-                    frappe.db.sql(update_query)
-                    print("Posting date updated successfully")
-
-                print("\nSubmitting inspection entry...")
+                    frappe.db.sql(
+                        f"UPDATE `tabStock Entry` SET posting_date = '{self.moulding_date}' WHERE name = '{exe__stentry.name}'"
+                    )
+                
+                # Submit inspection entries
                 submit_inspection_entry(self, exe__stentry)
-                print("Inspection entry submitted successfully")
-
+                
+                frappe.log_error(
+                    title="✅ Emergency Recovery Successful",
+                    message=f"Stock Entry {self.stock_entry_reference} submitted successfully via emergency recovery."
+                )
+                
+                print(f"✅ Emergency recovery complete. Stock Entry {self.stock_entry_reference} submitted.")
+                
             except Exception as e:
                 error_msg = f"""
-	====== Error in Manual Submit ======
-	Document: {self.name}
-	Stock Entry: {self.stock_entry_reference}
-	Error: {str(e)}
-	Traceback: {frappe.get_traceback()}
-	=================================
-	"""
-                print(error_msg)
-
-                # Check the state of items before rollback
-                print("\nCurrent state of items before rollback:")
-                for item in exe__stentry.items:
-                    print(f"""
-	Item: {item.item_code}
-	Serial No: {item.serial_no}
-	Batch No: {item.batch_no}
-	Bundle: {item.serial_and_batch_bundle}
-	Use Serial Batch Fields: {item.use_serial_batch_fields}
-	""")
-
-                manual_rollback_entries(
-                    self, "Something went wrong not able to submit stock entries..!")
+                ❌ Emergency Recovery FAILED
+                
+                Document: {self.name}
+                Stock Entry: {self.stock_entry_reference}
+                Error: {str(e)}
+                Traceback: {frappe.get_traceback()}
+                """
+                
                 frappe.log_error(
-                    title=f"Moulding production entry stock submission failed - {self.name}",
+                    title="❌ Emergency Recovery Failed",
                     message=error_msg
                 )
+                
+                print(error_msg)
+                
+                manual_rollback_entries(
+                    self, "Emergency recovery failed. Unable to submit Stock Entry."
+                )
+                raise
+                
+        elif se_status == 2:
+            # Cancelled - cannot recover
+            frappe.log_error(
+                title="❌ manual_on_submit - Stock Entry Cancelled",
+                message=f"Stock Entry {self.stock_entry_reference} is cancelled (docstatus=2). Cannot recover."
+            )
+            frappe.throw(f"Stock Entry {self.stock_entry_reference} is cancelled and cannot be recovered.")
+            return
+        
         else:
-            print(f"No Stock Entry Reference found for document: {self.name}")
-            frappe.throw(
-                "Stock Entry Reference not found in <b>Moulding Production Entry</b>")
-
-        print("\n=== Manual Submit Process Completed ===")
+            # Unknown state
+            frappe.log_error(
+                title="❌ manual_on_submit - Unknown Stock Entry State",
+                message=f"Stock Entry {self.stock_entry_reference} has unknown docstatus: {se_status}"
+            )
+            frappe.throw(f"Stock Entry has unknown status: {se_status}")
 
     def on_cancel(self):
         try:
@@ -767,11 +802,10 @@ def make_stock_entry(self):
             jc.number_of_lifts = self.number_of_lifts
             jc.no_of_running_cavities = self.no_of_running_cavities
             jc.cure_time = self.curing_time
-            # jc.shift_supervisor = self.supervisor_id
-            # jc.docstatus = 1
             if self.special_instructions:
                 jc.remarks = self.special_instructions
             jc.save(ignore_permissions=True)
+            
             spp_settings = frappe.get_single("SPP Settings")
             if not spp_settings.from_location:
                 frappe.throw(
@@ -787,18 +821,17 @@ def make_stock_entry(self):
                     frappe.db.set_value("Work Order Operation", operation.name, "completed_qty", flt(
                         flt((self.weight + self.line_rejection_qty), 3), 3))
                     frappe.db.commit()
+            
             stock_entry = frappe.new_doc("Stock Entry")
             stock_entry.purpose = "Manufacture"
             stock_entry.work_order = work_order_id
             stock_entry.company = work_order.company
             stock_entry.from_bom = 1
             stock_entry.naming_series = "MAT-STE-.YYYY.-"
-            """ For identifying procees name to change the naming series the field is used """
             naming_status, naming_series = get_stock_entry_naming_series(
                 spp_settings, "Moulding Entry")
             if naming_status:
                 stock_entry.naming_series = naming_series
-            """ End """
             stock_entry.bom_no = work_order.bom_no
             stock_entry.set_posting_time = 0
             stock_entry.use_multi_level_bom = work_order.use_multi_level_bom
@@ -811,11 +844,9 @@ def make_stock_entry(self):
                 )
             stock_entry.from_warehouse = work_order.source_warehouse
             stock_entry.to_warehouse = work_order.fg_warehouse
-            # d_spp_batch_no = get_spp_batch_date(work_order.production_item)
             bcode_resp = generate_barcode(self.scan_lot_number)
-            # for x in work_order.required_items:
-            # 	stock_entry.append("items",{
             resp__s = append_source_details(stock_entry, self, work_order)
+            
             if resp__s:
                 stock_entry.append("items", {
                     "item_code": work_order.production_item,
@@ -825,12 +856,9 @@ def make_stock_entry(self):
                     "uom": "Kg",
                     "conversion_factor_uom": 1,
                     "is_finished_item": 1,
-                    # "transfer_qty":flt(flt((self.weight + self.line_rejection_qty),3),3),
                     "transfer_qty": flt(flt(self.weight, 3), 3),
-                    # "qty":flt(flt((self.weight + self.line_rejection_qty),3),3),
                     "qty": flt(flt(self.weight, 3), 3),
                     "use_serial_batch_fields": 1,
-                    # "spp_batch_number":d_spp_batch_no,
                     "spp_batch_number": self.scan_lot_number,
                     "mix_barcode": bcode_resp.get("barcode_text"),
                     "barcode_attach": bcode_resp.get("barcode"),
@@ -838,36 +866,65 @@ def make_stock_entry(self):
                     "source_ref_document": self.doctype,
                     "source_ref_id": self.name,
                     "batch_no": batch__no,
-                    # For avaoiding the child table only submitted issue which means the parent docstatus = 0 but child docstatus = 1
                     "docstatus": 0
                 })
                 stock_entry.blanking_dc_no = self.name
                 stock_entry.insert(ignore_permissions=True)
-                """ Update posting date and time """
+                
+                # Update posting date and time
                 frappe.db.sql(
                     f" UPDATE `tabStock Entry` SET posting_date = '{self.moulding_date}' WHERE name = '{stock_entry.name}' ")
-                """ End """
-                """ Update stock entry reference """
+                
+                # Update stock entry reference
                 frappe.db.set_value(self.doctype, self.name,
                                     "stock_entry_reference", stock_entry.name)
                 frappe.db.commit()
-                """ End """
-                # sub_entry = frappe.get_doc("Stock Entry",stock_entry.name)
-                # sub_entry.docstatus = 1
-                # sub_entry.save(ignore_permissions=True)
+                
+                # 🆕 NEW CODE: Submit Stock Entry immediately
+                frappe.log_error(
+                    title="Moulding Production - Immediate Submission Started",
+                    message=f"Starting immediate submission for Stock Entry {stock_entry.name} at {now()}"
+                )
+                
+                try:
+                    # Fetch the stock entry again to submit it
+                    se_to_submit = frappe.get_doc("Stock Entry", stock_entry.name)
+                    
+                    # Update use_serial_batch_fields for all items
+                    for item in se_to_submit.items:
+                        item.use_serial_batch_fields = 1
+                    
+                    # Submit Stock Entry immediately
+                    se_to_submit.docstatus = 1
+                    se_to_submit.save(ignore_permissions=True)
+                    
+                    frappe.log_error(
+                        title="✅ Stock Entry Submitted Successfully",
+                        message=f"Stock Entry {stock_entry.name} submitted immediately for Moulding Production {self.name} at {now()}"
+                    )
+                    
+                    # Now update inspection stock entries with batch number and submit them
+                    submit_inspection_entry(self, se_to_submit)
+                    
+                    frappe.log_error(
+                        title="✅ Inspection Entries Updated",
+                        message=f"All inspection entries updated and submitted for lot {self.scan_lot_number} at {now()}"
+                    )
+                    
+                except Exception as submit_error:
+                    frappe.log_error(
+                        title="❌ Stock Entry Immediate Submission Failed",
+                        message=f"Error submitting Stock Entry {stock_entry.name}: {str(submit_error)}\n{frappe.get_traceback()}"
+                    )
+                    # Rollback and re-raise
+                    frappe.db.rollback()
+                    raise
+                
+                # Continue with existing code
                 ref_res, batch__no = generate_batch_no(
                     batch_id=batch__no, reference_doctype="Stock Entry", reference_name=stock_entry.name)
                 if ref_res:
                     update_bins(self, resp__s, spp_settings)
-                    # serial_no = 1
-                    # serial_nos = frappe.db.get_all("SPP Batch Serial",filters={"posted_date":getdate()},fields=['serial_no'],order_by="serial_no DESC")
-                    # if serial_nos:
-                    # 	serial_no = serial_nos[0].serial_no + 1
-                    # sl_no = frappe.new_doc("SPP Batch Serial")
-                    # sl_no.posted_date = getdate()
-                    # sl_no.compound_code = work_order.production_item
-                    # sl_no.serial_no = serial_no
-                    # sl_no.insert(ignore_permissions=True)
                     frappe.db.commit()
                     return {"status": "success"}
                 else:
@@ -879,8 +936,8 @@ def make_stock_entry(self):
     except Exception as e:
         frappe.db.rollback()
         frappe.log_error(message=frappe.get_traceback(),
-                         title="Moulding SE Error")
-        return {"status": "failed", "message": "Stock Entry Creation Failed"}
+                         title="Moulding SE Error - Immediate Submission Failed")
+        return {"status": "failed", "message": f"Stock Entry Creation/Submission Failed: {str(e)}"}
 
 
 def update_bins(self, resp__s, spp_settings):

@@ -156,18 +156,127 @@ def rollback_vs_pdir(self,lrt = None):
 		lrt.run_method('rollback_____')
 			
 def submit_moulding_entry(self):
+	"""
+	⚠️ DEPRECATED FUNCTION - No longer triggers Moulding Production Entry submission
+	
+	MIGRATION NOTES (November 2025):
+	================================
+	OLD FLOW (Two-Stage):
+	1. Moulding Production Entry on_submit() → Creates DRAFT Stock Entry
+	2. Line Inspection + Lot Inspection both submitted
+	3. This function (submit_moulding_entry) triggers manual_on_submit()
+	4. manual_on_submit() submits Stock Entry + updates inspections
+	
+	NEW FLOW (Single-Stage):
+	1. Moulding Production Entry on_submit() → Creates AND SUBMITS Stock Entry immediately
+	2. Batch number (T12345) exists in database immediately
+	3. Inspections query existing batch number independently
+	4. This function NO LONGER triggers Moulding Production updates
+	
+	REASON FOR DEPRECATION:
+	- Stock Entry is now submitted immediately (within 10-15 seconds)
+	- Batch number is available immediately for all inspections
+	- No need to wait 24-54 hours for Lot Inspection to trigger submission
+	- Inventory recorded in real-time on correct dates
+	
+	This function is kept for:
+	1. Backward compatibility during migration period
+	2. Logging when old flow is still being triggered
+	3. Emergency handling of stuck draft Stock Entries
+	"""
+	
 	try:
-		exe_insp = frappe.db.sql(f" SELECT name FROM `tabInspection Entry` WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Lot Inspection') AND docstatus = 1 AND lot_no='{self.lot_no}' ",as_dict = 1)	
-		if exe_insp and len(exe_insp)>=2:
-			rept_entry = frappe.db.get_all("Moulding Production Entry",{"scan_lot_number":self.lot_no,"docstatus":1},["name"])
+		frappe.log_error(
+			title="⚠️ DEPRECATED: submit_moulding_entry Called",
+			message=f"""
+			submit_moulding_entry() was called from Inspection Entry: {self.name}
+			
+			This function is DEPRECATED as of November 2025.
+			Moulding Production Entry Stock Entry should already be submitted.
+			
+			Details:
+			- Inspection Entry: {self.name}
+			- Inspection Type: {self.inspection_type}
+			- Lot Number: {self.lot_no}
+			- Called at: {now()}
+			
+			This indicates:
+			- Old Lot Inspection triggering deprecated flow
+			- OR Moulding Production Stock Entry submission failed earlier
+			
+			Action: Checking if Moulding Production Stock Entry needs recovery...
+			"""
+		)
+		
+		# Check if this is Line Inspection or Lot Inspection
+		exe_insp = frappe.db.sql(f" SELECT name FROM `tabInspection Entry` WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Lot Inspection') AND docstatus = 1 AND lot_no='{self.lot_no}' ",as_dict = 1)
+		
+		if exe_insp and len(exe_insp) >= 2:
+			# Both Line and Lot Inspection exist
+			rept_entry = frappe.db.get_all("Moulding Production Entry", {"scan_lot_number": self.lot_no, "docstatus": 1}, ["name", "stock_entry_reference"])
+			
 			if rept_entry:
-				mould__prod = frappe.get_doc("Moulding Production Entry",rept_entry[0].name)
-				mould__prod.run_method("manual_on_submit")
+				# Check Stock Entry status
+				if rept_entry[0].stock_entry_reference:
+					se_status = frappe.db.get_value("Stock Entry", rept_entry[0].stock_entry_reference, "docstatus")
+					
+					if se_status == 1:
+						# Already submitted - this is EXPECTED with new flow
+						frappe.log_error(
+							title="✅ submit_moulding_entry - Stock Entry Already Submitted",
+							message=f"""
+							Stock Entry {rept_entry[0].stock_entry_reference} is already submitted (docstatus=1).
+							This is the EXPECTED state with the new immediate submission flow.
+							
+							No action needed. The trigger from Lot Inspection can be safely ignored.
+							"""
+						)
+						print(f"\n✅ Stock Entry already submitted. No action needed from Lot Inspection trigger.")
+						return
+						
+					elif se_status == 0:
+						# Still draft - UNEXPECTED, call emergency recovery
+						frappe.log_error(
+							title="⚠️ EMERGENCY: Moulding Production Stock Entry Still Draft",
+							message=f"""
+							Stock Entry {rept_entry[0].stock_entry_reference} is still DRAFT (docstatus=0).
+							This is UNEXPECTED and indicates immediate submission failed.
+							
+							Calling manual_on_submit() for emergency recovery...
+							"""
+						)
+						
+						print(f"\n⚠️ EMERGENCY: Stock Entry still draft. Attempting recovery via manual_on_submit()...")
+						
+						# Call the old flow as emergency recovery
+						mould_prod = frappe.get_doc("Moulding Production Entry", rept_entry[0].name)
+						mould_prod.run_method("manual_on_submit")
+						
+						frappe.log_error(
+							title="✅ Emergency Recovery Complete",
+							message=f"Emergency recovery completed for Moulding Production Entry {rept_entry[0].name}"
+						)
+						
+					else:
+						# Unknown state
+						frappe.log_error(
+							title="❌ submit_moulding_entry - Unknown Stock Entry State",
+							message=f"Stock Entry {rept_entry[0].stock_entry_reference} has unknown docstatus: {se_status}"
+						)
+						frappe.throw(f"Stock Entry has unknown status: {se_status}")
+				else:
+					# No stock entry reference found
+					frappe.log_error(
+						title="❌ submit_moulding_entry - No Stock Entry Reference",
+						message=f"Moulding Production Entry {rept_entry[0].name} has no stock_entry_reference"
+					)
+					frappe.throw("Stock Entry Reference not found in Moulding Production Entry")
 			else:
 				frappe.throw("There is no <b>Moulding Production Entry</b> found..!")
+				
 	except Exception:
-		frappe.log_error(title="submit_moulding_entry",message=frappe.get_traceback())
-		rollback_entries(self,"Moulding Production Entry Stock submission failed..!")
+		frappe.log_error(title="submit_moulding_entry - Error", message=frappe.get_traceback())
+		rollback_entries(self, "Moulding Production Entry Stock submission failed..!")
 
 def submit_deflash_receipt_entry(self):
 	try:
@@ -664,7 +773,7 @@ def validate_lot_number(batch_no,docname,inspection_type):
 						 			INNER JOIN `tabItem` I ON I.name=B.item  
 						 		WHERE 
 						 			BI.item_code=%(item_code)s AND B.is_active=1 AND 
-						 			I.default_bom=B.name LIMIT 1 """,{"item_code":check_lot_issue[0].production_item},as_dict = 1)
+						 			I.default_bom=B.name LIMIT 1 """,{"item_code":check_lot_issue[0].production_item},as_dict=1)
 					if bom:
 						bom__ = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM` B WHERE B.item=%(bom_item)s AND B.is_Active=1 """,{"bom_item":bom[0].item},as_dict=1)
 						if len(bom__) > 1:
@@ -693,7 +802,7 @@ def validate_lot_number(batch_no,docname,inspection_type):
 						""" End """
 					else:
 						return {"status":"Failed","message":f"BOM is not found for <b>Item to Produce</b>"}
-					""" End """ 
+					""" End """
 					user_name = frappe.db.get_value("User",frappe.session.user,"full_name")
 					item_batch_no = ""
 					st_details = frappe.db.sql(""" 
@@ -1171,7 +1280,7 @@ def check_vs_only_exists(batch_no,inspection_type):
 	# frappe.log_error("--lot_resp",lot_resp)
 	if lot_resp:
 		if lot_resp.get('status') == "success":
-			work_station__ = check_return_workstation(lot_resp.get('message').get('bom_no'),inspection_type)
+			work_station__ = check_return_workstation( lot_resp.get('message').get('bom_no'),inspection_type)
 			if work_station__ and work_station__.get('status') == 'success':
 				resp__msg = lot_resp
 				opera_con = f"  AND BP.operation NOT IN ('PDIR') "
@@ -1393,341 +1502,3 @@ def validate_inspector_barcode(b__code,inspection_type):
 		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.inspection_entry.inspection_entry.validate_inspector_barcode")
 		frappe.response.status = 'failed'
 		frappe.response.message = "Something went wrong."
-
-
-
-
-
-
-
-
-
-
-
-
-
-# def visual_pedir_resp(batch_no,inspection_type,bom_no):
-# 	rept_entry = frappe.db.get_all("Deflashing Receipt Entry",{"lot_number":batch_no,"docstatus":1},["stock_entry_reference"])
-# 	if rept_entry:
-# 		if not rept_entry[0].stock_entry_reference:
-# 			return {"status":"Failed","message":f"Stock Entry Reference not found in <b>Deflashing Receipt Entry</b> for the lot <b>{batch_no}</b>"}
-# 		else:
-# 			product_details = frappe.db.sql(f""" SELECT JC.work_order,E.employee_name as employee,SED.item_code as production_item,JC.batch_code,JC.workstation,SED.qty as total_completed_qty,SED.batch_no,SED.spp_batch_number FROM `tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE ON SE.name=SED.parent
-# 												INNER JOIN `tabJob Card` JC ON JC.work_order=SE.work_order LEFT JOIN `tabJob Card Time Log` LG ON LG.parent = JC.name 
-# 												LEFT JOIN `tabEmployee` E ON LG.employee = E.name WHERE SE.name='{rept_entry[0].stock_entry_reference}' AND SED.deflash_receipt_reference='{batch_no}' """,as_dict=1)
-# 			if product_details:
-# 				bom_uom_resp = check_uom_bom(product_details[0].production_item)
-# 				if bom_uom_resp.get('status') == "Success":
-# 					product_details[0]['bom_no'] = bom_uom_resp.get('bom')
-# 					product_details[0]['production_item'] = bom_uom_resp.get('item')
-# 					opera_con = "  AND BP.operation NOT IN ('PDIR','Final Visual Inspection') "
-# 					opeartion_exe = frappe.db.sql(""" SELECT BP.operation FROM `tabBOM Operation` BP INNER JOIN `tabBOM` B ON BP.parent = B.name WHERE B.is_default=1 AND B.is_active=1  AND B.name=%(bom)s {condition} """.format(condition = opera_con),{"bom":product_details[0]['bom_no']},as_dict=1)
-# 					if not opeartion_exe:
-# 						return {"status":"Failed","message":f"Operations not found in the BOM <b>{product_details[0]['bom_no']}</b>"}
-# 					else:
-# 						opt__type = frappe.db.sql(f""" SELECT DISTINCT operation_type FROM `tabLot Resource Tagging` WHERE scan_lot_no='{batch_no}' AND 
-# 													docstatus = 1 """,as_dict = 1)
-# 						if not opt__type:
-# 							return {"status":"Failed","message":f"Please complete the following operations:<br>&nbsp&nbsp<b>{','.join(k.operation for k in opeartion_exe)}</b>,<br>Before the start of operation <b>{inspection_type}</b>."}
-# 						else:
-# 							if len(opt__type) == len(opeartion_exe):
-# 								return {"status":"Success","message":product_details[0]}
-# 							else:
-# 								exe_operations = [x.operation_type for x in opt__type]
-# 								not_completed_oper = list(filter(lambda x : x.operation not in exe_operations,opeartion_exe))
-# 								return {"status":"Failed","message":f"Please complete the following operations:<br>&nbsp&nbsp<b>{','.join(k.operation for k in not_completed_oper)}.</b><br>Before the start of operation <b>{inspection_type}</b>."}
-# 				else:
-# 					return {"status":bom_uom_resp.get('status'),"message":bom_uom_resp.get('message')}	
-# 			else:
-# 				return {"status":"Failed","message":f"Detail not found for the lot no <b>{batch_no}</b>"}
-# 	else:
-# 		return {"status":"Failed","message":f"There is no <b>Deflashing Receipt Entry</b> found for the lot <b>{batch_no}</b>"}
-
-
-# backup on 19/03/2024 working fine 
-		
-# @frappe.whitelist(allow_guest=True)
-# def validate_lot_number(batch_no,docname,inspection_type):
-# 	try:
-# 		if inspection_type == "Line Inspection" or inspection_type == "Patrol Inspection":
-# 			check_exist = frappe.db.get_all("Inspection Entry",filters={"name":("!=",docname),"docstatus":1,"lot_no":batch_no,"inspection_type":inspection_type})
-# 			if check_exist:
-# 				return {"status":"Failed","message":"Already Inspection Entry is created for this lot number."}
-# 			else:
-# 				check_lot_issue = frappe.db.sql(""" SELECT JB.mould_reference,JB.total_completed_qty,JB.workstation,JB.work_order,JB.name as job_card,JB.production_item,JB.batch_code,
-# 								E.employee_name as employee FROM `tabJob Card` JB 
-# 								LEFT JOIN `tabJob Card Time Log` LG ON LG.parent = JB.name
-# 								LEFT JOIN `tabEmployee` E ON LG.employee = E.name
-# 								WHERE JB.batch_code=%(lot_no)s
-# 								""",{"lot_no":batch_no},as_dict=1)
-# 				if not check_lot_issue:
-# 					return {"status":"Failed","message":f"Job Card not found for the scanned lot <b>{batch_no}</b>"}
-# 				else:
-# 					rept_entry = frappe.db.get_all("Moulding Production Entry",{"scan_lot_number":batch_no,"docstatus":1},["stock_entry_reference"])
-# 					if rept_entry:
-# 						# return {"status":"Failed","message":f"<b>Moulding Production Entry</b> was completed for the lot <b>{batch_no}</b>"}
-# 						check_lot_issue[0].moulding_production_entry = 1
-# 					else:
-# 						check_lot_issue[0].moulding_production_entry = 0
-# 					check_lot_issue[0].qty_from_item_batch = 0
-# 					""" Multi Bom Validation """
-# 					bom = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name INNER JOIN `tabItem` I ON I.name=B.item  WHERE BI.item_code=%(item_code)s AND B.is_active=1 AND I.default_bom=B.name """,{"item_code":check_lot_issue[0].production_item},as_dict=1)
-# 					if bom:
-# 						bom__ = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM` B WHERE B.item=%(bom_item)s AND B.is_Active=1 """,{"bom_item":bom[0].item},as_dict=1)
-# 						if len(bom__) > 1:
-# 							return {"status":"Failed","message":f"Multiple BOM's found for Item to Produce - <b>{bom[0].item}</b>"}
-# 						""" Add UOM for rejection in No's """
-# 						# check_uom = frappe.db.get_all("UOM Conversion Detail",filters={"parent":bom[0].item,"uom":"Kg"},fields=['conversion_factor'])
-# 						# if check_uom:
-# 						# 	""" This is equal to 1 No's """
-# 						# 	check_lot_issue[0].one_no_qty_equal_kgs = flt(1 / check_uom[0].conversion_factor , 3)
-# 						# else:
-# 						# 	return {"status":"Failed","message":f"Please define UOM for Kgs for the item <b>"+bom[0].item+"</b>"}
-# 						if check_lot_issue[0].mould_reference:
-# 							# on 8/3/23
-# 							# wt_per_pi_gms = frappe.db.get_value("Mould Specification",{"mould_ref":frappe.db.get_value("Asset",check_lot_issue[0].mould_reference,"item_code")},"avg_blank_wtproduct_gms")
-# 							wt_per_pi_gms = frappe.db.get_value("Mould Specification",{"mould_ref":frappe.db.get_value("Asset",check_lot_issue[0].mould_reference,"item_code"),"spp_ref":check_lot_issue[0].production_item,"mould_status":"ACTIVE"},"avg_blank_wtproduct_gms")
-# 							# end
-# 							if wt_per_pi_gms and float(wt_per_pi_gms):
-# 								""" This is equal to 1 No's """
-# 								# check_lot_issue[0].one_no_qty_equal_kgs = flt(float(wt_per_pi_gms) / 1000 , 3)
-# 								check_lot_issue[0].one_no_qty_equal_kgs = float(wt_per_pi_gms) / 1000 
-# 							else:
-# 								return {"status":"Failed","message":f"Avg Blank Wt/Product not found in <b>Mould Specification</b>"}
-# 						else:
-# 							return {"status":"Failed","message":f" Mould Reference not found for the scanned lot <b>{batch_no}</b> for finding UOM "}
-# 						""" End """
-# 					else:
-# 						return {"status":"Failed","message":f"BOM is not found for <b>Item to Produce</b>"}
-# 					""" End """ 
-# 					user_name = frappe.db.get_value("User",frappe.session.user,"full_name")
-# 					item_batch_no = ""
-# 					st_details = frappe.db.sql(""" SELECT IB.spp_batch_number FROM `tabBlank Bin Issue Item` BI 
-# 								INNER JOIN `tabJob Card` JB ON JB.name= BI.job_card
-# 								INNER JOIN `tabItem Bin Mapping` IB ON BI.bin = IB.blanking__bin
-# 								INNER JOIN `tabBlank Bin Issue` B ON B.name = BI.parent
-# 								INNER JOIN `tabAsset` A ON IB.blanking__bin=A.name
-# 								WHERE BI.job_card=%(jb_name)s OR IB.job_card = %(jb_name)s
-# 								""",{"jb_name":check_lot_issue[0].job_card},as_dict=1)
-# 					check_lot_issue[0].spp_batch_no = ""
-# 					if st_details:
-# 						check_lot_issue[0].spp_batch_no = st_details[0].spp_batch_number
-# 						# check_lot_issue[0].spp_batch_no = st_details[0].spp_batch_number.split('-')[0] if st_details[0].spp_batch_number else st_details[0].spp_batch_number
-# 					chk_st_details = frappe.db.sql(""" SELECT SD.batch_no FROM `tabStock Entry Detail` SD
-# 												INNER JOIN `tabStock Entry` SE ON SE.name = SD.parent
-# 												INNER JOIN `tabWork Order` W ON W.name = SE.work_order
-# 												INNER JOIN `tabJob Card` JB ON JB.work_order = W.name
-# 												WHERE JB.batch_code = %(lot_no)s AND SD.t_warehouse is not null
-# 												""",{"lot_no":batch_no},as_dict=1)
-# 					if chk_st_details:
-# 						item_batch_no = chk_st_details[0].batch_no
-# 					check_lot_issue[0].batch_no = item_batch_no
-# 					check_lot_issue[0].user_name = user_name
-# 					return {"status":"Success","message":check_lot_issue[0]}
-						
-# 		elif inspection_type == "Lot Inspection":
-# 			check_exist = frappe.db.get_all("Inspection Entry",filters={"name":("!=",docname),"docstatus":1,"lot_no":batch_no,"inspection_type":inspection_type})
-# 			if check_exist:
-# 				return {"status":"Failed","message":"Already Inspection Entry is created for this lot number."}
-# 			else:
-# 				check_lot_issue = frappe.db.sql(""" SELECT JB.mould_reference,JB.total_qty_after_inspection,JB.total_completed_qty,JB.workstation,JB.work_order,JB.name as job_card,JB.production_item,JB.batch_code,
-# 								E.employee_name as employee FROM `tabJob Card` JB 
-# 								LEFT JOIN `tabJob Card Time Log` LG ON LG.parent = JB.name
-# 								LEFT JOIN `tabEmployee` E ON LG.employee = E.name
-# 								WHERE JB.batch_code=%(lot_no)s
-# 								""",{"lot_no":batch_no},as_dict=1)
-# 				if not check_lot_issue:
-# 					return {"status":"Failed","message":f"Job Card not found for the scanned lot <b>{batch_no}</b>"}
-# 				else:
-# 					rept_entry = frappe.db.get_all("Moulding Production Entry",{"scan_lot_number":batch_no,"docstatus":1},["stock_entry_reference"])
-# 					if not rept_entry:
-# 						return {"status":"Failed","message":f"There is no <b>Moulding Production Entry</b> found for the lot <b>{batch_no}</b>"}
-# 					else:
-# 						# query = f""" SELECT SED.t_warehouse as from_warehouse,SED.batch_no FROM `tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE 
-# 						# 			ON SED.parent=SE.name WHERE SED.item_code='{check_lot_issue[0].get("production_item")}' AND SE.work_order='{check_lot_issue[0].get("work_order")}' """
-# 						# spp_and_batch = frappe.db.sql(query,as_dict=1)
-# 						# if spp_and_batch:
-# 						# 	stock_status = check_available_stock(spp_and_batch[0].get("from_warehouse"),check_lot_issue[0].get("production_item"),spp_and_batch[0].get("batch_no",""))
-# 						# 	if stock_status.get('status') == "Success":
-# 						# 		check_lot_issue[0].qty_from_item_batch = stock_status.get('qty')
-# 								""" Multi Bom Validation """
-# 								bom = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name INNER JOIN `tabItem` I ON I.name=B.item  WHERE BI.item_code=%(item_code)s AND B.is_active=1 AND I.default_bom=B.name """,{"item_code":check_lot_issue[0].production_item},as_dict=1)
-# 								if bom:
-# 									bom__ = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM` B WHERE B.item=%(bom_item)s AND B.is_Active=1 """,{"bom_item":bom[0].item},as_dict=1)
-# 									if len(bom__) > 1:
-# 										return {"status":"Failed","message":f"Multiple BOM's found for Item to Produce - <b>{bom[0].item}</b>"}
-# 									""" Add UOM for rejection in No's """
-# 									# check_uom = frappe.db.get_all("UOM Conversion Detail",filters={"parent":bom[0].item,"uom":"Kg"},fields=['conversion_factor'])
-# 									# if check_uom:
-# 									# 	""" This is equal to 1 No's """
-# 									# 	check_lot_issue[0].one_no_qty_equal_kgs = flt(1 / check_uom[0].conversion_factor , 3)
-# 									# else:
-# 									# 	return {"status":"Failed","message":f"Please define UOM for Kgs for the item <b>"+bom[0].item+"</b>"}
-# 									if check_lot_issue[0].mould_reference:
-# 										item = frappe.db.get_value("Asset",check_lot_issue[0].mould_reference,"item_code")
-# 										if item:
-# 											# on 8/3/23
-# 											# wt_per_pi_gms = frappe.db.get_value("Mould Specification",{"mould_ref":item},"avg_blank_wtproduct_gms")
-# 											wt_per_pi_gms = frappe.db.get_value("Mould Specification",{"mould_ref":item,"spp_ref":check_lot_issue[0].production_item,"mould_status":"ACTIVE"},"avg_blank_wtproduct_gms")
-# 											# end
-# 											if wt_per_pi_gms and float(wt_per_pi_gms):
-# 												""" This is equal to 1 No's """
-# 												# check_lot_issue[0].one_no_qty_equal_kgs = flt(float(wt_per_pi_gms) / 1000 , 3)
-# 												check_lot_issue[0].one_no_qty_equal_kgs = float(wt_per_pi_gms) / 1000 
-# 											else:
-# 												return {"status":"Failed","message":f"Avg Blank Wt/Product not found in <b>Mould Specification</b>"}
-# 										else:
-# 											return {"status":"Failed","message":f"Mould item not found..!"}
-# 									else:
-# 										return {"status":"Failed","message":f" Mould Reference not found for the scanned lot <b>{batch_no}</b> for finding UOM "}
-# 									""" End """
-# 								else:
-# 									return {"status":"Failed","message":f"BOM is not found for <b>Item to Produce</b>"}
-# 								""" End """
-# 								user_name = frappe.db.get_value("User",frappe.session.user,"full_name")
-# 								item_batch_no = ""
-# 								# st_details = frappe.db.sql(""" SELECT IB.spp_batch_number FROM `tabBlank Bin Issue Item` BI 
-# 								# 			INNER JOIN `tabJob Card` JB ON JB.name= BI.job_card
-# 								# 			INNER JOIN `tabItem Bin Mapping` IB ON BI.bin = IB.blanking_bin
-# 								# 			INNER JOIN `tabBlank Bin Issue` B ON B.name = BI.parent
-# 								# 			INNER JOIN `tabBlanking Bin` BB ON IB.blanking_bin=BB.name
-# 								# 			WHERE BI.job_card=%(jb_name)s AND IB.job_card = %(jb_name)s
-# 								# 			""",{"jb_name":check_lot_issue[0].job_card},as_dict=1)
-# 								st_details = frappe.db.sql(""" SELECT IB.spp_batch_number FROM `tabBlank Bin Issue Item` BI 
-# 											INNER JOIN `tabJob Card` JB ON JB.name= BI.job_card
-# 											INNER JOIN `tabItem Bin Mapping` IB ON BI.bin = IB.blanking__bin
-# 											INNER JOIN `tabBlank Bin Issue` B ON B.name = BI.parent
-# 											INNER JOIN `tabAsset` A ON IB.blanking__bin=A.name
-# 											WHERE BI.job_card=%(jb_name)s OR IB.job_card = %(jb_name)s
-# 											""",{"jb_name":check_lot_issue[0].job_card},as_dict=1)
-# 								check_lot_issue[0].spp_batch_no = ""
-# 								if st_details:
-# 									check_lot_issue[0].spp_batch_no = st_details[0].spp_batch_number
-# 									# check_lot_issue[0].spp_batch_no = st_details[0].spp_batch_number.split('-')[0] if st_details[0].spp_batch_number else st_details[0].spp_batch_number
-# 									# f_spp_batch_no = st_details[0].spp_batch_number
-# 									# se_ref = frappe.db.sql(""" SELECT SD.batch_no,SD.parent from `tabStock Entry Detail` SD 
-# 									# 						inner join `tabStock Entry` SE ON SE.name=SD.parent
-# 									# 						where SD.spp_batch_number = %(f_spp_batch_no)s AND SE.stock_entry_type='Manufacture'""",{"f_spp_batch_no":f_spp_batch_no},as_dict=1)
-# 									# if se_ref:
-# 									# 	spp_settings = frappe.get_single("SPP Settings")
-# 									# 	s_batch = frappe.db.sql(""" SELECT SD.spp_batch_number from `tabStock Entry Detail` SD 
-# 									# 							inner join `tabStock Entry` SE ON SE.name=SD.parent
-# 									# 							where SD.parent = %(se_name)s AND SE.stock_entry_type='Material Transfer' AND SD.s_warehouse = %(sheeting_warehouse)s""",{"sheeting_warehouse":spp_settings.default_sheeting_warehouse,"se_name":se_ref[0].parent},as_dict=1)
-# 									# 	if s_batch:
-# 									# 		check_lot_issue[0].spp_batch_no = s_batch[0].spp_batch_number.split('-')[0] if s_batch[0].spp_batch_number else s_batch[0].spp_batch_number
-# 								chk_st_details = frappe.db.sql(""" SELECT SD.batch_no FROM `tabStock Entry Detail` SD
-# 															INNER JOIN `tabStock Entry` SE ON SE.name = SD.parent
-# 															INNER JOIN `tabWork Order` W ON W.name = SE.work_order
-# 															INNER JOIN `tabJob Card` JB ON JB.work_order = W.name
-# 															WHERE JB.batch_code = %(lot_no)s AND SD.t_warehouse is not null
-# 															""",{"lot_no":batch_no},as_dict=1)
-# 								if chk_st_details:
-# 									item_batch_no = chk_st_details[0].batch_no
-# 								check_lot_issue[0].batch_no = item_batch_no
-# 								check_lot_issue[0].user_name = user_name
-# 								return {"status":"Success","message":check_lot_issue[0]}
-# 						# 	else:
-# 						# 		return {"status":stock_status.get('status'),"message":stock_status.get('message')}	
-# 						# else:
-# 						# 	return {"status":"Failed","message":"There is no <b>Stock Entry</b> found for the scanned lot"}
-		
-# 		elif inspection_type == "Incoming Inspection" or inspection_type == "Final Inspection":
-# 			check_exist = frappe.db.get_value("Inspection Entry",{"lot_no":batch_no,"docstatus":1,"inspection_type":inspection_type,"name":("!=",docname)})
-# 			if check_exist:
-# 				return {"status":"Failed","message":f" Already {inspection_type} Entry is created for this lot number <b>{batch_no}</b>."}
-# 			""" Validate job card """
-# 			sublot__resp = check_sublot(batch_no)
-# 			if not sublot__resp:
-# 				check_lot_issue = frappe.db.sql(""" SELECT JB.name FROM `tabJob Card` JB WHERE JB.batch_code=%(lot_no)s AND operation="Deflashing" """,{"lot_no":batch_no},as_dict=1)
-# 				if not check_lot_issue:
-# 					return {"status":"Failed","message":f"Job Card not found for the scanned lot <b>{batch_no}</b>"}
-# 				else:
-# 					rept_entry = frappe.db.get_all("Deflashing Receipt Entry",{"lot_number":batch_no,"docstatus":1},["stock_entry_reference"])
-# 					if rept_entry:
-# 						if not rept_entry[0].stock_entry_reference:
-# 							return {"status":"Failed","message":f"Stock Entry Reference not found in <b>Deflashing Receipt Entry</b> for the lot <b>{batch_no}</b>"}
-# 						else:
-# 							product_details = frappe.db.sql(f""" SELECT  JC.work_order,E.employee_name as employee,SED.item_code as production_item,JC.batch_code,JC.workstation,SED.qty as total_completed_qty,SED.batch_no,SED.spp_batch_number FROM `tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE ON SE.name=SED.parent
-# 																INNER JOIN `tabJob Card` JC ON JC.work_order=SE.work_order LEFT JOIN `tabJob Card Time Log` LG ON LG.parent = JC.name 
-# 																LEFT JOIN `tabEmployee` E ON LG.employee = E.name WHERE SE.name='{rept_entry[0].stock_entry_reference}' AND SED.deflash_receipt_reference='{batch_no}' """,as_dict=1)
-# 							if product_details:
-# 								""" Multi Bom Validation """
-# 								bom__ = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM` B WHERE B.item=%(bom_item)s AND B.is_Active=1 """,{"bom_item":product_details[0].get("production_item")},as_dict=1)
-# 								if len(bom__) > 1:
-# 									return {"status":"Failed","message":f"Multiple BOM's found for the Item - <b>{product_details[0].get('production_item')}</b>"}
-# 								query = f""" SELECT SED.t_warehouse as from_warehouse,SED.batch_no FROM `tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE 
-# 											ON SED.parent=SE.name WHERE SED.item_code='{product_details[0].get("production_item")}' AND SE.work_order='{product_details[0].get("work_order")}' """
-# 								spp_and_batch = frappe.db.sql(query,as_dict=1)
-# 								if spp_and_batch:
-# 									""" After incoming inspection the stock will be submit so , can't validate stock details 'HIDED' """
-# 									return {"status":"Success","message":product_details[0]}
-# 									# stock_status = check_available_stock(spp_and_batch[0].get("from_warehouse"),product_details[0].get("production_item"),spp_and_batch[0].get("batch_no",""))
-# 									# if stock_status.get('status') == "Success":
-# 									# 	product_details[0].qty_from_item_batch = stock_status.get('qty')
-# 									# 	return {"status":"Success","message":product_details[0]}
-# 									# else:
-# 									# 	return {"status":stock_status.get('status'),"message":stock_status.get('message')}	
-# 								else:
-# 									return {"status":"Failed","message":f"There is no <b>Stock Entry</b> found for the scanned lot <b>{batch_no}</b>"}
-# 							else:
-# 								return {"status":"Failed","message":f"Detail not found for the lot no <b>{batch_no}</b>"}
-# 					else:
-# 						return {"status":"Failed","message":f"There is no <b>Deflashing Receipt Entry</b> found for the lot <b>{batch_no}</b>"}
-		
-# 		elif inspection_type == "Final Visual Inspection" or inspection_type == "PDIR":
-# 			# check_exist = frappe.db.get_value("Inspection Entry",{"lot_no":batch_no,"docstatus":1,"inspection_type":inspection_type,"name":("!=",docname)})
-# 			# if check_exist:
-# 			# 	return {"status":"Failed","message":f" Already {inspection_type} Entry is created for this lot number <b>{batch_no}</b>."}
-# 			# else:
-# 				rept_entry = frappe.db.get_all("Lot Resource Tagging",{"scan_lot_no":batch_no,"docstatus":1},["available_qty","name","batch_no","bom_no","product_ref as production_item","warehouse","scan_lot_no as batch_code","scan_lot_no as spp_batch_number","job_card"])
-# 				if rept_entry:	
-# 					work_station__ = check_return_workstation(rept_entry[0].bom_no,inspection_type)
-# 					if work_station__ and work_station__.get('status') == 'success':
-# 						rept_entry[0].workstation = work_station__.get('message')
-# 						if inspection_type == "PDIR":
-# 							check_exist = frappe.db.get_value("Inspection Entry",{"lot_no":batch_no,"docstatus":1,"inspection_type":"Final Visual Inspection"})
-# 							if not check_exist:
-# 								return {"status":"Failed","message":f"Please complete the <b>Final Visual Inspection</b> before <b>PDIR</b> operation for the scanned lot number <b>{batch_no}</b>."}
-# 						bom_resp__ = check_multi_bom_vls(rept_entry[0].production_item)
-# 						if bom_resp__ and bom_resp__.get('status') == 'Success':
-# 							opera_con = "  AND BP.operation NOT IN ('PDIR','Final Visual Inspection') "
-# 							opeartion_exe = frappe.db.sql(""" SELECT BP.operation FROM `tabBOM Operation` BP INNER JOIN `tabBOM` B ON BP.parent = B.name WHERE B.is_default=1 AND B.is_active=1  AND B.name=%(bom)s {condition} """.format(condition = opera_con),{"bom":bom_resp__.get('bom_no')},as_dict=1)
-# 							if not opeartion_exe:
-# 								return {"status":"Failed","message":f"Operations not found in the BOM <b>{bom_resp__.get('bom_no')}</b>"}
-# 							else:
-# 								opt__type = frappe.db.sql(f""" SELECT DISTINCT operation_type FROM `tabLot Resource Tagging` WHERE scan_lot_no='{batch_no}' AND 
-# 															docstatus = 1 """,as_dict = 1)
-# 								if not opt__type:
-# 									return {"status":"Failed","message":f"Please complete the following operations:<br>&nbsp&nbsp<b>{','.join(k.operation for k in opeartion_exe)}</b>,<br>Before the start of operation <b>{inspection_type}</b>."}
-# 								else:
-# 									if len(opt__type) == len(opeartion_exe):
-# 										stock_status = check_available_stock(rept_entry[0].get("warehouse"),bom_resp__.get("item__code"),rept_entry[0].get("batch_no",""))
-# 										if stock_status.get('status') == "Success":
-# 											rept_entry[0].available_qty = stock_status.get('qty')
-# 											rept_entry[0]._1kg_eq_nos = bom_resp__.get('_1kg_eq_nos')
-# 											rept_entry[0].available_qty_nos = stock_status.get('qty')
-# 											_lno_eq_kgs = 1 / bom_resp__.get('_1kg_eq_nos')
-# 											rept_entry[0].available_qty_kgs = round(_lno_eq_kgs * stock_status.get('qty'),2)
-# 											return {"status":"Success","message":rept_entry[0]}
-# 										else:
-# 											return {"status":stock_status.get('status'),"message":stock_status.get('message')}
-# 									else:
-# 										exe_operations = [x.operation_type for x in opt__type]
-# 										not_completed_oper = list(filter(lambda x : x.operation not in exe_operations,opeartion_exe))
-# 										return {"status":"Failed","message":f"Please complete the following operations:<br>&nbsp&nbsp<b>{','.join(k.operation for k in not_completed_oper)}.</b><br>Before the start of operation <b>{inspection_type}</b>."}
-# 						else:
-# 							if bom_resp__:
-# 								return {"status":bom_resp__.get('status'),"message":bom_resp__.get('message')}
-# 							else:
-# 								return {"status":"Failed","message":f"Something went wrong not able to fetch <b>BOM</b> details..!"}
-# 					else:
-# 						return {"status":"Failed","message":work_station__.get('message')	}
-# 				else:
-# 					vs_ins__resp = check_vs_only_exists(batch_no,inspection_type)
-# 					if vs_ins__resp and vs_ins__resp.get('status') == "not exists":
-# 						return {"status":"Failed","message":f"There is no data found for the scanned lot <b>{batch_no}</b>"}
-# 					elif not vs_ins__resp:
-# 						return {"status":"Failed","message":f"Not able to fetch details of the lot <b>{batch_no}</b>"}
-# 	except Exception:
-# 		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.inspection_entry.inspection_entry.validate_lot_number")
-# 		return {"status":"Failed","message":"Something went wrong."}
