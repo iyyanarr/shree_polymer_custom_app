@@ -38,29 +38,22 @@ class InspectionEntry(Document):
 				resp_m = make_stock_entry(self)
 				if resp_m and resp_m.get('status') == 'failed':
 					rollback_entries(self,resp_m.get('message'))
-				else:
-					# 🆕 NEW FLOW: Submit inspection stock entry immediately
-					# Get batch number from already-submitted Moulding Production Stock Entry
-					batch_no = get_batch_from_moulding_production(self)
-					if batch_no:
-						submit_inspection_stock_entry_immediate(self, batch_no)
-					else:
-						frappe.log_error(
-							title="⚠️ Batch Not Found for Inspection",
-							message=f"Could not get batch number for inspection {self.name}, lot {self.lot_no}"
-						)
-			else:
-				# No rejections, but still update batch info
-				batch_no = get_batch_from_moulding_production(self)
-				if batch_no:
-					frappe.db.set_value(self.doctype, self.name, "batch_no", batch_no)
-					frappe.db.set_value(self.doctype, self.name, "spp_batch_number", self.lot_no)
-					frappe.db.commit()
 			
-			# ❌ REMOVED: submit_moulding_entry(self) - No longer needed with new immediate submission flow
+			# 🆕 NEW FLOW: Only submit when BOTH Line + Lot inspections are complete
+			# Check if both inspections exist
+			exe_insp = frappe.db.sql(
+				f"""SELECT name FROM `tabInspection Entry` 
+				WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Lot Inspection') 
+				AND docstatus = 1 
+				AND lot_no = '{self.lot_no}'""",
+				as_dict=1
+			)
+			
+			# Only trigger submission when BOTH inspections are complete (len >= 2)
+			if exe_insp and len(exe_insp) >= 2:
+				submit_inspection_stock_entry_immediately(self)
 			
 		elif self.inspection_type == "Incoming Inspection" or self.inspection_type == "Final Inspection":
-			# ...existing code...
 			if self.total_rejected_qty:
 				resp_inc = make_inc_stock_entry(self)
 				if resp_inc and resp_inc.get('status') == 'failed':
@@ -68,7 +61,7 @@ class InspectionEntry(Document):
 			if self.inspection_type == "Incoming Inspection":
 				submit_deflash_receipt_entry(self)
 		elif self.inspection_type == "Final Visual Inspection" or self.inspection_type == "PDIR":
-				# ...existing code...
+			# if self.inspection_type == "PDIR":
 			if self.inspection_type == "Final Visual Inspection":
 				if self.total_rejected_qty:
 					self.submit__vs_pdir()
@@ -178,126 +171,125 @@ def rollback_vs_pdir(self,lrt = None):
 			
 def submit_moulding_entry(self):
 	"""
-	⚠️ DEPRECATED FUNCTION - No longer triggers Moulding Production Entry submission
+	⚠️ DEPRECATED: This function is no longer used in the new flow.
+	Stock Entry is now submitted immediately in make_stock_entry() of Moulding Production Entry.
 	
-	MIGRATION NOTES (November 2025):
-	================================
-	OLD FLOW (Two-Stage):
-	1. Moulding Production Entry on_submit() → Creates DRAFT Stock Entry
-	2. Line Inspection + Lot Inspection both submitted
-	3. This function (submit_moulding_entry) triggers manual_on_submit()
-	4. manual_on_submit() submits Stock Entry + updates inspections
-	
-	NEW FLOW (Single-Stage):
-	1. Moulding Production Entry on_submit() → Creates AND SUBMITS Stock Entry immediately
-	2. Batch number (T12345) exists in database immediately
-	3. Inspections query existing batch number independently
-	4. This function NO LONGER triggers Moulding Production updates
-	
-	REASON FOR DEPRECATION:
-	- Stock Entry is now submitted immediately (within 10-15 seconds)
-	- Batch number is available immediately for all inspections
-	- No need to wait 24-54 hours for Lot Inspection to trigger submission
-	- Inventory recorded in real-time on correct dates
-	
-	This function is kept for:
-	1. Backward compatibility during migration period
-	2. Logging when old flow is still being triggered
-	3. Emergency handling of stuck draft Stock Entries
+	This function is kept for backward compatibility and will be removed in future versions.
 	"""
+	frappe.log_error(
+		title="DEPRECATED: submit_moulding_entry called",
+		message=f"Inspection Entry {self.name} called deprecated submit_moulding_entry(). This should not happen in new flow."
+	)
+	return
+
+def submit_inspection_stock_entry_immediately(self):
+	"""
+	🆕 NEW FLOW: Submit inspection stock entry immediately with batch from Moulding Production
 	
+	This function:
+	1. Gets the batch number from already-submitted Moulding Production Stock Entry
+	2. Updates the inspection's rejection Stock Entry with the batch
+	3. Submits the inspection's rejection Stock Entry immediately
+	4. Does NOT trigger any updates to Moulding Production Entry
+	
+	Called when: Inspection Entry (Line/Patrol/Lot) is submitted
+	"""
 	try:
-		frappe.log_error(
-			title="⚠️ DEPRECATED: submit_moulding_entry Called",
-			message=f"""
-			submit_moulding_entry() was called from Inspection Entry: {self.name}
-			
-			This function is DEPRECATED as of November 2025.
-			Moulding Production Entry Stock Entry should already be submitted.
-			
-			Details:
-			- Inspection Entry: {self.name}
-			- Inspection Type: {self.inspection_type}
-			- Lot Number: {self.lot_no}
-			- Called at: {now()}
-			
-			This indicates:
-			- Old Lot Inspection triggering deprecated flow
-			- OR Moulding Production Stock Entry submission failed earlier
-			
-			Action: Checking if Moulding Production Stock Entry needs recovery...
-			"""
+		# Step 1: Get Moulding Production Entry for this lot
+		mould_prod = frappe.db.get_value(
+			"Moulding Production Entry",
+			{"scan_lot_number": self.lot_no, "docstatus": 1},
+			["name", "stock_entry_reference"],
+			as_dict=1
 		)
 		
-		# Check if this is Line Inspection or Lot Inspection
-		exe_insp = frappe.db.sql(f" SELECT name FROM `tabInspection Entry` WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Lot Inspection') AND docstatus = 1 AND lot_no='{self.lot_no}' ",as_dict = 1)
+		if not mould_prod:
+			frappe.throw(f"Moulding Production Entry not found for lot <b>{self.lot_no}</b>")
 		
-		if exe_insp and len(exe_insp) >= 2:
-			# Both Line and Lot Inspection exist
-			rept_entry = frappe.db.get_all("Moulding Production Entry", {"scan_lot_number": self.lot_no, "docstatus": 1}, ["name", "stock_entry_reference"])
+		if not mould_prod.stock_entry_reference:
+			frappe.throw(f"Stock Entry reference not found in Moulding Production Entry <b>{mould_prod.name}</b>")
+		
+		# Step 2: Get the batch number from Moulding Production Stock Entry
+		target_batch = frappe.db.get_value(
+			"Stock Entry Detail",
+			{
+				"parent": mould_prod.stock_entry_reference,
+				"is_finished_item": 1,
+				"t_warehouse": ["is", "set"]
+			},
+			"batch_no"
+		)
+		
+		if not target_batch:
+			frappe.throw(f"Batch number not found in Moulding Production Stock Entry <b>{mould_prod.stock_entry_reference}</b>")
+		
+		print(f"\n🔍 Found target batch: {target_batch} from Moulding Production Stock Entry {mould_prod.stock_entry_reference}")
+		
+		# Step 3: Update inspection's rejection stock entry with batch (if exists)
+		if self.stock_entry_reference:
+			# Update batch in Stock Entry Detail
+			frappe.db.sql(f"""
+				UPDATE `tabStock Entry Detail` 
+				SET batch_no = '{target_batch}' 
+				WHERE source_ref_document = 'Inspection Entry' 
+				AND source_ref_id = '{self.name}'
+			""")
 			
-			if rept_entry:
-				# Check Stock Entry status
-				if rept_entry[0].stock_entry_reference:
-					se_status = frappe.db.get_value("Stock Entry", rept_entry[0].stock_entry_reference, "docstatus")
-					
-					if se_status == 1:
-						# Already submitted - this is EXPECTED with new flow
-						frappe.log_error(
-							title="✅ submit_moulding_entry - Stock Entry Already Submitted",
-							message=f"""
-							Stock Entry {rept_entry[0].stock_entry_reference} is already submitted (docstatus=1).
-							This is the EXPECTED state with the new immediate submission flow.
-							
-							No action needed. The trigger from Lot Inspection can be safely ignored.
-							"""
-						)
-						print(f"\n✅ Stock Entry already submitted. No action needed from Lot Inspection trigger.")
-						return
-						
-					elif se_status == 0:
-						# Still draft - UNEXPECTED, call emergency recovery
-						frappe.log_error(
-							title="⚠️ EMERGENCY: Moulding Production Stock Entry Still Draft",
-							message=f"""
-							Stock Entry {rept_entry[0].stock_entry_reference} is still DRAFT (docstatus=0).
-							This is UNEXPECTED and indicates immediate submission failed.
-							
-							Calling manual_on_submit() for emergency recovery...
-							"""
-						)
-						
-						print(f"\n⚠️ EMERGENCY: Stock Entry still draft. Attempting recovery via manual_on_submit()...")
-						
-						# Call the old flow as emergency recovery
-						mould_prod = frappe.get_doc("Moulding Production Entry", rept_entry[0].name)
-						mould_prod.run_method("manual_on_submit")
-						
-						frappe.log_error(
-							title="✅ Emergency Recovery Complete",
-							message=f"Emergency recovery completed for Moulding Production Entry {rept_entry[0].name}"
-						)
-						
-					else:
-						# Unknown state
-						frappe.log_error(
-							title="❌ submit_moulding_entry - Unknown Stock Entry State",
-							message=f"Stock Entry {rept_entry[0].stock_entry_reference} has unknown docstatus: {se_status}"
-						)
-						frappe.throw(f"Stock Entry has unknown status: {se_status}")
-				else:
-					# No stock entry reference found
-					frappe.log_error(
-						title="❌ submit_moulding_entry - No Stock Entry Reference",
-						message=f"Moulding Production Entry {rept_entry[0].name} has no stock_entry_reference"
-					)
-					frappe.throw("Stock Entry Reference not found in Moulding Production Entry")
-			else:
-				frappe.throw("There is no <b>Moulding Production Entry</b> found..!")
+			# Update batch in Inspection Entry
+			frappe.db.sql(f"""
+				UPDATE `tabInspection Entry` 
+				SET batch_no = '{target_batch}', 
+					spp_batch_number = '{self.lot_no}' 
+				WHERE name = '{self.name}'
+			""")
+			
+			frappe.db.commit()
+			
+			# Step 4: Submit the inspection stock entry immediately
+			ins_stock_entry = frappe.get_doc("Stock Entry", self.stock_entry_reference)
+			
+			if ins_stock_entry.docstatus == 0:
+				# Update use_serial_batch_fields
+				for item in ins_stock_entry.items:
+					item.use_serial_batch_fields = 1
+					if not item.batch_no:
+						item.batch_no = target_batch
 				
-	except Exception:
-		frappe.log_error(title="submit_moulding_entry - Error", message=frappe.get_traceback())
-		rollback_entries(self, "Moulding Production Entry Stock submission failed..!")
+				# Submit the stock entry
+				ins_stock_entry.docstatus = 1
+				ins_stock_entry.save(ignore_permissions=True)
+				
+				# Update posting date
+				if self.posting_date:
+					frappe.db.sql(f"""
+						UPDATE `tabStock Entry` 
+						SET posting_date = '{self.posting_date}' 
+						WHERE name = '{ins_stock_entry.name}'
+					""")
+				
+				frappe.db.commit()
+				
+				print(f"✅ Inspection Stock Entry {self.stock_entry_reference} submitted successfully with batch {target_batch}")
+			else:
+				print(f"ℹ️ Inspection Stock Entry {self.stock_entry_reference} already submitted")
+		else:
+			# No rejection stock entry (no rejections)
+			# Still update batch in Inspection Entry
+			frappe.db.sql(f"""
+				UPDATE `tabInspection Entry` 
+				SET batch_no = '{target_batch}', 
+					spp_batch_number = '{self.lot_no}' 
+				WHERE name = '{self.name}'
+			""")
+			frappe.db.commit()
+			print(f"ℹ️ No rejection Stock Entry for {self.name}, only updated batch reference")
+		
+	except Exception as e:
+		frappe.log_error(
+			title=f"submit_inspection_stock_entry_immediately - Error - {self.name}",
+			message=f"Error: {str(e)}\n{frappe.get_traceback()}"
+		)
+		frappe.throw(f"Failed to submit inspection stock entry: {str(e)}")
 
 def submit_deflash_receipt_entry(self):
 	try:
@@ -310,127 +302,6 @@ def submit_deflash_receipt_entry(self):
 	except Exception:
 		frappe.log_error(title="submit_deflash_receipt_entry",message=frappe.get_traceback())
 		rollback_entries(self,"Deflashing Receipt Entry Stock submission failed..!")
-
-def get_batch_from_moulding_production(self):
-	"""
-	🆕 NEW FUNCTION: Get batch number from already-submitted Moulding Production Stock Entry
-	
-	With the new immediate submission flow:
-	1. Moulding Production Entry submits Stock Entry immediately
-	2. Batch number (T{lot_number}) exists in database
-	3. Inspections can query it directly
-	"""
-	try:
-		# Get Moulding Production Entry for this lot
-		mould_prod = frappe.db.get_value(
-			"Moulding Production Entry",
-			{"scan_lot_number": self.lot_no, "docstatus": 1},
-			["stock_entry_reference"],
-			as_dict=1
-		)
-		
-		if not mould_prod or not mould_prod.stock_entry_reference:
-			frappe.log_error(
-				title="Batch Retrieval - Moulding Production Not Found",
-				message=f"No submitted Moulding Production Entry found for lot {self.lot_no}"
-			)
-			return None
-		
-		# Get batch from the submitted Stock Entry
-		batch_info = frappe.db.get_value(
-			"Stock Entry Detail",
-			{
-				"parent": mould_prod.stock_entry_reference,
-				"is_finished_item": 1,
-				"t_warehouse": ["is", "set"]
-			},
-			"batch_no"
-		)
-		
-		if batch_info:
-			frappe.log_error(
-				title="✅ Batch Retrieved Successfully",
-				message=f"Inspection {self.name} retrieved batch {batch_info} from Stock Entry {mould_prod.stock_entry_reference}"
-			)
-			return batch_info
-		else:
-			frappe.log_error(
-				title="❌ Batch Not Found in Stock Entry",
-				message=f"Stock Entry {mould_prod.stock_entry_reference} has no finished item batch"
-			)
-			return None
-			
-	except Exception as e:
-		frappe.log_error(
-			title="get_batch_from_moulding_production - Error",
-			message=f"Error: {str(e)}\n{frappe.get_traceback()}"
-		)
-		return None
-
-def submit_inspection_stock_entry_immediate(self, batch_no):
-	"""
-	🆕 NEW FUNCTION: Submit inspection's rejection Stock Entry immediately
-	
-	With the new flow:
-	1. Inspection creates draft Stock Entry for rejections
-	2. Gets batch number from Moulding Production (already exists)
-	3. Updates Stock Entry with batch number
-	4. Submits Stock Entry immediately
-	"""
-	try:
-		if not self.stock_entry_reference:
-			frappe.log_error(
-				title="No Stock Entry Reference",
-				message=f"Inspection Entry {self.name} has no stock_entry_reference to submit"
-			)
-			return
-		
-		# Get the draft Stock Entry
-		stock_entry = frappe.get_doc("Stock Entry", self.stock_entry_reference)
-		
-		if stock_entry.docstatus == 1:
-			# Already submitted
-			frappe.log_error(
-				title="Stock Entry Already Submitted",
-				message=f"Stock Entry {self.stock_entry_reference} already submitted"
-			)
-			return
-		
-		# Update batch number in all items
-		for item in stock_entry.items:
-			item.use_serial_batch_fields = 1
-			if not item.batch_no:
-				item.batch_no = batch_no
-		
-		# Submit the Stock Entry
-		stock_entry.docstatus = 1
-		stock_entry.save(ignore_permissions=True)
-		
-		# Update posting date to inspection date
-		if self.posting_date:
-			frappe.db.sql(
-				f"UPDATE `tabStock Entry` SET posting_date = '{self.posting_date}' WHERE name = '{stock_entry.name}'"
-			)
-		
-		# Update inspection entry with batch info
-		frappe.db.set_value(self.doctype, self.name, "batch_no", batch_no)
-		frappe.db.set_value(self.doctype, self.name, "spp_batch_number", self.lot_no)
-		frappe.db.commit()
-		
-		frappe.log_error(
-			title="✅ Inspection Stock Entry Submitted",
-			message=f"Inspection {self.name} ({self.inspection_type}) Stock Entry {stock_entry.name} submitted with batch {batch_no}"
-		)
-		
-	except Exception as e:
-		frappe.log_error(
-			title="❌ submit_inspection_stock_entry_immediate Failed",
-			message=f"Error submitting Stock Entry {self.stock_entry_reference}: {str(e)}\n{frappe.get_traceback()}"
-		)
-		# Rollback on error
-		frappe.db.rollback()
-		rollback_entries(self, f"Failed to submit inspection stock entry: {str(e)}")
-		raise
 
 def rollback_entries(self,msg):
 	try:
@@ -944,7 +815,7 @@ def validate_lot_number(batch_no,docname,inspection_type):
 						""" End """
 					else:
 						return {"status":"Failed","message":f"BOM is not found for <b>Item to Produce</b>"}
-					""" End """
+					""" End """ 
 					user_name = frappe.db.get_value("User",frappe.session.user,"full_name")
 					item_batch_no = ""
 					st_details = frappe.db.sql(""" 
