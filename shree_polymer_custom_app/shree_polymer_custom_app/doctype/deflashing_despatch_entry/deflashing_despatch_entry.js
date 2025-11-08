@@ -1,5 +1,3 @@
-
-
 // // Copyright (c) 2023, Tridotstech and contributors
 // // For license information, please see license.txt
 
@@ -46,44 +44,79 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
 
     scan_lot_number: frm => {
         if (frm.doc.scan_lot_number && frm.doc.scan_lot_number !== undefined) {
+            // First, check if Lot Inspection is submitted for this lot
             frappe.call({
-                method: 'shree_polymer_custom_app.shree_polymer_custom_app.doctype.deflashing_despatch_entry.deflashing_despatch_entry.validate_lot_barcode',
-                args: {bar_code: frm.doc.scan_lot_number},
+                method: 'frappe.client.get_value',
+                args: {
+                    doctype: 'Inspection Entry',
+                    filters: {
+                        lot_no: frm.doc.scan_lot_number,
+                        inspection_type: 'Lot Inspection',
+                        docstatus: 1
+                    },
+                    fieldname: ['name', 'batch_no', 'total_inspected_qty_nos', 'total_rejected_qty']
+                },
                 freeze: true,
-                callback: function (r) {
-                    if (r && r.status == "failed") {
-                        frappe.msgprint(r.message);
+                callback: function(r) {
+                    if (!r.message) {
+                        // Lot Inspection not found or not submitted
+                        frappe.msgprint({
+                            title: __('Lot Inspection Required'),
+                            indicator: 'red',
+                            message: __('Lot Inspection must be completed and submitted for lot <b>{0}</b> before it can be dispatched for deflashing.', [frm.doc.scan_lot_number])
+                        });
                         frm.events.reset_scan_fields(frm);
-                    } else if (r && r.status == "success") {
-                        if (frm.doc.items && frm.doc.items.length > 0) {
-                            let flag = false;
-                            frm.doc.items.map(res => {
-                                if (res.lot_number === frm.doc.scan_lot_number) {
-                                    flag = true;
-                                    frappe.validated = false;
-                                    frappe.msgprint(`Scanned lot <b>${frm.doc.scan_lot_number}</b> already added.`);
-                                    frm.set_value("scan_lot_number", "");
-                                    return;
+                        return;
+                    }
+                    
+                    // Lot Inspection exists and is submitted - proceed with lot validation
+                    frappe.msgprint({
+                        title: __('Lot Inspection Verified'),
+                        indicator: 'green',
+                        message: __('Lot Inspection <b>{0}</b> found and verified ✓', [r.message.name])
+                    });
+                    
+                    // Now validate the lot barcode
+                    frappe.call({
+                        method: 'shree_polymer_custom_app.shree_polymer_custom_app.doctype.deflashing_despatch_entry.deflashing_despatch_entry.validate_lot_barcode',
+                        args: {bar_code: frm.doc.scan_lot_number},
+                        freeze: true,
+                        callback: function (r) {
+                            if (r && r.status == "failed") {
+                                frappe.msgprint(r.message);
+                                frm.events.reset_scan_fields(frm);
+                            } else if (r && r.status == "success") {
+                                if (frm.doc.items && frm.doc.items.length > 0) {
+                                    let flag = false;
+                                    frm.doc.items.map(res => {
+                                        if (res.lot_number === frm.doc.scan_lot_number) {
+                                            flag = true;
+                                            frappe.validated = false;
+                                            frappe.msgprint(`Scanned lot <b>${frm.doc.scan_lot_number}</b> already added.`);
+                                            frm.set_value("scan_lot_number", "");
+                                            return;
+                                        }
+                                    });
+                                    if (flag) {
+                                        return;
+                                    }
                                 }
-                            });
-                            if (flag) {
-                                return;
+                                frm.set_df_property("qty", "hidden", 0);
+                                frm.set_value("batch_no", r.batch_no);
+                                frm.set_value("spp_batch_no", r.spp_batch_number);
+                                frm.set_value("job_card", r.job_card);
+                                frm.set_value("item", r.item);
+                                frm.set_value("qty", r.qty);
+                                frm.set_value("lot_number", frm.doc.scan_lot_number.toUpperCase());
+                                frm.set_value("source_warehouse_id", r.from_warehouse);
+                                frm.set_value("valuation_rate", r.valuation_rate);
+                                frm.set_value("amount", r.amount);
+                                frm.events.enable_disable_btn(frm);
+                            } else {
+                                frappe.msgprint("Something went wrong.");
                             }
                         }
-                        frm.set_df_property("qty", "hidden", 0);
-                        frm.set_value("batch_no", r.batch_no);
-                        frm.set_value("spp_batch_no", r.spp_batch_number);
-                        frm.set_value("job_card", r.job_card);
-                        frm.set_value("item", r.item);
-                        frm.set_value("qty", r.qty);
-                        frm.set_value("lot_number", frm.doc.scan_lot_number.toUpperCase());
-                        frm.set_value("source_warehouse_id", r.from_warehouse);
-                        frm.set_value("valuation_rate", r.valuation_rate);
-                        frm.set_value("amount", r.amount);
-                        frm.events.enable_disable_btn(frm);
-                    } else {
-                        frappe.msgprint("Something went wrong.");
-                    }
+                    });
                 }
             });
         } else {
