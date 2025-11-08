@@ -184,17 +184,20 @@ def submit_moulding_entry(self):
 
 def submit_inspection_stock_entry_immediately(self):
 	"""
-	🆕 NEW FLOW: Submit inspection stock entry immediately with batch from Moulding Production
+	🆕 NEW FLOW: Submit ALL inspection stock entries immediately with batch from Moulding Production
 	
 	This function:
 	1. Gets the batch number from already-submitted Moulding Production Stock Entry
-	2. Updates the inspection's rejection Stock Entry with the batch
-	3. Submits the inspection's rejection Stock Entry immediately
-	4. Does NOT trigger any updates to Moulding Production Entry
+	2. Finds BOTH Line and Lot Inspection entries for this lot
+	3. Updates ALL inspection rejection Stock Entries with the batch
+	4. Submits ALL inspection rejection Stock Entries immediately
+	5. Does NOT trigger any updates to Moulding Production Entry
 	
-	Called when: Inspection Entry (Line/Patrol/Lot) is submitted
+	Called when: BOTH Line + Lot Inspections are submitted
 	"""
 	try:
+		print(f"\n🚀 Starting submit_inspection_stock_entry_immediately for lot {self.lot_no}")
+		
 		# Step 1: Get Moulding Production Entry for this lot
 		mould_prod = frappe.db.get_value(
 			"Moulding Production Entry",
@@ -208,6 +211,9 @@ def submit_inspection_stock_entry_immediately(self):
 		
 		if not mould_prod.stock_entry_reference:
 			frappe.throw(f"Stock Entry reference not found in Moulding Production Entry <b>{mould_prod.name}</b>")
+		
+		print(f"✅ Found Moulding Production Entry: {mould_prod.name}")
+		print(f"✅ Stock Entry Reference: {mould_prod.stock_entry_reference}")
 		
 		# Step 2: Get the batch number from Moulding Production Stock Entry
 		target_batch = frappe.db.get_value(
@@ -223,73 +229,96 @@ def submit_inspection_stock_entry_immediately(self):
 		if not target_batch:
 			frappe.throw(f"Batch number not found in Moulding Production Stock Entry <b>{mould_prod.stock_entry_reference}</b>")
 		
-		print(f"\n🔍 Found target batch: {target_batch} from Moulding Production Stock Entry {mould_prod.stock_entry_reference}")
+		print(f"🔍 Found target batch: {target_batch}")
 		
-		# Step 3: Update inspection's rejection stock entry with batch (if exists)
-		if self.stock_entry_reference:
-			# Update batch in Stock Entry Detail
-			frappe.db.sql(f"""
-				UPDATE `tabStock Entry Detail` 
-				SET batch_no = '{target_batch}' 
-				WHERE source_ref_document = 'Inspection Entry' 
-				AND source_ref_id = '{self.name}'
-			""")
-			
-			# Update batch in Inspection Entry
-			frappe.db.sql(f"""
-				UPDATE `tabInspection Entry` 
-				SET batch_no = '{target_batch}', 
-					spp_batch_number = '{self.lot_no}' 
-				WHERE name = '{self.name}'
-			""")
-			
-			frappe.db.commit()
-			
-			# Step 4: Submit the inspection stock entry immediately
-			ins_stock_entry = frappe.get_doc("Stock Entry", self.stock_entry_reference)
-			
-			if ins_stock_entry.docstatus == 0:
-				# Update use_serial_batch_fields
-				for item in ins_stock_entry.items:
-					item.use_serial_batch_fields = 1
-					if not item.batch_no:
-						item.batch_no = target_batch
+		# Step 3: Find ALL inspection entries for this lot (Line + Lot)
+		exe_insp = frappe.db.sql(
+			f"""SELECT name, stock_entry_reference, inspection_type 
+			FROM `tabInspection Entry` 
+			WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Lot Inspection') 
+			AND docstatus = 1 
+			AND lot_no = '{self.lot_no}'""",
+			as_dict=1
+		)
+		
+		print(f"\n📋 Found {len(exe_insp)} inspection entries to process:")
+		for ins in exe_insp:
+			print(f"  - {ins.inspection_type}: {ins.name} (Stock Entry: {ins.stock_entry_reference or 'None'})")
+		
+		# Step 4: Process each inspection's stock entry
+		submitted_count = 0
+		for ins in exe_insp:
+			if ins.stock_entry_reference:
+				print(f"\n🔄 Processing {ins.inspection_type} - {ins.name}")
 				
-				# Submit the stock entry
-				ins_stock_entry.docstatus = 1
-				ins_stock_entry.save(ignore_permissions=True)
+				# Get the Stock Entry to get its posting_date
+				ins_stock_entry = frappe.get_doc("Stock Entry", ins.stock_entry_reference)
 				
-				# Update posting date
-				if self.posting_date:
-					frappe.db.sql(f"""
-						UPDATE `tabStock Entry` 
-						SET posting_date = '{self.posting_date}' 
-						WHERE name = '{ins_stock_entry.name}'
-					""")
+				# Update batch in Stock Entry Detail
+				frappe.db.sql(f"""
+					UPDATE `tabStock Entry Detail` 
+					SET batch_no = '{target_batch}' 
+					WHERE source_ref_document = 'Inspection Entry' 
+					AND source_ref_id = '{ins.name}'
+				""")
+				print(f"  ✅ Updated batch in Stock Entry Detail")
 				
-				frappe.db.commit()
+				# Update batch in Inspection Entry
+				frappe.db.sql(f"""
+					UPDATE `tabInspection Entry` 
+					SET batch_no = '{target_batch}', 
+						spp_batch_number = '{self.lot_no}' 
+					WHERE name = '{ins.name}'
+				""")
+				print(f"  ✅ Updated batch in Inspection Entry")
 				
-				print(f"✅ Inspection Stock Entry {self.stock_entry_reference} submitted successfully with batch {target_batch}")
+				if ins_stock_entry.docstatus == 0:
+					# Update use_serial_batch_fields
+					for item in ins_stock_entry.items:
+						item.use_serial_batch_fields = 1
+						if not item.batch_no:
+							item.batch_no = target_batch
+					
+					# Submit the stock entry
+					ins_stock_entry.docstatus = 1
+					ins_stock_entry.save(ignore_permissions=True)
+					
+					# Update posting date from Stock Entry (not Inspection Entry)
+					if ins_stock_entry.posting_date:
+						frappe.db.sql(f"""
+							UPDATE `tabStock Entry` 
+							SET posting_date = '{ins_stock_entry.posting_date}' 
+							WHERE name = '{ins_stock_entry.name}'
+						""")
+					
+					submitted_count += 1
+					print(f"  ✅ Stock Entry {ins.stock_entry_reference} SUBMITTED with batch {target_batch}")
+				else:
+					print(f"  ℹ️ Stock Entry {ins.stock_entry_reference} already submitted")
 			else:
-				print(f"ℹ️ Inspection Stock Entry {self.stock_entry_reference} already submitted")
-		else:
-			# No rejection stock entry (no rejections)
-			# Still update batch in Inspection Entry
-			frappe.db.sql(f"""
-				UPDATE `tabInspection Entry` 
-				SET batch_no = '{target_batch}', 
-					spp_batch_number = '{self.lot_no}' 
-				WHERE name = '{self.name}'
-			""")
-			frappe.db.commit()
-			print(f"ℹ️ No rejection Stock Entry for {self.name}, only updated batch reference")
+				# No rejection stock entry (no rejections for this inspection)
+				print(f"\n  ℹ️ {ins.inspection_type} - {ins.name} has no rejections")
+				
+				# Still update batch in Inspection Entry
+				frappe.db.sql(f"""
+					UPDATE `tabInspection Entry` 
+					SET batch_no = '{target_batch}', 
+						spp_batch_number = '{self.lot_no}' 
+					WHERE name = '{ins.name}'
+				""")
+				print(f"  ✅ Updated batch reference in Inspection Entry")
+		
+		frappe.db.commit()
+		
+		print(f"\n✅✅✅ SUCCESS: Submitted {submitted_count} inspection stock entries for lot {self.lot_no}")
+		print(f"✅ All stock entries now have batch: {target_batch}\n")
 		
 	except Exception as e:
 		frappe.log_error(
 			title=f"submit_inspection_stock_entry_immediately - Error - {self.name}",
-			message=f"Error: {str(e)}\n{frappe.get_traceback()}"
+			message=f"Lot: {self.lot_no}\nError: {str(e)}\n{frappe.get_traceback()}"
 		)
-		frappe.throw(f"Failed to submit inspection stock entry: {str(e)}")
+		frappe.throw(f"Failed to submit inspection stock entries: {str(e)}")
 
 def submit_deflash_receipt_entry(self):
 	try:
