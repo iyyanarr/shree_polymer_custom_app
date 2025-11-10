@@ -836,6 +836,9 @@ def make_stock_entry(self):
                     stock_entry_doc.save(ignore_permissions=True)
                     print(f"✅ Stock Entry {stock_entry.name} submitted successfully")
                     
+                    # 🛡️ NEW FALLBACK: Submit Line & Patrol inspection stock entries immediately
+                    submit_inspection_stock_entries_from_moulding(self, stock_entry_doc)
+                    
                     # Update bins after successful submission
                     update_bins(self, resp__s, spp_settings)
                     
@@ -864,6 +867,112 @@ def make_stock_entry(self):
                          title="Moulding SE Error")
         return {"status": "failed", "message": "Stock Entry Creation Failed"}
 
+
+
+
+def submit_inspection_stock_entries_from_moulding(self, moulding_stock_entry):
+    """
+    Submit Line & Patrol inspection stock entries immediately after Moulding Production
+    """
+    try:
+        print(f"\n🛡️ Fallback: Submitting Line & Patrol inspection stock entries")
+        print(f"   Lot: {self.scan_lot_number}")
+        
+        target_batch = None
+        for item in moulding_stock_entry.items:
+            if item.t_warehouse and item.is_finished_item:
+                target_batch = item.batch_no
+                break
+        
+        if not target_batch:
+            print(f"   ⚠️ No batch found in Moulding Stock Entry")
+            return
+        
+        print(f"   📦 Target Batch: {target_batch}")
+        
+        exe_insp = frappe.db.sql(
+            f"""SELECT name, stock_entry_reference, inspection_type 
+            FROM `tabInspection Entry` 
+            WHERE (inspection_type = 'Line Inspection' 
+                   OR inspection_type = 'Patrol Inspection') 
+            AND docstatus = 1 
+            AND lot_no = '{self.scan_lot_number}'""",
+            as_dict=1
+        )
+        
+        if not exe_insp:
+            print(f"   ℹ️ No Line/Patrol inspections found yet")
+            return
+        
+        print(f"\n   📋 Found {len(exe_insp)} inspection entries:")
+        for ins in exe_insp:
+            print(f"      - {ins.inspection_type}: {ins.name} (Stock Entry: {ins.stock_entry_reference or 'None'})")
+        
+        submitted_count = 0
+        for ins in exe_insp:
+            if ins.stock_entry_reference:
+                print(f"\n   🔄 Processing {ins.inspection_type} - {ins.name}")
+                
+                ins_stock_entry = frappe.get_doc("Stock Entry", ins.stock_entry_reference)
+                
+                frappe.db.sql(f"""
+                    UPDATE `tabStock Entry Detail` 
+                    SET batch_no = '{target_batch}' 
+                    WHERE source_ref_document = 'Inspection Entry' 
+                    AND source_ref_id = '{ins.name}'
+                """)
+                print(f"      ✅ Updated batch in Stock Entry Detail")
+                
+                frappe.db.sql(f"""
+                    UPDATE `tabInspection Entry` 
+                    SET batch_no = '{target_batch}', 
+                        spp_batch_number = '{self.scan_lot_number}' 
+                    WHERE name = '{ins.name}'
+                """)
+                print(f"      ✅ Updated batch in Inspection Entry")
+                
+                if ins_stock_entry.docstatus == 0:
+                    for item in ins_stock_entry.items:
+                        item.use_serial_batch_fields = 1
+                        if not item.batch_no:
+                            item.batch_no = target_batch
+                    
+                    ins_stock_entry.docstatus = 1
+                    ins_stock_entry.save(ignore_permissions=True)
+                    
+                    if ins_stock_entry.posting_date:
+                        frappe.db.sql(f"""
+                            UPDATE `tabStock Entry` 
+                            SET posting_date = '{ins_stock_entry.posting_date}' 
+                            WHERE name = '{ins_stock_entry.name}'
+                        """)
+                    
+                    submitted_count += 1
+                    print(f"      ✅ Stock Entry {ins.stock_entry_reference} SUBMITTED")
+                else:
+                    print(f"      ℹ️ Stock Entry {ins.stock_entry_reference} already submitted")
+            else:
+                print(f"\n   ℹ️ {ins.inspection_type} - {ins.name} has no rejections")
+                
+                frappe.db.sql(f"""
+                    UPDATE `tabInspection Entry` 
+                    SET batch_no = '{target_batch}', 
+                        spp_batch_number = '{self.scan_lot_number}' 
+                    WHERE name = '{ins.name}'
+                """)
+                print(f"      ✅ Updated batch reference")
+        
+        frappe.db.commit()
+        
+        print(f"\n   ✅ Fallback Complete: Submitted {submitted_count} Line/Patrol inspection stock entries")
+        print(f"   📊 Summary: Line & Patrol stock entries now have batch {target_batch}")
+        
+    except Exception as e:
+        frappe.log_error(
+            title=f"submit_inspection_stock_entries_from_moulding - Error - {self.name}",
+            message=f"Lot: {self.scan_lot_number}\nError: {str(e)}\n{frappe.get_traceback()}"
+        )
+        print(f"   ⚠️ Error in fallback mechanism: {str(e)}")
 
 def update_bins(self, resp__s, spp_settings):
     for c__bin in resp__s:
@@ -913,9 +1022,6 @@ def append_source_details(stock_entry, self, work_order):
             "transfer_qty": flt(f__b.get('consumed__qty'), 3),
             "qty": flt(f__b.get('consumed__qty'), 3),
             "spp_batch_number": f__b.get('spp_batch_number'),
-            "batch_no": f__b.get('batch_no__'),
-            # For avaoiding the child table only submitted issue which means the parent docstatus = 0 but child docstatus = 1
-            "docstatus": 0
         })
     if self.shell_qty_nos:
         stock_entry.append("items", {
