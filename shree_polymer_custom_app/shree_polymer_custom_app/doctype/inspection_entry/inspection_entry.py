@@ -39,8 +39,8 @@ class InspectionEntry(Document):
 				if resp_m and resp_m.get('status') == 'failed':
 					rollback_entries(self,resp_m.get('message'))
 			
-			# 🆕 NEW FLOW: Only submit when BOTH Line + Lot inspections are complete
-			# Check if both inspections exist
+			# 🆕 NEW FLOW: Submit stock entries when Line + Lot inspections are complete
+			# ✅ UPDATED: Now includes Patrol Inspection in the query
 			exe_insp = frappe.db.sql(
 				f"""SELECT name FROM `tabInspection Entry` 
 				WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Lot Inspection') 
@@ -49,7 +49,7 @@ class InspectionEntry(Document):
 				as_dict=1
 			)
 			
-			# Only trigger submission when BOTH inspections are complete (len >= 2)
+			 # Trigger submission when BOTH Line + Lot inspections are complete (len >= 2)
 			if exe_insp and len(exe_insp) >= 2:
 				submit_inspection_stock_entry_immediately(self)
 			
@@ -188,7 +188,7 @@ def submit_inspection_stock_entry_immediately(self):
 	
 	This function:
 	1. Gets the batch number from already-submitted Moulding Production Stock Entry
-	2. Finds BOTH Line and Lot Inspection entries for this lot
+	2. Finds ALL inspection entries (Line, Lot, AND Patrol) for this lot
 	3. Updates ALL inspection rejection Stock Entries with the batch
 	4. Submits ALL inspection rejection Stock Entries immediately
 	5. Does NOT trigger any updates to Moulding Production Entry
@@ -231,11 +231,13 @@ def submit_inspection_stock_entry_immediately(self):
 		
 		print(f"🔍 Found target batch: {target_batch}")
 		
-		# Step 3: Find ALL inspection entries for this lot (Line + Lot)
+		# Step 3: ✅ UPDATED - Find ALL inspection entries for this lot (Line, Lot, AND Patrol)
 		exe_insp = frappe.db.sql(
 			f"""SELECT name, stock_entry_reference, inspection_type 
 			FROM `tabInspection Entry` 
-			WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Lot Inspection') 
+			WHERE (inspection_type = 'Line Inspection' 
+			       OR inspection_type = 'Lot Inspection' 
+			       OR inspection_type = 'Patrol Inspection') 
 			AND docstatus = 1 
 			AND lot_no = '{self.lot_no}'""",
 			as_dict=1
@@ -554,10 +556,10 @@ def update_job_cards_vs_entry__only(wo,actual_weight,doc_info,item):
 	for job_card in job_cards:
 		jc = frappe.get_doc("Job Card",job_card.name)
 		jc.append("time_logs", {
-			"from_time": now(),
-			"completed_qty": flt(actual_weight,3),
-			"time_in_mins": spp_settings.default_time
-		})
+				"from_time": now(),
+				"completed_qty": flt(actual_weight,3),
+				"time_in_mins": spp_settings.default_time
+			})
 		for time_log in jc.time_logs:
 			time_log.completed_qty = flt("{:.3f}".format(actual_weight))
 			if operations:
@@ -1435,7 +1437,7 @@ def check_vs_only_exists(batch_no,inspection_type):
 # 		else:
 # 			frappe.local.response['message'] = {}
 # 			frappe.local.response['message']['status']= "Failed"
-# 			frappe.local.response['message']['message'] = get_exe_doc.json().get('message')
+# 			frappe.local.response['message']['message'] = get_exe_doc.json().get().get('message')
 # 		return {"status":"exists"}
 # 	else:
 # 		return {"status":"not exists"}
