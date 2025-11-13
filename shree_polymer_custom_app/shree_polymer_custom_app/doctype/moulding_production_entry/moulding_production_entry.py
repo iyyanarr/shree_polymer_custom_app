@@ -652,8 +652,8 @@ def validate_actual_warehouse_stock(self):
         
     except Exception as e:
         frappe.log_error(
-            title="validate_actual_warehouse_stock - Error",
-            message=f"Error validating warehouse stock: {str(e)}\n{frappe.get_traceback()}"
+            title="validate Error",
+            message=f"Error : {str(e)}\n{frappe.get_traceback()}"
         )
         return {
             "status": "failed",
@@ -1022,6 +1022,7 @@ def append_source_details(stock_entry, self, work_order):
             "transfer_qty": flt(f__b.get('consumed__qty'), 3),
             "qty": flt(f__b.get('consumed__qty'), 3),
             "spp_batch_number": f__b.get('spp_batch_number'),
+            "batch_no": f__b.get('batch_no__'),  # ✅ FIX: Explicitly set batch_no to prevent FIFO auto-selection
         })
     if self.shell_qty_nos:
         stock_entry.append("items", {
