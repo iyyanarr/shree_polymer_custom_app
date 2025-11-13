@@ -161,9 +161,9 @@ class MouldingProductionEntry(Document):
                 vcd = validate_comsumption_details(self)
                 if vcd.get('status') == 'success':
                     # 🆕 NEW VALIDATION: Check actual warehouse stock before creating Stock Entry
-                    stock_val = validate_actual_warehouse_stock(self)
-                    if stock_val.get('status') == 'failed':
-                        frappe.throw(stock_val.get('message'))
+                    #stock_val = validate_actual_warehouse_stock(self)
+                    #if stock_val.get('status') == 'failed':
+                    #    frappe.throw(stock_val.get('message'))
                     
                     # Only proceed if stock validation passed
                     ins_info = frappe.db.get_value("Inspection Entry", {"lot_no": self.scan_lot_number, "docstatus": 1, "inspection_type": "Line Inspection"}, [
