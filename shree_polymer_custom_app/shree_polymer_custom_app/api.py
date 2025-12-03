@@ -1318,3 +1318,80 @@ def get_item_details(batch_number):
         'warehouse': warehouse,
         'current_stock': current_stock
     }
+@frappe.whitelist()
+def get_lot_details(lot_number, doctype=None, docname=None):
+	"""
+Get bin-wise consumption and rejection details for a lot
+
+Args:
+lot_number: Lot/SPP Batch number
+doctype: Source doctype (Moulding Production Entry or Deflashing Despatch Entry)
+docname: Source document name
+
+Returns:
+{
+"bin_details": [...],
+"rejection_details": {
+"line_inspection": {...},
+"patrol_inspection": {...}
+}
+}
+"""
+	try:
+		bin_details = []
+		rejection_details = {}
+		
+		# Fetch bin details from source document if available
+		if docname and doctype:
+			if doctype == "Moulding Production Entry":
+				batch_details_json = frappe.db.get_value(doctype, docname, "batch_details")
+				if batch_details_json:
+					bin_details = json.loads(batch_details_json)
+			elif doctype == "Deflashing Despatch Entry":
+				# For Deflashing Despatch, fetch from linked MPE via lot number
+				mpe_name = frappe.db.get_value("Moulding Production Entry", 
+{"scan_lot_number": lot_number, "docstatus": 1}, "name")
+				if mpe_name:
+					batch_details_json = frappe.db.get_value("Moulding Production Entry", mpe_name, "batch_details")
+					if batch_details_json:
+						bin_details = json.loads(batch_details_json)
+		
+		# Fetch rejection details from Inspection Entry
+		inspections = frappe.db.sql("""
+SELECT 
+name,
+inspection_type,
+total_rejected_qty,
+total_rejected_qty_kg
+FROM `tabInspection Entry`
+WHERE lot_no = %(lot_number)s 
+AND docstatus = 1
+AND inspection_type IN ('Line Inspection', 'Patrol Inspection')
+ORDER BY inspection_type
+""", {"lot_number": lot_number}, as_dict=1)
+		
+		for insp in inspections:
+			if insp.inspection_type == "Line Inspection":
+				rejection_details["line_inspection"] = {
+					"rejected_qty": insp.total_rejected_qty or 0,
+					"rejected_kg": flt(insp.total_rejected_qty_kg, 3) or 0
+				}
+			elif insp.inspection_type == "Patrol Inspection":
+				rejection_details["patrol_inspection"] = {
+					"rejected_qty": insp.total_rejected_qty or 0,
+					"rejected_kg": flt(insp.total_rejected_qty_kg, 3) or 0
+				}
+		
+		return {
+			"status": "success",
+			"bin_details": bin_details,
+			"rejection_details": rejection_details,
+			"lot_number": lot_number
+		}
+		
+	except Exception as e:
+		frappe.log_error(title="get_lot_details Error", message=frappe.get_traceback())
+		return {
+			"status": "failed",
+			"message": f"Failed to fetch lot details: {str(e)}"
+		}

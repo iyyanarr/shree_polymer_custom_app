@@ -12,7 +12,7 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
             frm.add_custom_button(__("View Stock Entry"), function () {
                 let dc_ids = frm.doc.stock_entry_reference.split(',');
                 if (dc_ids.length > 1) {
-                    frappe.route_options = {"name": ["in", dc_ids]};
+                    frappe.route_options = { "name": ["in", dc_ids] };
                     frappe.set_route("List", "Stock Entry");
                 } else {
                     frappe.set_route("Form", "Stock Entry", dc_ids[0]);
@@ -30,6 +30,14 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
 
     refresh: frm => {
         frm.events.view_stock_entry(frm);
+
+        // Add "View Lot Details" button for submitted documents
+        if (frm.doc.lot_number && frm.doc.docstatus === 1) {
+            frm.add_custom_button(__('View Lot Details'), function () {
+                show_deflashing_lot_details_dialog(frm);
+            });
+        }
+
         frm.set_df_property("qty", "hidden", 1);
         if (frm.doc.docstatus == 1) {
             frm.set_df_property("scan_section", "hidden", 1);
@@ -57,7 +65,7 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
                     fieldname: ['name', 'batch_no', 'total_inspected_qty_nos', 'total_rejected_qty']
                 },
                 freeze: true,
-                callback: function(r) {
+                callback: function (r) {
                     if (!r.message) {
                         // Lot Inspection not found or not submitted
                         frappe.msgprint({
@@ -68,18 +76,18 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
                         frm.events.reset_scan_fields(frm);
                         return;
                     }
-                    
+
                     // Lot Inspection exists and is submitted - proceed with lot validation
                     frappe.msgprint({
                         title: __('Lot Inspection Verified'),
                         indicator: 'green',
                         message: __('Lot Inspection <b>{0}</b> found and verified ✓', [r.message.name])
                     });
-                    
+
                     // Now validate the lot barcode
                     frappe.call({
                         method: 'shree_polymer_custom_app.shree_polymer_custom_app.doctype.deflashing_despatch_entry.deflashing_despatch_entry.validate_lot_barcode',
-                        args: {bar_code: frm.doc.scan_lot_number},
+                        args: { bar_code: frm.doc.scan_lot_number },
                         freeze: true,
                         callback: function (r) {
                             if (r && r.status == "failed") {
@@ -128,7 +136,7 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
         if (frm.doc.scan_deflashing_vendor && frm.doc.scan_deflashing_vendor !== undefined) {
             frappe.call({
                 method: 'shree_polymer_custom_app.shree_polymer_custom_app.doctype.deflashing_despatch_entry.deflashing_despatch_entry.validate_warehouse',
-                args: {bar_code: frm.doc.scan_deflashing_vendor},
+                args: { bar_code: frm.doc.scan_deflashing_vendor },
                 freeze: true,
                 callback: function (r) {
                     if (r && r.status == "failed") {
@@ -163,7 +171,7 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
     add: frm => {
         let wrapper = $(frm.get_field('add').wrapper).empty();
         $(`<button class="btn btn-xs btn-default add-row" disabled="disabled" style="background-color:#fff!important;color:var(--text-color);border-radius:var(--border-radius);box-shadow:var(--btn-shadow);font-size:var(--text-md);">Add</button>`).appendTo(wrapper);
-        
+
         $(frm.get_field('add').wrapper).find('.add-row').on('click', function () {
             if (!frm.doc.scan_lot_number || frm.doc.scan_lot_number === undefined) {
                 frappe.msgprint("Lot no is missing.");
@@ -246,46 +254,46 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
         confirm_dialog.show();
     },
 
-	create_weight_mismatch_tracker: (frm, observed_weight, difference) => {
-		frappe.call({
-			method: "frappe.client.insert",
-			args: {
-				doc: {
-					doctype: "Weight Mismatch Tracker",
-					ref_production_entry: frm.doc.ref_production_entry || "",
-					ref_lot_number: frm.doc.scan_lot_number || "",
-					observed_weight: observed_weight,
-					difference_in_weight: difference,
+    create_weight_mismatch_tracker: (frm, observed_weight, difference) => {
+        frappe.call({
+            method: "frappe.client.insert",
+            args: {
+                doc: {
+                    doctype: "Weight Mismatch Tracker",
+                    ref_production_entry: frm.doc.ref_production_entry || "",
+                    ref_lot_number: frm.doc.scan_lot_number || "",
+                    observed_weight: observed_weight,
+                    difference_in_weight: difference,
                     source_document: frm.doc.name || "",
                     received_station: 'Deflashing Despatch',
-					item_code: frm.doc.item , // Moved item_code to top-level
-					batch_number: frm.doc.batch_no , // Moved batch_no to top-level
-					system_weight: frm.doc.qty, // Moved system_weight to top-level
-					warehouse: frm.doc.source_warehouse_id , // Moved source_warehouse to top-level
-					observed_by: frappe.session.user, // Observed By
-				},
-			},
-			freeze: true,
-			callback: function (response) {
-				if (!response.exc) {
-					frappe.msgprint({
-						title: __("Success"),
-						indicator: "green",
-						message: __(
-							`Weight Mismatch Tracker <b>${response.message.name}</b> created successfully.`
-						),
-					});
-				} else {
-					frappe.msgprint({
-						title: __("Error"),
-						indicator: "red",
-						message: __("Unable to create Weight Mismatch Tracker."),
-					});
-				}
-			},
-		});
-	}
-	,
+                    item_code: frm.doc.item, // Moved item_code to top-level
+                    batch_number: frm.doc.batch_no, // Moved batch_no to top-level
+                    system_weight: frm.doc.qty, // Moved system_weight to top-level
+                    warehouse: frm.doc.source_warehouse_id, // Moved source_warehouse to top-level
+                    observed_by: frappe.session.user, // Observed By
+                },
+            },
+            freeze: true,
+            callback: function (response) {
+                if (!response.exc) {
+                    frappe.msgprint({
+                        title: __("Success"),
+                        indicator: "green",
+                        message: __(
+                            `Weight Mismatch Tracker <b>${response.message.name}</b> created successfully.`
+                        ),
+                    });
+                } else {
+                    frappe.msgprint({
+                        title: __("Error"),
+                        indicator: "red",
+                        message: __("Unable to create Weight Mismatch Tracker."),
+                    });
+                }
+            },
+        });
+    }
+    ,
 
     add_item_with_validation: (frm, observed_weight) => {
         let exists = (frm.doc.items || []).some(i => i.lot_number === frm.doc.lot_number);
@@ -328,3 +336,142 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
         frm.set_value('amount', '');
     }
 });
+// Helper functions for Lot Details Dialog (Deflashing Despatch)
+function show_deflashing_lot_details_dialog(frm) {
+	frappe.call({
+method: 'shree_polymer_custom_app.shree_polymer_custom_app.api.get_lot_details',
+args: {
+lot_number: frm.doc.lot_number,
+doctype: frm.doctype,
+docname: frm.docname
+},
+callback: function(r) {
+if (r.message && r.message.status === "success") {
+				let d = new frappe.ui.Dialog({
+title: `Lot Details: ${r.message.lot_number}`,
+size: 'large',
+fields: [
+{
+fieldtype: 'HTML',
+fieldname: 'lot_details_html'
+}
+]
+});
+				
+				d.fields_dict.lot_details_html.$wrapper.html(
+generate_deflashing_lot_details_html(r.message)
+);
+				
+				d.show();
+			} else {
+				frappe.msgprint(__('Failed to fetch lot details'));
+			}
+		}
+	});
+}
+
+function generate_deflashing_lot_details_html(data) {
+	let html = '<div class="lot-details-container" style="padding: 15px;">';
+	
+	// Bin-wise consumption section
+	html += '<h4 style="margin-bottom: 15px;">📦 Bin-wise Consumption</h4>';
+	html += '<table class="table table-bordered table-sm">';
+	html += '<thead><tr>';
+	html += '<th>Bin Code</th>';
+	html += '<th>Compound</th>';
+	html += '<th>SPP Batch</th>';
+	html += '<th style="text-align: right;">Consumed (Kg)</th>';
+	html += '<th style="text-align: right;">Balance (Kg)</th>';
+	html += '</tr></thead>';
+	html += '<tbody>';
+	
+	let total_consumed = 0;
+	let total_balance = 0;
+	
+	if (data.bin_details && data.bin_details.length > 0) {
+		data.bin_details.forEach(bin => {
+			if (bin.is__consumed) {
+				html += '<tr>';
+				html += `<td>${bin.bin || '-'}</td>`;
+				html += `<td>${bin.compound || '-'}</td>`;
+				html += `<td>${bin.spp_batch_number || '-'}</td>`;
+				html += `<td style="text-align: right;">${parseFloat(bin.consumed__qty || 0).toFixed(3)}</td>`;
+				html += `<td style="text-align: right;">${parseFloat(bin.balance__qty || 0).toFixed(3)}</td>`;
+				html += '</tr>';
+				
+				total_consumed += parseFloat(bin.consumed__qty || 0);
+				total_balance += parseFloat(bin.balance__qty || 0);
+			}
+		});
+	} else {
+		html += '<tr><td colspan="5" style="text-align: center;">No bin data available</td></tr>';
+	}
+	
+	html += '</tbody>';
+	html += '<tfoot>';
+	html += '<tr style="font-weight: bold; background-color: #f0f0f0;">';
+	html += '<td colspan="3">TOTAL</td>';
+	html += `<td style="text-align: right;">${total_consumed.toFixed(3)}</td>`;
+	html += `<td style="text-align: right;">${total_balance.toFixed(3)}</td>`;
+	html += '</tr>';
+	html += '</tfoot>';
+	html += '</table>';
+	
+	// Rejection summary section
+	html += '<h4 style="margin-top: 30px; margin-bottom: 15px;">🚫 Rejection Summary</h4>';
+	html += '<table class="table table-bordered table-sm">';
+	html += '<thead><tr>';
+	html += '<th>Inspection Type</th>';
+	html += '<th style="text-align: right;">Rejected (Nos)</th>';
+	html += '<th style="text-align: right;">Rejected Weight (Kg)</th>';
+	html += '</tr></thead>';
+	html += '<tbody>';
+	
+	let total_rejected_nos = 0;
+	let total_rejected_kg = 0;
+	
+	if (data.rejection_details) {
+		if (data.rejection_details.line_inspection) {
+			html += '<tr>';
+			html += '<td>Line Inspection</td>';
+			html += `<td style="text-align: right;">${data.rejection_details.line_inspection.rejected_qty || 0}</td>`;
+			html += `<td style="text-align: right;">${parseFloat(data.rejection_details.line_inspection.rejected_kg || 0).toFixed(3)}</td>`;
+			html += '</tr>';
+			
+			total_rejected_nos += parseInt(data.rejection_details.line_inspection.rejected_qty || 0);
+			total_rejected_kg += parseFloat(data.rejection_details.line_inspection.rejected_kg || 0);
+		}
+		
+		if (data.rejection_details.patrol_inspection) {
+			html += '<tr>';
+			html += '<td>Patrol Inspection</td>';
+			html += `<td style="text-align: right;">${data.rejection_details.patrol_inspection.rejected_qty || 0}</td>`;
+			html += `<td style="text-align: right;">${parseFloat(data.rejection_details.patrol_inspection.rejected_kg || 0).toFixed(3)}</td>`;
+			html += '</tr>';
+			
+			total_rejected_nos += parseInt(data.rejection_details.patrol_inspection.rejected_qty || 0);
+			total_rejected_kg += parseFloat(data.rejection_details.patrol_inspection.rejected_kg || 0);
+		}
+	}
+	
+	if (total_rejected_nos === 0) {
+		html += '<tr><td colspan="3" style="text-align: center;">No rejection data available</td></tr>';
+	}
+	
+	html += '</tbody>';
+	
+	if (total_rejected_nos > 0) {
+		html += '<tfoot>';
+		html += '<tr style="font-weight: bold; background-color: #f0f0f0;">';
+		html += '<td>TOTAL</td>';
+		html += `<td style="text-align: right;">${total_rejected_nos}</td>`;
+		html += `<td style="text-align: right;">${total_rejected_kg.toFixed(3)}</td>`;
+		html += '</tr>';
+		html += '</tfoot>';
+	}
+	
+	html += '</table>';
+	html += '</div>';
+	
+	return html;
+}

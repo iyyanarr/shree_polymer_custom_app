@@ -44,6 +44,18 @@ class MouldingProductionEntry(Document):
         return result
 
     def validate(self):
+        # Detect Injection Moulding press from workstation name
+        if self.job_card:
+            workstation = frappe.db.get_value("Job Card", self.job_card, "workstation")
+            if workstation:
+                ws_name = frappe.db.get_value("Workstation", workstation, "workstation_name") or ""
+                # Check for "INJECTION" or "INJUCTION" (handle typo in database)
+                self.is_injection_moulding = 1 if ("INJECTION" in ws_name.upper() or "INJUCTION" in ws_name.upper()) else 0
+            else:
+                self.is_injection_moulding = 0
+        else:
+            self.is_injection_moulding = 0
+        
         self.validate_get_line_ins_qty()
         if getdate(self.moulding_date) > getdate():
             frappe.throw(
@@ -1024,6 +1036,34 @@ def append_source_details(stock_entry, self, work_order):
             "spp_batch_number": f__b.get('spp_batch_number'),
             "batch_no": f__b.get('batch_no__'),  # ✅ FIX: Explicitly set batch_no to prevent FIFO auto-selection
         })
+    
+    # Add purged compound as scrap transfer (for Injection Moulding)
+    if self.purged_compound and self.purged_compound > 0:
+        spp_settings = frappe.get_single("SPP Settings")
+        scrap_warehouse = spp_settings.get("purge_scrap_warehouse")
+        
+        if not scrap_warehouse:
+            frappe.throw("Purge Scrap Warehouse not configured in <b>SPP Settings</b>")
+        
+        # Use the first batch from consumed batches
+        first_batch_info = final_batch_details[0] if final_batch_details else {}
+        
+        stock_entry.append("items", {
+            "item_code": self.compound,  # Same compound item
+            "s_warehouse": work_order.source_warehouse,
+            "t_warehouse": scrap_warehouse,  # Transfer to scrap warehouse
+            "stock_uom": "Kg",
+            "uom": "Kg",
+            "conversion_factor_uom": 1,
+            "is_finished_item": 0,
+            "transfer_qty": flt(self.purged_compound, 3),
+            "qty": flt(self.purged_compound, 3),
+            "use_serial_batch_fields": 1,
+            "batch_no": first_batch_info.get('batch_no__'),
+            "spp_batch_number": first_batch_info.get('spp_batch_number'),
+            "docstatus": 0
+        })
+    
     if self.shell_qty_nos:
         stock_entry.append("items", {
             "item_code": self.shell_item,
