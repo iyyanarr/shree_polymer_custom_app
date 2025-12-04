@@ -1045,8 +1045,18 @@ def append_source_details(stock_entry, self, work_order):
         if not scrap_warehouse:
             frappe.throw("Purge Scrap Warehouse not configured in <b>SPP Settings</b>")
         
-        # Use the first batch from consumed batches
-        first_batch_info = final_batch_details[0] if final_batch_details else {}
+        # Validate that we have consumed batches
+        if not final_batch_details or len(final_batch_details) == 0:
+            frappe.throw("No consumed batch details found for purged compound")
+        
+        # Use the EXACT same batch as the first consumed compound item
+        first_batch_info = final_batch_details[0]
+        purge_batch_no = first_batch_info.get('batch_no__')
+        purge_spp_batch = first_batch_info.get('spp_batch_number')
+        
+        # Validate batch number exists
+        if not purge_batch_no:
+            frappe.throw(f"Batch number not found in consumed batch details for purged compound")
         
         stock_entry.append("items", {
             "item_code": self.compound,  # Same compound item
@@ -1059,8 +1069,8 @@ def append_source_details(stock_entry, self, work_order):
             "transfer_qty": flt(self.purged_compound, 3),
             "qty": flt(self.purged_compound, 3),
             "use_serial_batch_fields": 1,
-            "batch_no": first_batch_info.get('batch_no__'),
-            "spp_batch_number": first_batch_info.get('spp_batch_number'),
+            "batch_no": purge_batch_no,  # EXPLICITLY set to same batch as consumed compound
+            "spp_batch_number": purge_spp_batch,
             "docstatus": 0
         })
     

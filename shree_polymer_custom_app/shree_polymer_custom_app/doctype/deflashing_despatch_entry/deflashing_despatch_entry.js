@@ -31,11 +31,15 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
     refresh: frm => {
         frm.events.view_stock_entry(frm);
 
-        // Add "View Lot Details" button for submitted documents
-        if (frm.doc.lot_number && frm.doc.docstatus === 1) {
-            frm.add_custom_button(__('View Lot Details'), function () {
-                show_deflashing_lot_details_dialog(frm);
-            });
+        // Add "View Lot Details" button for submitted documents with items
+        if (frm.doc.docstatus === 1 && frm.doc.items && frm.doc.items.length > 0) {
+            // Check if any item has a lot number
+            const hasLots = frm.doc.items.some(item => item.lot_number);
+            if (hasLots) {
+                frm.add_custom_button(__('View Lot Details'), function () {
+                    show_deflashing_lot_selector(frm);
+                });
+            }
         }
 
         frm.set_df_property("qty", "hidden", 1);
@@ -337,141 +341,190 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
     }
 });
 // Helper functions for Lot Details Dialog (Deflashing Despatch)
-function show_deflashing_lot_details_dialog(frm) {
-	frappe.call({
-method: 'shree_polymer_custom_app.shree_polymer_custom_app.api.get_lot_details',
-args: {
-lot_number: frm.doc.lot_number,
-doctype: frm.doctype,
-docname: frm.docname
-},
-callback: function(r) {
-if (r.message && r.message.status === "success") {
-				let d = new frappe.ui.Dialog({
-title: `Lot Details: ${r.message.lot_number}`,
-size: 'large',
-fields: [
-{
-fieldtype: 'HTML',
-fieldname: 'lot_details_html'
+function show_deflashing_lot_selector(frm) {
+    // Get unique lot numbers from items table
+    const lotNumbers = [];
+    const lotOptions = [];
+
+    if (frm.doc.items && frm.doc.items.length > 0) {
+        frm.doc.items.forEach(item => {
+            if (item.lot_number && !lotNumbers.includes(item.lot_number)) {
+                lotNumbers.push(item.lot_number);
+                lotOptions.push({
+                    label: `${item.lot_number} - ${item.item || 'N/A'}`,
+                    value: item.lot_number
+                });
+            }
+        });
+    }
+
+    // If only one lot, show details directly
+    if (lotNumbers.length === 1) {
+        show_deflashing_lot_details_dialog(frm, lotNumbers[0]);
+        return;
+    }
+
+    // If multiple lots, show selector dialog
+    let selector = new frappe.ui.Dialog({
+        title: __('Select Lot to View Details'),
+        fields: [
+            {
+                fieldtype: 'Select',
+                fieldname: 'selected_lot',
+                label: 'Lot Number',
+                options: lotOptions.map(opt => opt.label),
+                reqd: 1,
+                description: 'Select a lot number to view its details'
+            }
+        ],
+        primary_action_label: __('View Details'),
+        primary_action: (values) => {
+            // Extract lot number from selected label
+            const selectedLabel = values.selected_lot;
+            const selectedLot = lotNumbers[lotOptions.findIndex(opt => opt.label === selectedLabel)];
+            selector.hide();
+            show_deflashing_lot_details_dialog(frm, selectedLot);
+        }
+    });
+
+    selector.show();
 }
-]
-});
-				
-				d.fields_dict.lot_details_html.$wrapper.html(
-generate_deflashing_lot_details_html(r.message)
-);
-				
-				d.show();
-			} else {
-				frappe.msgprint(__('Failed to fetch lot details'));
-			}
-		}
-	});
+
+function show_deflashing_lot_details_dialog(frm, lotNumber) {
+    frappe.call({
+        method: 'shree_polymer_custom_app.shree_polymer_custom_app.api.get_lot_details',
+        args: {
+            lot_number: lotNumber,
+            doctype: frm.doctype,
+            docname: frm.docname
+        },
+        callback: function (r) {
+            if (r.message && r.message.status === "success") {
+                let d = new frappe.ui.Dialog({
+                    title: `Lot Details: ${r.message.lot_number}`,
+                    size: 'large',
+                    fields: [
+                        {
+                            fieldtype: 'HTML',
+                            fieldname: 'lot_details_html'
+                        }
+                    ]
+                });
+
+                d.fields_dict.lot_details_html.$wrapper.html(
+                    generate_deflashing_lot_details_html(r.message)
+                );
+
+                d.show();
+            } else {
+                frappe.msgprint(__('Failed to fetch lot details'));
+            }
+        }
+    });
 }
 
 function generate_deflashing_lot_details_html(data) {
-	let html = '<div class="lot-details-container" style="padding: 15px;">';
-	
-	// Bin-wise consumption section
-	html += '<h4 style="margin-bottom: 15px;">📦 Bin-wise Consumption</h4>';
-	html += '<table class="table table-bordered table-sm">';
-	html += '<thead><tr>';
-	html += '<th>Bin Code</th>';
-	html += '<th>Compound</th>';
-	html += '<th>SPP Batch</th>';
-	html += '<th style="text-align: right;">Consumed (Kg)</th>';
-	html += '<th style="text-align: right;">Balance (Kg)</th>';
-	html += '</tr></thead>';
-	html += '<tbody>';
-	
-	let total_consumed = 0;
-	let total_balance = 0;
-	
-	if (data.bin_details && data.bin_details.length > 0) {
-		data.bin_details.forEach(bin => {
-			if (bin.is__consumed) {
-				html += '<tr>';
-				html += `<td>${bin.bin || '-'}</td>`;
-				html += `<td>${bin.compound || '-'}</td>`;
-				html += `<td>${bin.spp_batch_number || '-'}</td>`;
-				html += `<td style="text-align: right;">${parseFloat(bin.consumed__qty || 0).toFixed(3)}</td>`;
-				html += `<td style="text-align: right;">${parseFloat(bin.balance__qty || 0).toFixed(3)}</td>`;
-				html += '</tr>';
-				
-				total_consumed += parseFloat(bin.consumed__qty || 0);
-				total_balance += parseFloat(bin.balance__qty || 0);
-			}
-		});
-	} else {
-		html += '<tr><td colspan="5" style="text-align: center;">No bin data available</td></tr>';
-	}
-	
-	html += '</tbody>';
-	html += '<tfoot>';
-	html += '<tr style="font-weight: bold; background-color: #f0f0f0;">';
-	html += '<td colspan="3">TOTAL</td>';
-	html += `<td style="text-align: right;">${total_consumed.toFixed(3)}</td>`;
-	html += `<td style="text-align: right;">${total_balance.toFixed(3)}</td>`;
-	html += '</tr>';
-	html += '</tfoot>';
-	html += '</table>';
-	
-	// Rejection summary section
-	html += '<h4 style="margin-top: 30px; margin-bottom: 15px;">🚫 Rejection Summary</h4>';
-	html += '<table class="table table-bordered table-sm">';
-	html += '<thead><tr>';
-	html += '<th>Inspection Type</th>';
-	html += '<th style="text-align: right;">Rejected (Nos)</th>';
-	html += '<th style="text-align: right;">Rejected Weight (Kg)</th>';
-	html += '</tr></thead>';
-	html += '<tbody>';
-	
-	let total_rejected_nos = 0;
-	let total_rejected_kg = 0;
-	
-	if (data.rejection_details) {
-		if (data.rejection_details.line_inspection) {
-			html += '<tr>';
-			html += '<td>Line Inspection</td>';
-			html += `<td style="text-align: right;">${data.rejection_details.line_inspection.rejected_qty || 0}</td>`;
-			html += `<td style="text-align: right;">${parseFloat(data.rejection_details.line_inspection.rejected_kg || 0).toFixed(3)}</td>`;
-			html += '</tr>';
-			
-			total_rejected_nos += parseInt(data.rejection_details.line_inspection.rejected_qty || 0);
-			total_rejected_kg += parseFloat(data.rejection_details.line_inspection.rejected_kg || 0);
-		}
-		
-		if (data.rejection_details.patrol_inspection) {
-			html += '<tr>';
-			html += '<td>Patrol Inspection</td>';
-			html += `<td style="text-align: right;">${data.rejection_details.patrol_inspection.rejected_qty || 0}</td>`;
-			html += `<td style="text-align: right;">${parseFloat(data.rejection_details.patrol_inspection.rejected_kg || 0).toFixed(3)}</td>`;
-			html += '</tr>';
-			
-			total_rejected_nos += parseInt(data.rejection_details.patrol_inspection.rejected_qty || 0);
-			total_rejected_kg += parseFloat(data.rejection_details.patrol_inspection.rejected_kg || 0);
-		}
-	}
-	
-	if (total_rejected_nos === 0) {
-		html += '<tr><td colspan="3" style="text-align: center;">No rejection data available</td></tr>';
-	}
-	
-	html += '</tbody>';
-	
-	if (total_rejected_nos > 0) {
-		html += '<tfoot>';
-		html += '<tr style="font-weight: bold; background-color: #f0f0f0;">';
-		html += '<td>TOTAL</td>';
-		html += `<td style="text-align: right;">${total_rejected_nos}</td>`;
-		html += `<td style="text-align: right;">${total_rejected_kg.toFixed(3)}</td>`;
-		html += '</tr>';
-		html += '</tfoot>';
-	}
-	
-	html += '</table>';
-	html += '</div>';
-	
-	return html;
+    let html = '<div class="lot-details-container" style="padding: 15px;">';
+
+    // Bin-wise consumption section
+    html += '<h4 style="margin-bottom: 15px;">📦 Bin-wise Consumption</h4>';
+    html += '<table class="table table-bordered table-sm">';
+    html += '<thead><tr>';
+    html += '<th>Bin Code</th>';
+    html += '<th>Compound</th>';
+    html += '<th>SPP Batch</th>';
+    html += '<th style="text-align: right;">Consumed (Kg)</th>';
+    html += '<th style="text-align: right;">Balance (Kg)</th>';
+    html += '</tr></thead>';
+    html += '<tbody>';
+
+    let total_consumed = 0;
+    let total_balance = 0;
+
+    if (data.bin_details && data.bin_details.length > 0) {
+        data.bin_details.forEach(bin => {
+            if (bin.is__consumed) {
+                html += '<tr>';
+                html += `<td>${bin.bin || '-'}</td>`;
+                html += `<td>${bin.compound || '-'}</td>`;
+                html += `<td>${bin.spp_batch_number || '-'}</td>`;
+                html += `<td style="text-align: right;">${parseFloat(bin.consumed__qty || 0).toFixed(3)}</td>`;
+                html += `<td style="text-align: right;">${parseFloat(bin.balance__qty || 0).toFixed(3)}</td>`;
+                html += '</tr>';
+
+                total_consumed += parseFloat(bin.consumed__qty || 0);
+                total_balance += parseFloat(bin.balance__qty || 0);
+            }
+        });
+    } else {
+        html += '<tr><td colspan="5" style="text-align: center;">No bin data available</td></tr>';
+    }
+
+    html += '</tbody>';
+    html += '<tfoot>';
+    html += '<tr style="font-weight: bold; background-color: #f0f0f0;">';
+    html += '<td colspan="3">TOTAL</td>';
+    html += `<td style="text-align: right;">${total_consumed.toFixed(3)}</td>`;
+    html += `<td style="text-align: right;">${total_balance.toFixed(3)}</td>`;
+    html += '</tr>';
+    html += '</tfoot>';
+    html += '</table>';
+
+    // Rejection summary section
+    html += '<h4 style="margin-top: 30px; margin-bottom: 15px;">🚫 Rejection Summary</h4>';
+    html += '<table class="table table-bordered table-sm">';
+    html += '<thead><tr>';
+    html += '<th>Inspection Type</th>';
+    html += '<th style="text-align: right;">Rejected (Nos)</th>';
+    html += '<th style="text-align: right;">Rejected Weight (Kg)</th>';
+    html += '</tr></thead>';
+    html += '<tbody>';
+
+    let total_rejected_nos = 0;
+    let total_rejected_kg = 0;
+
+    if (data.rejection_details) {
+        if (data.rejection_details.line_inspection) {
+            html += '<tr>';
+            html += '<td>Line Inspection</td>';
+            html += `<td style="text-align: right;">${data.rejection_details.line_inspection.rejected_qty || 0}</td>`;
+            html += `<td style="text-align: right;">${parseFloat(data.rejection_details.line_inspection.rejected_kg || 0).toFixed(3)}</td>`;
+            html += '</tr>';
+
+            total_rejected_nos += parseInt(data.rejection_details.line_inspection.rejected_qty || 0);
+            total_rejected_kg += parseFloat(data.rejection_details.line_inspection.rejected_kg || 0);
+        }
+
+        if (data.rejection_details.patrol_inspection) {
+            html += '<tr>';
+            html += '<td>Patrol Inspection</td>';
+            html += `<td style="text-align: right;">${data.rejection_details.patrol_inspection.rejected_qty || 0}</td>`;
+            html += `<td style="text-align: right;">${parseFloat(data.rejection_details.patrol_inspection.rejected_kg || 0).toFixed(3)}</td>`;
+            html += '</tr>';
+
+            total_rejected_nos += parseInt(data.rejection_details.patrol_inspection.rejected_qty || 0);
+            total_rejected_kg += parseFloat(data.rejection_details.patrol_inspection.rejected_kg || 0);
+        }
+    }
+
+    if (total_rejected_nos === 0) {
+        html += '<tr><td colspan="3" style="text-align: center;">No rejection data available</td></tr>';
+    }
+
+    html += '</tbody>';
+
+    if (total_rejected_nos > 0) {
+        html += '<tfoot>';
+        html += '<tr style="font-weight: bold; background-color: #f0f0f0;">';
+        html += '<td>TOTAL</td>';
+        html += `<td style="text-align: right;">${total_rejected_nos}</td>`;
+        html += `<td style="text-align: right;">${total_rejected_kg.toFixed(3)}</td>`;
+        html += '</tr>';
+        html += '</tfoot>';
+    }
+
+    html += '</table>';
+    html += '</div>';
+
+    return html;
 }
