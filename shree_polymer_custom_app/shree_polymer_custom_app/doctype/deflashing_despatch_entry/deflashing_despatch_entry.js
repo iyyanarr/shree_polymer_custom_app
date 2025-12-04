@@ -124,6 +124,9 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
                                 frm.set_value("valuation_rate", r.valuation_rate);
                                 frm.set_value("amount", r.amount);
                                 frm.events.enable_disable_btn(frm);
+
+                                // Fetch and display bin details for the scanned lot
+                                fetch_and_display_bin_details(frm, frm.doc.scan_lot_number);
                             } else {
                                 frappe.msgprint("Something went wrong.");
                             }
@@ -133,6 +136,10 @@ frappe.ui.form.on('Deflashing Despatch Entry', {
             });
         } else {
             frm.events.enable_disable_btn(frm);
+            // Clear bin details display when lot number is cleared
+            if (frm.fields_dict.bin_details_display) {
+                frm.fields_dict.bin_details_display.$wrapper.html('');
+            }
         }
     },
 
@@ -526,5 +533,101 @@ function generate_deflashing_lot_details_html(data) {
     html += '</table>';
     html += '</div>';
 
+    return html;
+}
+// Helper function to fetch and display bin details in real-time
+function fetch_and_display_bin_details(frm, lot_number) {
+    if (!lot_number) {
+        if (frm.fields_dict.bin_details_display) {
+            frm.fields_dict.bin_details_display.$wrapper.html('');
+        }
+        return;
+    }
+    
+    frappe.call({
+        method: 'shree_polymer_custom_app.shree_polymer_custom_app.api.get_lot_details',
+        args: {
+            lot_number: lot_number,
+            doctype: 'Deflashing Despatch Entry',
+            docname: frm.docname || ''
+        },
+        callback: function(r) {
+            if (r.message && r.message.status === "success" && frm.fields_dict.bin_details_display) {
+                const html = generate_compact_bin_html(r.message);
+                frm.fields_dict.bin_details_display.$wrapper.html(html);
+            } else if (frm.fields_dict.bin_details_display) {
+                frm.fields_dict.bin_details_display.$wrapper.html(
+                    '<div class="text-muted" style="padding: 10px;">No bin consumption data  available for this lot</div>'
+                );
+            }
+        }
+    });
+}
+
+// Helper function to generate compact HTML for bin details
+function generate_compact_bin_html(data) {
+    if (!data.bin_details || data.bin_details.length === 0) {
+        return '<div class="text-muted" style="padding: 10px;">No bin consumption data</div>';
+    }
+    
+    let html = `
+        <div style="border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; background: #f9fafb; margin-top: 8px;">
+            <h6 style="margin: 0 0 10px 0; color: #374151; font-size: 13px;">
+                📦 Bins Used for Lot <b>${data.lot_number}</b>
+            </h6>
+            <table class="table table-sm table-bordered" style="margin-bottom: 10px; font-size: 12px;">
+                <thead style="background: #e5e7eb;">
+                    <tr>
+                        <th>Bin</th>
+                        <th>Compound</th>
+                        <th style="text-align: right;">Consumed (Kg)</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+    
+    let total = 0;
+    data.bin_details.forEach(bin => {
+        if (bin.is__consumed) {
+            const consumed = parseFloat(bin.consumed__qty || 0);
+            total += consumed;
+            html += `
+                <tr>
+                    <td><b>${bin.bin || '-'}</b></td>
+                    <td>${bin.compound || '-'}</td>
+                    <td style="text-align: right;">${consumed.toFixed(3)}</td>
+                </tr>`;
+        }
+    });
+    
+    html += `
+                <tr style="font-weight: bold; background: #f3f4f6;">
+                    <td colspan="2">Total</td>
+                    <td style="text-align: right;">${total.toFixed(3)} Kg</td>
+                </tr>
+            </tbody>
+        </table>`;
+    
+    // Add rejection summary if available
+    if (data.rejection_details) {
+        const line = data.rejection_details.line_inspection;
+        const patrol = data.rejection_details.patrol_inspection;
+        
+        if (line || patrol) {
+            html += `
+                <div style="margin-top: 8px; font-size: 11px; color: #6b7280; padding: 6px; background: #fef3c7; border-radius: 4px;">
+                    <b>🚫 Rejections:</b>`;
+            
+            if (line) {
+                html += ` <span style="color: #991b1b;">Line: ${line.rejected_qty} nos (${line.rejected_kg.toFixed(3)} kg)</span>`;
+            }
+            if (patrol) {
+                html += ` ${line ? ' | ' : ''} <span style="color: #991b1b;">Patrol: ${patrol.rejected_qty} nos (${patrol.rejected_kg.toFixed(3)} kg)</span>`;
+            }
+            
+            html += `</div>`;
+        }
+    }
+    
+    html += '</div>';
     return html;
 }
