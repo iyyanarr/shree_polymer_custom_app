@@ -1061,14 +1061,15 @@ def append_source_details(stock_entry, self, work_order):
         stock_entry.append("items", {
             "item_code": self.compound,  # Same compound item
             "s_warehouse": work_order.source_warehouse,
-            "t_warehouse": scrap_warehouse,  # Transfer to scrap warehouse
+            "t_warehouse": None,  # Consumed as scrap (not transferred) - avoids batch bundle issues
             "stock_uom": "Kg",
             "uom": "Kg",
             "conversion_factor_uom": 1,
             "is_finished_item": 0,
+            "is_scrap_item": 1,  # Mark as scrap/waste material for tracking
             "transfer_qty": flt(self.purged_compound, 3),
             "qty": flt(self.purged_compound, 3),
-            "use_serial_batch_fields": 1,
+            "use_serial_batch_fields": 1,  # Use batch fields for consumption items
             "batch_no": purge_batch_no,  # EXPLICITLY set to same batch as consumed compound
             "spp_batch_number": purge_spp_batch,
             "docstatus": 0
