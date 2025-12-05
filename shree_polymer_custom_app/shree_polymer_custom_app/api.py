@@ -1366,7 +1366,7 @@ total_rejected_qty_kg
 FROM `tabInspection Entry`
 WHERE lot_no = %(lot_number)s 
 AND docstatus = 1
-AND inspection_type IN ('Line Inspection', 'Patrol Inspection')
+AND inspection_type IN ('Line Inspection', 'Patrol Inspection', 'Lot Inspection')
 ORDER BY inspection_type
 """, {"lot_number": lot_number}, as_dict=1)
 		
@@ -1378,6 +1378,11 @@ ORDER BY inspection_type
 				}
 			elif insp.inspection_type == "Patrol Inspection":
 				rejection_details["patrol_inspection"] = {
+					"rejected_qty": insp.total_rejected_qty or 0,
+					"rejected_kg": flt(insp.total_rejected_qty_kg, 3) or 0
+				}
+			elif insp.inspection_type == "Lot Inspection":
+				rejection_details["lot_inspection"] = {
 					"rejected_qty": insp.total_rejected_qty or 0,
 					"rejected_kg": flt(insp.total_rejected_qty_kg, 3) or 0
 				}

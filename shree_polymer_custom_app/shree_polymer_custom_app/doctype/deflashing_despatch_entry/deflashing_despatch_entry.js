@@ -512,6 +512,17 @@ function generate_deflashing_lot_details_html(data) {
             total_rejected_nos += parseInt(data.rejection_details.patrol_inspection.rejected_qty || 0);
             total_rejected_kg += parseFloat(data.rejection_details.patrol_inspection.rejected_kg || 0);
         }
+
+        if (data.rejection_details.lot_inspection) {
+            html += '<tr>';
+            html += '<td>Lot Inspection</td>';
+            html += `<td style="text-align: right;">${data.rejection_details.lot_inspection.rejected_qty || 0}</td>`;
+            html += `<td style="text-align: right;">${parseFloat(data.rejection_details.lot_inspection.rejected_kg || 0).toFixed(3)}</td>`;
+            html += '</tr>';
+
+            total_rejected_nos += parseInt(data.rejection_details.lot_inspection.rejected_qty || 0);
+            total_rejected_kg += parseFloat(data.rejection_details.lot_inspection.rejected_kg || 0);
+        }
     }
 
     if (total_rejected_nos === 0) {
@@ -543,7 +554,7 @@ function fetch_and_display_bin_details(frm, lot_number) {
         }
         return;
     }
-    
+
     frappe.call({
         method: 'shree_polymer_custom_app.shree_polymer_custom_app.api.get_lot_details',
         args: {
@@ -551,7 +562,7 @@ function fetch_and_display_bin_details(frm, lot_number) {
             doctype: 'Deflashing Despatch Entry',
             docname: frm.docname || ''
         },
-        callback: function(r) {
+        callback: function (r) {
             if (r.message && r.message.status === "success" && frm.fields_dict.bin_details_display) {
                 const html = generate_compact_bin_html(r.message);
                 frm.fields_dict.bin_details_display.$wrapper.html(html);
@@ -569,7 +580,7 @@ function generate_compact_bin_html(data) {
     if (!data.bin_details || data.bin_details.length === 0) {
         return '<div class="text-muted" style="padding: 10px;">No bin consumption data</div>';
     }
-    
+
     let html = `
         <div style="border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; background: #f9fafb; margin-top: 8px;">
             <h6 style="margin: 0 0 10px 0; color: #374151; font-size: 13px;">
@@ -584,7 +595,7 @@ function generate_compact_bin_html(data) {
                     </tr>
                 </thead>
                 <tbody>`;
-    
+
     let total = 0;
     data.bin_details.forEach(bin => {
         if (bin.is__consumed) {
@@ -598,7 +609,7 @@ function generate_compact_bin_html(data) {
                 </tr>`;
         }
     });
-    
+
     html += `
                 <tr style="font-weight: bold; background: #f3f4f6;">
                     <td colspan="2">Total</td>
@@ -606,28 +617,34 @@ function generate_compact_bin_html(data) {
                 </tr>
             </tbody>
         </table>`;
-    
+
     // Add rejection summary if available
     if (data.rejection_details) {
         const line = data.rejection_details.line_inspection;
         const patrol = data.rejection_details.patrol_inspection;
-        
-        if (line || patrol) {
+        const lot = data.rejection_details.lot_inspection;
+
+        if (line || patrol || lot) {
             html += `
                 <div style="margin-top: 8px; font-size: 11px; color: #6b7280; padding: 6px; background: #fef3c7; border-radius: 4px;">
                     <b>🚫 Rejections:</b>`;
-            
+
+            let parts = [];
             if (line) {
-                html += ` <span style="color: #991b1b;">Line: ${line.rejected_qty} nos (${line.rejected_kg.toFixed(3)} kg)</span>`;
+                parts.push(`<span style="color: #991b1b;">Line: ${line.rejected_qty} nos (${line.rejected_kg.toFixed(3)} kg)</span>`);
             }
             if (patrol) {
-                html += ` ${line ? ' | ' : ''} <span style="color: #991b1b;">Patrol: ${patrol.rejected_qty} nos (${patrol.rejected_kg.toFixed(3)} kg)</span>`;
+                parts.push(`<span style="color: #991b1b;">Patrol: ${patrol.rejected_qty} nos (${patrol.rejected_kg.toFixed(3)} kg)</span>`);
             }
-            
+            if (lot) {
+                parts.push(`<span style="color: #991b1b;">Lot: ${lot.rejected_qty} nos (${lot.rejected_kg.toFixed(3)} kg)</span>`);
+            }
+
+            html += ' ' + parts.join(' | ');
             html += `</div>`;
         }
     }
-    
+
     html += '</div>';
     return html;
 }

@@ -9,6 +9,7 @@
     "field_order": [
         "moulding_date",
         "scan_lot_number",
+        "bin_tracking_display",
         "operator",
         "scan_supervisor",
         "availabe_qty",
@@ -16,6 +17,7 @@
         "weight",
         "is_injection_moulding",
         "purged_compound",
+        "compound_leakage",
         "number_of_lifts",
         "no_of_running_cavities",
         "curing_time",
@@ -65,6 +67,12 @@
             "reqd": 1
         },
         {
+            "fieldname": "bin_tracking_display",
+            "fieldtype": "HTML",
+            "label": "Bin Tracking Details",
+            "read_only": 1
+        },
+        {
             "fieldname": "weight",
             "fieldtype": "Float",
             "in_list_view": 1,
@@ -86,6 +94,14 @@
             "mandatory_depends_on": "eval:doc.is_injection_moulding==1",
             "precision": "3",
             "description": "Compound purged/wasted during injection moulding machine setup"
+        },
+        {
+            "fieldname": "compound_leakage",
+            "fieldtype": "Float",
+            "label": "Compound Leakage (Kg)",
+            "mandatory_depends_on": "eval:doc.is_injection_moulding==1",
+            "precision": "3",
+            "description": "Compound leaked during injection moulding"
         },
         {
             "depends_on": "eval:doc.no_balance_bin ==0",

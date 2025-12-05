@@ -54,6 +54,10 @@ frappe.ui.form.on('Moulding Production Entry', {
 					if (r.message.status == "Failed") {
 						frappe.msgprint(r.message.message)
 						frm.set_value('scan_lot_number', '')
+						// Clear bin display on failure
+						if (frm.fields_dict.bin_tracking_display) {
+							frm.fields_dict.bin_tracking_display.$wrapper.html('');
+						}
 					}
 					else {
 						let total_qty = 0
@@ -75,9 +79,20 @@ frappe.ui.form.on('Moulding Production Entry', {
 						})
 						frm.set_value("availabe_qty", actual_available_qty)
 						frm.set_value("batch_details", JSON.stringify(r.message.message))
+
+						// Populate Bin Tracking Display
+						if (frm.fields_dict.bin_tracking_display) {
+							const html = generate_mpe_bin_html(r.message.message, frm.doc.scan_lot_number);
+							frm.fields_dict.bin_tracking_display.$wrapper.html(html);
+						}
 					}
 				}
 			});
+		} else {
+			// Clear bin display when lot number is cleared
+			if (frm.fields_dict.bin_tracking_display) {
+				frm.fields_dict.bin_tracking_display.$wrapper.html('');
+			}
 		}
 	},
 	"scan_supervisor": (frm) => {
@@ -339,29 +354,29 @@ frappe.ui.form.on('Moulding Balance Bin', {
 // Helper functions for Lot Details Dialog
 function show_lot_details_dialog(frm) {
 	frappe.call({
-method: 'shree_polymer_custom_app.shree_polymer_custom_app.api.get_lot_details',
-args: {
-lot_number: frm.doc.scan_lot_number,
-doctype: frm.doctype,
-docname: frm.docname
-},
-callback: function(r) {
-if (r.message && r.message.status === "success") {
+		method: 'shree_polymer_custom_app.shree_polymer_custom_app.api.get_lot_details',
+		args: {
+			lot_number: frm.doc.scan_lot_number,
+			doctype: frm.doctype,
+			docname: frm.docname
+		},
+		callback: function (r) {
+			if (r.message && r.message.status === "success") {
 				let d = new frappe.ui.Dialog({
-title: `Lot Details: ${r.message.lot_number}`,
-size: 'large',
-fields: [
-{
-fieldtype: 'HTML',
-fieldname: 'lot_details_html'
-}
-]
-});
-				
+					title: `Lot Details: ${r.message.lot_number}`,
+					size: 'large',
+					fields: [
+						{
+							fieldtype: 'HTML',
+							fieldname: 'lot_details_html'
+						}
+					]
+				});
+
 				d.fields_dict.lot_details_html.$wrapper.html(
-generate_lot_details_html(r.message)
-);
-				
+					generate_lot_details_html(r.message)
+				);
+
 				d.show();
 			} else {
 				frappe.msgprint(__('Failed to fetch lot details'));
@@ -372,7 +387,7 @@ generate_lot_details_html(r.message)
 
 function generate_lot_details_html(data) {
 	let html = '<div class="lot-details-container" style="padding: 15px;">';
-	
+
 	// Bin-wise consumption section
 	html += '<h4 style="margin-bottom: 15px;">📦 Bin-wise Consumption</h4>';
 	html += '<table class="table table-bordered table-sm">';
@@ -384,10 +399,10 @@ function generate_lot_details_html(data) {
 	html += '<th style="text-align: right;">Balance (Kg)</th>';
 	html += '</tr></thead>';
 	html += '<tbody>';
-	
+
 	let total_consumed = 0;
 	let total_balance = 0;
-	
+
 	if (data.bin_details && data.bin_details.length > 0) {
 		data.bin_details.forEach(bin => {
 			if (bin.is__consumed) {
@@ -398,7 +413,7 @@ function generate_lot_details_html(data) {
 				html += `<td style="text-align: right;">${parseFloat(bin.consumed__qty || 0).toFixed(3)}</td>`;
 				html += `<td style="text-align: right;">${parseFloat(bin.balance__qty || 0).toFixed(3)}</td>`;
 				html += '</tr>';
-				
+
 				total_consumed += parseFloat(bin.consumed__qty || 0);
 				total_balance += parseFloat(bin.balance__qty || 0);
 			}
@@ -406,7 +421,7 @@ function generate_lot_details_html(data) {
 	} else {
 		html += '<tr><td colspan="5" style="text-align: center;">No bin data available</td></tr>';
 	}
-	
+
 	html += '</tbody>';
 	html += '<tfoot>';
 	html += '<tr style="font-weight: bold; background-color: #f0f0f0;">';
@@ -416,7 +431,7 @@ function generate_lot_details_html(data) {
 	html += '</tr>';
 	html += '</tfoot>';
 	html += '</table>';
-	
+
 	// Rejection summary section
 	html += '<h4 style="margin-top: 30px; margin-bottom: 15px;">🚫 Rejection Summary</h4>';
 	html += '<table class="table table-bordered table-sm">';
@@ -426,10 +441,10 @@ function generate_lot_details_html(data) {
 	html += '<th style="text-align: right;">Rejected Weight (Kg)</th>';
 	html += '</tr></thead>';
 	html += '<tbody>';
-	
+
 	let total_rejected_nos = 0;
 	let total_rejected_kg = 0;
-	
+
 	if (data.rejection_details) {
 		if (data.rejection_details.line_inspection) {
 			html += '<tr>';
@@ -437,29 +452,29 @@ function generate_lot_details_html(data) {
 			html += `<td style="text-align: right;">${data.rejection_details.line_inspection.rejected_qty || 0}</td>`;
 			html += `<td style="text-align: right;">${parseFloat(data.rejection_details.line_inspection.rejected_kg || 0).toFixed(3)}</td>`;
 			html += '</tr>';
-			
+
 			total_rejected_nos += parseInt(data.rejection_details.line_inspection.rejected_qty || 0);
 			total_rejected_kg += parseFloat(data.rejection_details.line_inspection.rejected_kg || 0);
 		}
-		
+
 		if (data.rejection_details.patrol_inspection) {
 			html += '<tr>';
 			html += '<td>Patrol Inspection</td>';
 			html += `<td style="text-align: right;">${data.rejection_details.patrol_inspection.rejected_qty || 0}</td>`;
 			html += `<td style="text-align: right;">${parseFloat(data.rejection_details.patrol_inspection.rejected_kg || 0).toFixed(3)}</td>`;
 			html += '</tr>';
-			
+
 			total_rejected_nos += parseInt(data.rejection_details.patrol_inspection.rejected_qty || 0);
 			total_rejected_kg += parseFloat(data.rejection_details.patrol_inspection.rejected_kg || 0);
 		}
 	}
-	
+
 	if (total_rejected_nos === 0) {
 		html += '<tr><td colspan="3" style="text-align: center;">No rejection data available</td></tr>';
 	}
-	
+
 	html += '</tbody>';
-	
+
 	if (total_rejected_nos > 0) {
 		html += '<tfoot>';
 		html += '<tr style="font-weight: bold; background-color: #f0f0f0;">';
@@ -469,9 +484,54 @@ function generate_lot_details_html(data) {
 		html += '</tr>';
 		html += '</tfoot>';
 	}
-	
+
 	html += '</table>';
 	html += '</div>';
-	
+
+	return html;
+}
+
+// Helper function to generate HTML for bin tracking display in MPE
+function generate_mpe_bin_html(batch_details, lot_number) {
+	if (!batch_details || batch_details.length === 0) {
+		return '<div class="text-muted" style="padding: 10px;">No bin tracking data available</div>';
+	}
+
+	let html = `
+		<div style="border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; background: #f9fafb; margin-top: 8px; margin-bottom: 15px;">
+			<h6 style="margin: 0 0 10px 0; color: #374151; font-size: 13px;">
+				📦 Bins Used for Lot <b>${lot_number || ''}</b>
+			</h6>
+			<table class="table table-sm table-bordered" style="margin-bottom: 0; font-size: 12px;">
+				<thead style="background: #e5e7eb;">
+					<tr>
+						<th>Bin</th>
+						<th>Compound</th>
+						<th style="text-align: right;">Qty (Kg)</th>
+					</tr>
+				</thead>
+				<tbody>`;
+
+	let total = 0;
+	batch_details.forEach(bin => {
+		const qty = parseFloat(bin.qty || 0);
+		total += qty;
+		html += `
+			<tr>
+				<td><b>${bin.bin || '-'}</b></td>
+				<td>${bin.compound || '-'}</td>
+				<td style="text-align: right;">${qty.toFixed(3)}</td>
+			</tr>`;
+	});
+
+	html += `
+				<tr style="font-weight: bold; background: #f3f4f6;">
+					<td colspan="2">Total Available</td>
+					<td style="text-align: right;">${total.toFixed(3)} Kg</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>`;
+
 	return html;
 }

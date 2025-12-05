@@ -1037,8 +1037,9 @@ def append_source_details(stock_entry, self, work_order):
             "batch_no": f__b.get('batch_no__'),  # ✅ FIX: Explicitly set batch_no to prevent FIFO auto-selection
         })
     
-    # Add purged compound as scrap transfer (for Injection Moulding)
-    if self.purged_compound and self.purged_compound > 0:
+    # Add purged compound + leakage as scrap transfer (for Injection Moulding)
+    total_purge_qty = flt(self.purged_compound) + flt(self.compound_leakage)
+    if total_purge_qty > 0:
         spp_settings = frappe.get_single("SPP Settings")
         scrap_warehouse = spp_settings.get("purge_scrap_warehouse")
         
@@ -1067,8 +1068,8 @@ def append_source_details(stock_entry, self, work_order):
             "conversion_factor_uom": 1,
             "is_finished_item": 0,
             "is_scrap_item": 1,  # Mark as scrap/waste material for tracking
-            "transfer_qty": flt(self.purged_compound, 3),
-            "qty": flt(self.purged_compound, 3),
+            "transfer_qty": flt(total_purge_qty, 3),
+            "qty": flt(total_purge_qty, 3),
             "use_serial_batch_fields": 1,  # Use batch fields for consumption items
             "batch_no": purge_batch_no,  # EXPLICITLY set to same batch as consumed compound
             "spp_batch_number": purge_spp_batch,
