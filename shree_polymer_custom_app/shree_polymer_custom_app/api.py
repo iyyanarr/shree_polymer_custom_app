@@ -1319,27 +1319,32 @@ def get_item_details(batch_number):
         'current_stock': current_stock
     }
 @frappe.whitelist()
-def get_lot_details(lot_number, doctype=None, docname=None):
+def get_lot_details(lot_number, doctype=None, docname=None, mould_reference=None):
 	"""
-Get bin-wise consumption and rejection details for a lot
-
-Args:
-lot_number: Lot/SPP Batch number
-doctype: Source doctype (Moulding Production Entry or Deflashing Despatch Entry)
-docname: Source document name
-
-Returns:
-{
-"bin_details": [...],
-"rejection_details": {
-"line_inspection": {...},
-"patrol_inspection": {...}
-}
-}
-"""
+	Get bin-wise consumption and rejection details for a lot with weight breakdown
+	
+	Args:
+		lot_number: Lot/SPP Batch number
+		doctype: Source doctype (Moulding Production Entry or Deflashing Despatch Entry)
+		docname: Source document name
+		mould_reference: Mould reference to fetch blank weight
+	
+	Returns:
+		{
+			"bin_details": [...],
+			"rejection_details": {
+				"line_inspection": {...},
+				"patrol_inspection": {...}
+			},
+			"blank_weight_kg": ...,
+			"mould_reference": ...
+		}
+	"""
 	try:
 		bin_details = []
 		rejection_details = {}
+		blank_weight_kg = 0
+		mould_ref = mould_reference
 		
 		# Fetch bin details from source document if available
 		if docname and doctype:
@@ -1350,47 +1355,93 @@ Returns:
 			elif doctype == "Deflashing Despatch Entry":
 				# For Deflashing Despatch, fetch from linked MPE via lot number
 				mpe_name = frappe.db.get_value("Moulding Production Entry", 
-{"scan_lot_number": lot_number, "docstatus": 1}, "name")
+					{"scan_lot_number": lot_number, "docstatus": 1}, "name")
 				if mpe_name:
 					batch_details_json = frappe.db.get_value("Moulding Production Entry", mpe_name, "batch_details")
 					if batch_details_json:
 						bin_details = json.loads(batch_details_json)
 		
+		# Fetch blank weight from Mould Specification if mould_reference provided
+		if mould_ref:
+			# Try to fetch submitted mould specs (might be multiple for same mould_ref)
+			mould_specs = frappe.db.get_all("Mould Specification", 
+				filters={"mould_ref": mould_ref, "docstatus": 1},
+				fields=["name", "avg_blank_wtproduct_gms", "modified"],
+				order_by="modified desc")
+			
+			# If no submitted specs, try draft
+			if not mould_specs:
+				mould_specs = frappe.db.get_all("Mould Specification", 
+					filters={"mould_ref": mould_ref},
+					fields=["name", "avg_blank_wtproduct_gms", "modified"],
+					order_by="modified desc")
+			
+			# Find the spec with largest non-zero blank weight
+			mould_spec = None
+			if mould_specs:
+				for spec in mould_specs:
+					if spec.avg_blank_wtproduct_gms and flt(spec.avg_blank_wtproduct_gms) > 0:
+						if not mould_spec or flt(spec.avg_blank_wtproduct_gms) > flt(mould_spec.avg_blank_wtproduct_gms):
+							mould_spec = spec
+			
+			if mould_spec and mould_spec.avg_blank_wtproduct_gms:
+				# Convert grams to kg
+				blank_weight_gms = flt(mould_spec.avg_blank_wtproduct_gms)
+				blank_weight_kg = blank_weight_gms / 1000.0
+			else:
+				frappe.log_error(
+					title="Blank Weight Not Found",
+					message=f"Mould Spec not found or blank weight empty for mould_ref: {mould_ref}"
+				)
+		
 		# Fetch rejection details from Inspection Entry
 		inspections = frappe.db.sql("""
-SELECT 
-name,
-inspection_type,
-total_rejected_qty,
-total_rejected_qty_kg
-FROM `tabInspection Entry`
-WHERE lot_no = %(lot_number)s 
-AND docstatus = 1
-AND inspection_type IN ('Line Inspection', 'Patrol Inspection', 'Lot Inspection')
-ORDER BY inspection_type
-""", {"lot_number": lot_number}, as_dict=1)
+			SELECT 
+				name,
+				inspection_type,
+				total_rejected_qty,
+				total_rejected_qty_kg
+			FROM `tabInspection Entry`
+			WHERE lot_no = %(lot_number)s 
+			AND docstatus = 1
+			AND inspection_type IN ('Line Inspection', 'Patrol Inspection', 'Lot Inspection')
+			ORDER BY inspection_type
+		""", {"lot_number": lot_number}, as_dict=1)
 		
 		for insp in inspections:
+			rejected_qty = insp.total_rejected_qty or 0
+			rejected_kg = flt(insp.total_rejected_qty_kg, 3) or 0
+			
+			# Calculate rejection weight based on blank weight if available
+			calculated_rejection_weight = 0
+			if blank_weight_kg > 0:
+				calculated_rejection_weight = flt(rejected_qty * blank_weight_kg, 3)
+			
 			if insp.inspection_type == "Line Inspection":
 				rejection_details["line_inspection"] = {
-					"rejected_qty": insp.total_rejected_qty or 0,
-					"rejected_kg": flt(insp.total_rejected_qty_kg, 3) or 0
+					"rejected_qty": rejected_qty,
+					"rejected_kg": rejected_kg,
+					"calculated_weight_kg": calculated_rejection_weight
 				}
 			elif insp.inspection_type == "Patrol Inspection":
 				rejection_details["patrol_inspection"] = {
-					"rejected_qty": insp.total_rejected_qty or 0,
-					"rejected_kg": flt(insp.total_rejected_qty_kg, 3) or 0
+					"rejected_qty": rejected_qty,
+					"rejected_kg": rejected_kg,
+					"calculated_weight_kg": calculated_rejection_weight
 				}
 			elif insp.inspection_type == "Lot Inspection":
 				rejection_details["lot_inspection"] = {
-					"rejected_qty": insp.total_rejected_qty or 0,
-					"rejected_kg": flt(insp.total_rejected_qty_kg, 3) or 0
+					"rejected_qty": rejected_qty,
+					"rejected_kg": rejected_kg,
+					"calculated_weight_kg": calculated_rejection_weight
 				}
 		
 		return {
 			"status": "success",
 			"bin_details": bin_details,
 			"rejection_details": rejection_details,
+			"blank_weight_kg": flt(blank_weight_kg, 3),
+			"mould_reference": mould_ref,
 			"lot_number": lot_number
 		}
 		
