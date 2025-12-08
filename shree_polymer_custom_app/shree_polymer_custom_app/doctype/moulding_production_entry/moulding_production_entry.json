@@ -10,6 +10,7 @@
         "moulding_date",
         "scan_lot_number",
         "bin_tracking_display",
+        "refresh_weight_breakdown",
         "operator",
         "scan_supervisor",
         "availabe_qty",
@@ -72,6 +73,12 @@
             "fieldtype": "HTML",
             "label": "Bin Tracking Details",
             "read_only": 1
+        },
+        {
+            "fieldname": "refresh_weight_breakdown",
+            "fieldtype": "Button",
+            "label": "Refresh Weight Breakdown",
+            "depends_on": "eval:doc.scan_lot_number && doc.weight"
         },
         {
             "fieldname": "weight",

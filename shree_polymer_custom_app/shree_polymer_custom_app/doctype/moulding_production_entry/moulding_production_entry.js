@@ -129,6 +129,42 @@ frappe.ui.form.on('Moulding Production Entry', {
 			update_weight_breakdown_display(frm);
 		}
 	},
+	refresh_weight_breakdown: (frm) => {
+		// Manually refresh weight breakdown display
+		if (frm.doc.scan_lot_number && frm.doc.weight) {
+			// Fetch lot details and update display
+			frappe.call({
+				method: 'shree_polymer_custom_app.shree_polymer_custom_app.api.get_lot_details',
+				args: {
+					lot_number: frm.doc.scan_lot_number,
+					doctype: frm.doctype,
+					docname: frm.doc.name,
+					mould_reference: frm.doc.mould_reference
+				},
+				freeze: true,
+				freeze_message: 'Loading weight breakdown...',
+				callback: function (r) {
+					if (r.message && r.message.status === 'success') {
+						// Store lot data
+						frm._lot_breakdown_data = {
+							lot_number: r.message.lot_number,
+							mould_reference: r.message.mould_reference,
+							item_code: frm.doc.item_to_produce,
+							batch_details: r.message.bin_details || []
+						};
+
+						// Generate and display weight breakdown
+						const html = generate_weight_breakdown_html(frm, r.message);
+						frm.fields_dict.bin_tracking_display.$wrapper.html(html);
+
+						frappe.show_alert({ message: 'Weight breakdown refreshed successfully', indicator: 'green' });
+					} else {
+						frappe.msgprint('Failed to load weight breakdown data');
+					}
+				}
+			});
+		}
+	},
 	"scan_supervisor": (frm) => {
 		if (frm.doc.scan_supervisor && frm.doc.scan_supervisor != undefined) {
 			frappe.call({
