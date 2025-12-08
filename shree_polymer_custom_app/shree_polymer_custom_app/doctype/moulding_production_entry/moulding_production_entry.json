@@ -20,6 +20,7 @@
         "compound_leakage",
         "number_of_lifts",
         "no_of_running_cavities",
+        "blocked_cavities_with_blank",
         "curing_time",
         "stock_entry_reference",
         "column_break_4",
@@ -252,6 +253,12 @@
             "in_standard_filter": 1,
             "label": "No Of Running Cavities",
             "reqd": 1
+        },
+        {
+            "fieldname": "blocked_cavities_with_blank",
+            "fieldtype": "Int",
+            "label": "Blocked Cavities with Blank",
+            "default": "0"
         },
         {
             "fieldname": "curing_time",

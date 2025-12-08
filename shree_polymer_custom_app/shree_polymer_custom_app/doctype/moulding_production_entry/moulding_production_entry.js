@@ -117,6 +117,18 @@ frappe.ui.form.on('Moulding Production Entry', {
 			update_weight_breakdown_display(frm);
 		}
 	},
+	no_of_running_cavities: (frm) => {
+		// Update weight breakdown display when running cavities change
+		if (frm.doc.weight && frm._lot_breakdown_data) {
+			update_weight_breakdown_display(frm);
+		}
+	},
+	blocked_cavities_with_blank: (frm) => {
+		// Update weight breakdown display when blocked cavities change
+		if (frm.doc.weight && frm._lot_breakdown_data) {
+			update_weight_breakdown_display(frm);
+		}
+	},
 	"scan_supervisor": (frm) => {
 		if (frm.doc.scan_supervisor && frm.doc.scan_supervisor != undefined) {
 			frappe.call({
@@ -562,9 +574,19 @@ function generate_weight_breakdown_html(frm, lot_data) {
 		}
 	}
 
+	// Get cavity counts
+	const running_cavities = parseInt(frm.doc.no_of_running_cavities) || 0;
+	const blocked_cavities = parseInt(frm.doc.blocked_cavities_with_blank) || 0;
+	const total_cavities = running_cavities + blocked_cavities;
+
 	// Calculations
 	const total_production_weight = observed_weight + patrol_rejection_weight + line_rejection_weight;
-	const estimated_nol = blank_weight_kg > 0 ? total_production_weight / blank_weight_kg : 0;
+
+	// Updated NoL formula: Total Prod Wt / ((Running Cavities + Blocked Cavities) × Blank Wt)
+	const estimated_nol = (blank_weight_kg > 0 && total_cavities > 0)
+		? total_production_weight / (total_cavities * blank_weight_kg)
+		: 0;
+
 	const total_compound_consumption = total_production_weight + scrap_compound;
 
 	let html = `
@@ -599,7 +621,12 @@ function generate_weight_breakdown_html(frm, lot_data) {
 						<td style="padding: 10px; text-align: right; font-size: 17px; font-weight: bold; color: #f57c00; border-bottom: 2px solid #ffc107;">${total_production_weight.toFixed(3)}</td>
 					</tr>
 					<tr>
-						<td style="padding: 8px; border-bottom: 1px solid #eee;">d. Estimated Number of Lifts (c ÷ Blank Wt: ${blank_weight_kg.toFixed(3)})</td>
+						<td style="padding: 8px; border-bottom: 1px solid #eee;">
+							d. Estimated Number of Lifts
+							<div style="font-size: 11px; color: #666; margin-top: 4px;">
+								c ÷ ((Running: ${running_cavities} + Blocked: ${blocked_cavities}) × Blank Wt: ${blank_weight_kg.toFixed(3)})
+							</div>
+						</td>
 						<td style="padding: 8px; text-align: right; font-size: 16px; font-weight: bold; color: #388e3c; border-bottom: 1px solid #eee;">${estimated_nol.toFixed(2)} lifts</td>
 					</tr>
 					<tr style="background: #f1f8ff;">
