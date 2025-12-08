@@ -627,7 +627,7 @@ function generate_weight_breakdown_html(frm, lot_data) {
 								c ÷ ((Running: ${running_cavities} + Blocked: ${blocked_cavities}) × Blank Wt: ${blank_weight_kg.toFixed(3)})
 							</div>
 						</td>
-						<td style="padding: 8px; text-align: right; font-size: 16px; font-weight: bold; color: #388e3c; border-bottom: 1px solid #eee;">${estimated_nol.toFixed(2)} lifts</td>
+						<td style="padding: 8px; text-align: right; font-size: 16px; font-weight: bold; color: #388e3c; border-bottom: 1px solid #eee;">${Math.round(estimated_nol)} lifts</td>
 					</tr>
 					<tr style="background: #f1f8ff;">
 						<td style="padding: 10px; font-weight: bold;">
