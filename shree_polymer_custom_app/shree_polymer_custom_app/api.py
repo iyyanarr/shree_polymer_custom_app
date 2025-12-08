@@ -1440,7 +1440,7 @@ def get_lot_details(lot_number, doctype=None, docname=None, mould_reference=None
 			"status": "success",
 			"bin_details": bin_details,
 			"rejection_details": rejection_details,
-			"blank_weight_kg": flt(blank_weight_kg, 3),
+			"blank_weight_kg": flt(blank_weight_kg),
 			"mould_reference": mould_ref,
 			"lot_number": lot_number
 		}
