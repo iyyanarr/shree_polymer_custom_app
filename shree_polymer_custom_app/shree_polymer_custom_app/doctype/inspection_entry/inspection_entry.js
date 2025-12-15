@@ -2,80 +2,80 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Inspection Entry', {
-	total_inspected_qty_nos(frm){
-		if(frm.doc.total_inspected_qty_nos){
-			if(frm.doc.uom == "Nos"){
-				if(parseFloat(frm.doc.total_inspected_qty_nos) > parseFloat(frm.doc.available_qty_nos)){
-					frm.set_value("total_inspected_qty_nos","")
+	total_inspected_qty_nos(frm) {
+		if (frm.doc.total_inspected_qty_nos) {
+			if (frm.doc.uom == "Nos") {
+				if (parseFloat(frm.doc.total_inspected_qty_nos) > parseFloat(frm.doc.available_qty_nos)) {
+					frm.set_value("total_inspected_qty_nos", "")
 					frappe.msgprint(`Total <b>Inspected Qty</b> can't be greater than <b>Available Qty</b>`)
 				}
 			}
 		}
 	},
-	total_inspected_qty_kgs(frm){
-		if(frm.doc.total_inspected_qty_kgs){
-			if(frm.doc.uom == "Kgs"){
-				if(parseFloat(frm.doc.total_inspected_qty_kgs) > parseFloat(frm.doc.available_qty_kgs)){
-					frm.set_value("total_inspected_qty_kgs","")
+	total_inspected_qty_kgs(frm) {
+		if (frm.doc.total_inspected_qty_kgs) {
+			if (frm.doc.uom == "Kgs") {
+				if (parseFloat(frm.doc.total_inspected_qty_kgs) > parseFloat(frm.doc.available_qty_kgs)) {
+					frm.set_value("total_inspected_qty_kgs", "")
 					frappe.msgprint(`Total <b>Inspected Qty</b> can't be greater than <b>Available Qty</b>`)
 				}
-				else{
+				else {
 					let qty_nos = Math.round(parseFloat(frm.doc.total_inspected_qty_kgs) * parseFloat(frm.doc.one_kg_equal_nos))
-					frm.set_value("total_inspected_qty_nos",qty_nos)
-				}	
+					frm.set_value("total_inspected_qty_nos", qty_nos)
+				}
 			}
 		}
 	},
-	bind_rejections(frm){
-		frm.addtional_rejections = [{"type_of_defect":"TOOL MARK"},
-									{"type_of_defect":"BONDING FALUIRE"},
-									{"type_of_defect":"THREAD"},
-									{"type_of_defect":"OVER TRIM"},
-									{"type_of_defect":"MOULD DAMAGE"},
-									{"type_of_defect":"WOOD PARTICLE"},
-									{"type_of_defect":"WASHER VISIBLE"},
-									{"type_of_defect":"DISPERS PROBLEM"},
-									{"type_of_defect":"THK UNDERSIZ"},
-									{"type_of_defect":"THK OVERSIZE"},
-									{"type_of_defect":"ID UNDERSIZ"},
-									{"type_of_defect":"ID OVERSIZE"},
-									{"type_of_defect":"OD UNDERSIZ"},
-									{"type_of_defect":"OD OVERSIZE"},
-									{"type_of_defect":"IMPRESSION MARK"},
-									{"type_of_defect":"WELD LINE"},
-									{"type_of_defect":"BEND"},
-									{"type_of_defect":"PIN HOLE"},
-									{"type_of_defect":"BACKRIND"},
-									{"type_of_defect":"BONDING BUBBLE"},
-									{"type_of_defect":"PARTING LINE CUTMARK"},
-									{"type_of_defect":"MOULD RUST "},
-									{"type_of_defect":"STAIN ISSUE "},
-									{"type_of_defect":"STRETCH TEST "}]
+	bind_rejections(frm) {
+		frm.addtional_rejections = [{ "type_of_defect": "TOOL MARK" },
+		{ "type_of_defect": "BONDING FALUIRE" },
+		{ "type_of_defect": "THREAD" },
+		{ "type_of_defect": "OVER TRIM" },
+		{ "type_of_defect": "MOULD DAMAGE" },
+		{ "type_of_defect": "WOOD PARTICLE" },
+		{ "type_of_defect": "WASHER VISIBLE" },
+		{ "type_of_defect": "DISPERS PROBLEM" },
+		{ "type_of_defect": "THK UNDERSIZ" },
+		{ "type_of_defect": "THK OVERSIZE" },
+		{ "type_of_defect": "ID UNDERSIZ" },
+		{ "type_of_defect": "ID OVERSIZE" },
+		{ "type_of_defect": "OD UNDERSIZ" },
+		{ "type_of_defect": "OD OVERSIZE" },
+		{ "type_of_defect": "IMPRESSION MARK" },
+		{ "type_of_defect": "WELD LINE" },
+		{ "type_of_defect": "BEND" },
+		{ "type_of_defect": "PIN HOLE" },
+		{ "type_of_defect": "BACKRIND" },
+		{ "type_of_defect": "BONDING BUBBLE" },
+		{ "type_of_defect": "PARTING LINE CUTMARK" },
+		{ "type_of_defect": "MOULD RUST " },
+		{ "type_of_defect": "STAIN ISSUE " },
+		{ "type_of_defect": "STRETCH TEST " }]
 	},
-	'onload_post_render': function(frm) {
-			let html = `<datalist id="suggestion_list">`
-			frm.addtional_rejections.map(res =>{
-				html += ` <option value="${res.type_of_defect}">${res.type_of_defect}</option>`
-			})
-			html += `</datalist>`
-			frm.fields_dict.items.grid.wrapper.on('mouseenter click', 'input[data-fieldname="type_of_defect"]', function(e) {
-				$(`input[data-fieldname="type_of_defect"]`).attr("list","suggestion_list")
-				$(`input[data-fieldname="type_of_defect"]`).html(html)
-			})
+	'onload_post_render': function (frm) {
+		let html = `<datalist id="suggestion_list">`
+		frm.addtional_rejections.map(res => {
+			html += ` <option value="${res.type_of_defect}">${res.type_of_defect}</option>`
+		})
+		html += `</datalist>`
+		frm.fields_dict.items.grid.wrapper.on('mouseenter click', 'input[data-fieldname="type_of_defect"]', function (e) {
+			$(`input[data-fieldname="type_of_defect"]`).attr("list", "suggestion_list")
+			$(`input[data-fieldname="type_of_defect"]`).html(html)
+		})
 	},
-	update_inspection_types(frm){
-		if(frm.doc.docstatus == 0 && frm.doc.items){
+	update_inspection_types(frm) {
+		if (frm.doc.docstatus == 0 && frm.doc.items) {
 			let balance_empty_fields = 42 - frm.doc.items.length
 			let bal_empty_field = [...Array(balance_empty_fields).keys()]
-			bal_empty_field.map(resp =>{
-				frm.add_child("items", {type_of_defect:""})
+			bal_empty_field.map(resp => {
+				frm.add_child("items", { type_of_defect: "" })
 			})
 			refresh_field('items')
-			frm.doc.items.map((res,idx) => {
-				idx = idx + 1 
-				if (idx > 37){
+			frm.doc.items.map((res, idx) => {
+				idx = idx + 1
+				if (idx > 37) {
 					var grid_row = cur_frm.fields_dict['items'].grid.grid_rows_by_docname[res.name],
-					field = frappe.utils.filter_dict(grid_row.docfields, { fieldname: "type_of_defect" })[0];
+						field = frappe.utils.filter_dict(grid_row.docfields, { fieldname: "type_of_defect" })[0];
 					field.fieldtype = "Data"
 					field.read_only = 0
 				}
@@ -127,70 +127,70 @@ frappe.ui.form.on('Inspection Entry', {
 	view_wo_jc(frm) {
 		if (frm.doc.lot_no) {
 			// if (!has_common(frappe.user_roles, ['Line Inspector','Lot Inspector','Incoming Inspector','Packer']) || frappe.session.user == "Administrator") {
-				frappe.db.get_value('Job Card', { batch_code: frm.doc.lot_no }, ['name', 'work_order'])
-					.then(r => {
-						if (r.message.name) {
-							frm.add_custom_button("View Job Card", () => {
-								frappe.set_route("Form", "Job Card", r.message.name)
-							})
-						}
-						if (r.message.work_order) {
-							frm.add_custom_button("View Work Order", () => {
-								frappe.set_route("Form", "Work Order", r.message.work_order)
-							})
-						}
-					})
+			frappe.db.get_value('Job Card', { batch_code: frm.doc.lot_no }, ['name', 'work_order'])
+				.then(r => {
+					if (r.message.name) {
+						frm.add_custom_button("View Job Card", () => {
+							frappe.set_route("Form", "Job Card", r.message.name)
+						})
+					}
+					if (r.message.work_order) {
+						frm.add_custom_button("View Work Order", () => {
+							frappe.set_route("Form", "Work Order", r.message.work_order)
+						})
+					}
+				})
 			// }
 		}
 	},
-	check_role_assign_opts(frm){
+	check_role_assign_opts(frm) {
 		let ins_opts = []
-		if (has_common(frappe.user_roles, ['Line Inspector']) && frappe.session.user!="Administrator") {
+		if (has_common(frappe.user_roles, ['Line Inspector']) && frappe.session.user != "Administrator") {
 			ins_opts.push('Line Inspection')
-	    }
-		if (has_common(frappe.user_roles, ['Lot Inspector']) && frappe.session.user!="Administrator") {
+		}
+		if (has_common(frappe.user_roles, ['Lot Inspector']) && frappe.session.user != "Administrator") {
 			ins_opts.push('Lot Inspection')
-	    }
-		if (has_common(frappe.user_roles, ['Incoming Inspector']) && frappe.session.user!="Administrator") {
+		}
+		if (has_common(frappe.user_roles, ['Incoming Inspector']) && frappe.session.user != "Administrator") {
 			ins_opts.push("Incoming Inspection")
-	    }
-		if (has_common(frappe.user_roles, ['Packer','U1 Supervisor']) && frappe.session.user!="Administrator") {
+		}
+		if (has_common(frappe.user_roles, ['Packer', 'U1 Supervisor']) && frappe.session.user != "Administrator") {
 			ins_opts.push("Final Visual Inspection")
-	    }
-		if (has_common(frappe.user_roles, ['Quality Executive']) && frappe.session.user!="Administrator") {
+		}
+		if (has_common(frappe.user_roles, ['Quality Executive']) && frappe.session.user != "Administrator") {
 			ins_opts.push("Patrol Inspection")
-	    }
-		if(ins_opts && ins_opts.length > 0){
+		}
+		if (ins_opts && ins_opts.length > 0) {
 			set_field_options("inspection_type", ins_opts)
 		}
 	},
-	validate(frm){
-		if(frm.removes_rejections){
+	validate(frm) {
+		if (frm.removes_rejections) {
 			let found = false
 			let removes_rejections = []
 			let alert_removes_rejections = []
-			frm.defect__arry_list = [ "FLOW-(FL)", 
-								 "BUBBLE-(BU) / BLISTER-(BL)", 
-								 "CUTMARK-(CU)",
-								 "DEFLASH-(DF)", 
-								 "RIB", 
-								 "FOREIGN PARTICLE-(FP)",
-								 "UNDER FILL-( UF )",
-								 "DIPRESSION-(DP)", 
-								 "UNDER CURE-(UC)", 
-								 "SURFACE DEFECT-(SD)",
-								 "OVER CURE-(OC) /FAST CURE",
-								 "BURST / TEAR", 
-								 "BLACK MARK",
-								]
-			frm.removes_rejections.map(res =>{
-				if(frm.defect__arry_list.includes(res)){
-					removes_rejections.push({"type_of_defect": res})
+			frm.defect__arry_list = ["FLOW-(FL)",
+				"BUBBLE-(BU) / BLISTER-(BL)",
+				"CUTMARK-(CU)",
+				"DEFLASH-(DF)",
+				"RIB",
+				"FOREIGN PARTICLE-(FP)",
+				"UNDER FILL-( UF )",
+				"DIPRESSION-(DP)",
+				"UNDER CURE-(UC)",
+				"SURFACE DEFECT-(SD)",
+				"OVER CURE-(OC) /FAST CURE",
+				"BURST / TEAR",
+				"BLACK MARK",
+			]
+			frm.removes_rejections.map(res => {
+				if (frm.defect__arry_list.includes(res)) {
+					removes_rejections.push({ "type_of_defect": res })
 					alert_removes_rejections.push(res)
 					found = true
 				}
 			})
-			if(found){
+			if (found) {
 				for (let i = 0; i < removes_rejections.length; i++) {
 					frm.add_child("items", removes_rejections[i])
 				}
@@ -381,7 +381,7 @@ frappe.ui.form.on('Inspection Entry', {
 							if (r.message.message._1kg_eq_nos) {
 								frm.set_value("one_kg_equal_nos", r.message.message._1kg_eq_nos
 								)
-								}
+							}
 						}
 					}
 					else {
@@ -432,20 +432,20 @@ frappe.ui.form.on('Inspection Entry', {
 			frm.set_value("total_rejected_qty", "")
 			frm.set_value("total_rejected_qty_in_percentage", "")
 			frm.set_value("total_rejected_qty_kg", "")
-			frm.defect__arry = [{"type_of_defect": "FLOW-(FL)"}, 
-								{"type_of_defect": "BUBBLE-(BU) / BLISTER-(BL)"}, 
-								{"type_of_defect": "CUTMARK-(CU)"},
-								{"type_of_defect": "DEFLASH-(DF)"}, 
-								{"type_of_defect": "RIB"}, 
-								{"type_of_defect": "FOREIGN PARTICLE-(FP)"},
-								{"type_of_defect": "UNDER FILL-( UF )"},
-								{"type_of_defect": "DIPRESSION-(DP)"}, 
-								{"type_of_defect": "UNDER CURE-(UC)"}, 
-								{"type_of_defect": "SURFACE DEFECT-(SD)"},
-								{"type_of_defect": "OVER CURE-(OC) /FAST CURE"},
-								{"type_of_defect": "BURST / TEAR"}, 
-								{"type_of_defect": "BLACK MARK"},
-							]
+			frm.defect__arry = [{ "type_of_defect": "FLOW-(FL)" },
+			{ "type_of_defect": "BUBBLE-(BU) / BLISTER-(BL)" },
+			{ "type_of_defect": "CUTMARK-(CU)" },
+			{ "type_of_defect": "DEFLASH-(DF)" },
+			{ "type_of_defect": "RIB" },
+			{ "type_of_defect": "FOREIGN PARTICLE-(FP)" },
+			{ "type_of_defect": "UNDER FILL-( UF )" },
+			{ "type_of_defect": "DIPRESSION-(DP)" },
+			{ "type_of_defect": "UNDER CURE-(UC)" },
+			{ "type_of_defect": "SURFACE DEFECT-(SD)" },
+			{ "type_of_defect": "OVER CURE-(OC) /FAST CURE" },
+			{ "type_of_defect": "BURST / TEAR" },
+			{ "type_of_defect": "BLACK MARK" },
+			]
 			for (let i = 0; i < frm.defect__arry.length; i++) {
 				frm.add_child("items", frm.defect__arry[i])
 			}
@@ -456,20 +456,20 @@ frappe.ui.form.on('Inspection Entry', {
 });
 
 frappe.ui.form.on('Inspection Entry Item', {
-	before_items_remove(frm,cdt,cdn){
+	before_items_remove(frm, cdt, cdn) {
 		let row = locals[cdt][cdn]
 		frm.removes_rejections.push(row.type_of_defect)
 	},
-	items_add(frm,cdt,cdn){
+	items_add(frm, cdt, cdn) {
 		let row = locals[cdt][cdn]
 		var grid_row = cur_frm.fields_dict['items'].grid.grid_rows_by_docname[row.name],
-		field = frappe.utils.filter_dict(grid_row.docfields, { fieldname: "type_of_defect" })[0];
+			field = frappe.utils.filter_dict(grid_row.docfields, { fieldname: "type_of_defect" })[0];
 		field.fieldtype = "Data"
 		field.read_only = 0
 	},
 	"type_of_defect": (frm, cdt, cdn) => {
 		let row = locals[cdt][cdn]
-		if(!row.type_of_defect){
+		if (!row.type_of_defect) {
 			row.rejected_qty = 0
 			refresh_field('items')
 			frappe.msgprint("The <b>Rejection Qty</b> can't be present with <b>Type of Defect</b>..!")
@@ -477,7 +477,7 @@ frappe.ui.form.on('Inspection Entry Item', {
 	},
 	"rejected_qty": (frm, cdt, cdn) => {
 		let row = locals[cdt][cdn]
-		if(row.type_of_defect){
+		if (row.type_of_defect) {
 			if (row.rejected_qty && row.rejected_qty != undefined) {
 				if (!frm.doc.inspected_qty_nos && (frm.doc.inspection_type == "Line Inspection" || frm.doc.inspection_type == "Patrol Inspection" || frm.doc.inspection_type == "Lot Inspection")) {
 					row.rejected_qty = ''
@@ -544,7 +544,7 @@ frappe.ui.form.on('Inspection Entry Item', {
 									var r_qty_per = (r_qty_kgs / frm.doc.total_inspected_qty) * 100
 									// frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
 									let fixed_percent = parseFloat(r_qty_per.toFixed(3))
-									frm.set_value("total_rejected_qty_in_percentage",fixed_percent ? fixed_percent :0.001)
+									frm.set_value("total_rejected_qty_in_percentage", fixed_percent ? fixed_percent : 0.001)
 								}
 								else {
 									frm.set_value("total_rejected_qty_in_percentage", 0)
@@ -594,7 +594,7 @@ frappe.ui.form.on('Inspection Entry Item', {
 									var r_qty_per = (r_qty_kgs / frm.doc.total_inspected_qty) * 100
 									// frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
 									let fixed_percent = parseFloat(r_qty_per.toFixed(3))
-									frm.set_value("total_rejected_qty_in_percentage",fixed_percent ? fixed_percent :0.001)
+									frm.set_value("total_rejected_qty_in_percentage", fixed_percent ? fixed_percent : 0.001)
 								}
 								else {
 									frm.set_value("total_rejected_qty_in_percentage", 0)
@@ -627,7 +627,7 @@ frappe.ui.form.on('Inspection Entry Item', {
 								var r_qty_per = (r_qty / frm.doc.total_inspected_qty_nos) * 100
 								// frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
 								let fixed_percent = parseFloat(r_qty_per.toFixed(3))
-								frm.set_value("total_rejected_qty_in_percentage",fixed_percent ? fixed_percent :0.001)
+								frm.set_value("total_rejected_qty_in_percentage", fixed_percent ? fixed_percent : 0.001)
 							}
 							else {
 								frm.set_value("total_rejected_qty_in_percentage", 0)
@@ -661,7 +661,7 @@ frappe.ui.form.on('Inspection Entry Item', {
 							var r_qty_per = (r_qty_kgs / frm.doc.total_inspected_qty) * 100
 							// frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
 							let fixed_percent = parseFloat(r_qty_per.toFixed(3))
-							frm.set_value("total_rejected_qty_in_percentage",fixed_percent ? fixed_percent :0.001)
+							frm.set_value("total_rejected_qty_in_percentage", fixed_percent ? fixed_percent : 0.001)
 						}
 						else {
 							frm.set_value("total_rejected_qty_in_percentage", 0)
@@ -688,7 +688,7 @@ frappe.ui.form.on('Inspection Entry Item', {
 							var r_qty_per = (r_qty_kgs / frm.doc.total_inspected_qty) * 100
 							// frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
 							let fixed_percent = parseFloat(r_qty_per.toFixed(3))
-							frm.set_value("total_rejected_qty_in_percentage",fixed_percent ? fixed_percent :0.001)
+							frm.set_value("total_rejected_qty_in_percentage", fixed_percent ? fixed_percent : 0.001)
 						}
 						else {
 							frm.set_value("total_rejected_qty_in_percentage", 0)
@@ -710,7 +710,7 @@ frappe.ui.form.on('Inspection Entry Item', {
 							var r_qty_per = (r_qty / frm.doc.total_inspected_qty_nos) * 100
 							// frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
 							let fixed_percent = parseFloat(r_qty_per.toFixed(3))
-							frm.set_value("total_rejected_qty_in_percentage",fixed_percent ? fixed_percent :0.001)
+							frm.set_value("total_rejected_qty_in_percentage", fixed_percent ? fixed_percent : 0.001)
 						}
 						else {
 							frm.set_value("total_rejected_qty_in_percentage", 0)
@@ -719,10 +719,17 @@ frappe.ui.form.on('Inspection Entry Item', {
 				}
 			}
 		}
-		else{
+		else {
 			row.rejected_qty = 0
 			refresh_field('items')
 			frappe.msgprint('Please enter <b>Rejection Type</b> before entering <b>Rejection Qty</b>..!')
+		}
+	},
+	"rejected_qty_kg": (frm, cdt, cdn) => {
+		let row = locals[cdt][cdn];
+		if (row.rejected_qty_kg && frm.doc.one_no_qty_equal_kgs) {
+			let calculated_nos = row.rejected_qty_kg / frm.doc.one_no_qty_equal_kgs;
+			frappe.model.set_value(cdt, cdn, 'rejected_qty', Math.round(calculated_nos));
 		}
 	}
 });
@@ -745,117 +752,117 @@ frappe.ui.form.on('Inspection Entry Item', {
 
 // backup
 // "add": function (frm) {
-	// 	if (!frm.doc.product_ref_no || frm.doc.product_ref_no == undefined) {
-	// 		frappe.msgprint("Product reference no is missing.");
-	// 		return
-	// 	}
-	// 	if (!frm.doc.type_of_defect || frm.doc.type_of_defect == undefined) {
-	// 		frappe.msgprint("Please select type of defect.");
-	// 		return
-	// 	}
-	// 	if (!frm.doc.rejected_qty || frm.doc.rejected_qty == undefined) {
-	// 		frappe.msgprint("Please enter the rejected qty.");
-	// 		return
-	// 	}
-	// 	if (!frm.doc.machine_no || frm.doc.machine_no == undefined) {
-	// 		frappe.msgprint("Please enter the machine number.");
-	// 		return
-	// 	}
-	// 	if (!frm.doc.lot_no || frm.doc.lot_no == undefined) {
-	// 		frappe.msgprint("Please enter the lot number.");
-	// 		return
-	// 	}
-	// 	if (!frm.doc.inspector_code || frm.doc.inspector_code == undefined) {
-	// 		frappe.msgprint("Please Scan the Inspector.");
-	// 		return
-	// 	}
-	// 	if((frm.doc.inspection_type == "Lot Inspection" || frm.doc.inspection_type == "Line Inspection") && (!frm.one_no_qty_equal_kgs || frm.one_no_qty_equal_kgs == undefined)){
-	// 		frappe.msgprint("UOM coversion factor value not found.");
-	// 		return
-	// 	}
-	// 	else {
-	// 		if(frm.doc.inspection_type == "Lot Inspection" || frm.doc.inspection_type == "Line Inspection"){
-	// 			let cur_rejected_qty = frm.one_no_qty_equal_kgs *  frm.doc.rejected_qty
-	// 			if ((frm.doc.total_inspected_qty ? frm.doc.total_inspected_qty : 0) > (cur_rejected_qty + (frm.doc.total_rejected_qty_kg ? frm.doc.total_rejected_qty_kg : 0))) {
-	// 				var row = frappe.model.add_child(frm.doc, "Inspection Entry Item", "items");
-	// 				row.product_ref_no = frm.doc.product_ref_no;
-	// 				row.lot_no = frm.doc.lot_no;
-	// 				row.type_of_defect = frm.doc.type_of_defect;
-	// 				row.rejected_qty = frm.doc.rejected_qty;
-	// 				row.rejected_qty_kg = cur_rejected_qty;
-	// 				row.operator_name = frm.doc.operator_name;
-	// 				row.machine_no = frm.doc.machine_no;
-	// 				row.inspector_name = frm.doc.inspector_name
-	// 				row.inspector_code = frm.doc.inspector_code
-	// 				row.batch_no = frm.doc.batch_no
-	// 				frm.refresh_field('items');
-	// 				frm.set_value("type_of_defect", "FLOW-(FL)");
-	// 				frm.set_value("rejected_qty", 0);
-	// 				if (frm.doc.items) {
-	// 					var r_qty = 0;
-	// 					var r_qty_kgs = 0;
-	// 					for (var i = 0; i < frm.doc.items.length; i++) {
-	// 						r_qty += frm.doc.items[i].rejected_qty
-	// 						r_qty_kgs += frm.doc.items[i].rejected_qty_kg
-	// 					}
-	// 					frm.set_value("total_rejected_qty", r_qty)
-	// 					frm.set_value("total_rejected_qty_kg", r_qty_kgs)
-	// 					var r_qty_per = (r_qty_kgs / frm.doc.total_inspected_qty) * 100
-	// 					frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
-	// 				}
-	// 			}
-	// 			else {
-	// 				frappe.msgprint("Total <b>Rejected Quantity</b> should be less than the <b>Total Inspected Quantity</b>.");
-	// 				}
-	// 		}
-	// 		else if(frm.doc.inspection_type == "Incoming Inspection" || frm.doc.inspection_type == "Patrol Inspection" || frm.doc.inspection_type == "Final Inspection"){
-	// 			if ((frm.doc.total_inspected_qty_nos ? frm.doc.total_inspected_qty_nos : 0) > ((frm.doc.rejected_qty ? frm.doc.rejected_qty : 0) + (frm.doc.total_rejected_qty ? frm.doc.total_rejected_qty : 0))) {
-	// 				var row = frappe.model.add_child(frm.doc, "Inspection Entry Item", "items");
-	// 				row.product_ref_no = frm.doc.product_ref_no;
-	// 				row.lot_no = frm.doc.lot_no;
-	// 				row.type_of_defect = frm.doc.type_of_defect;
-	// 				row.rejected_qty = frm.doc.rejected_qty;
-	// 				row.operator_name = frm.doc.operator_name;
-	// 				row.machine_no = frm.doc.machine_no;
-	// 				row.inspector_name = frm.doc.inspector_name
-	// 				row.inspector_code = frm.doc.inspector_code
-	// 				row.batch_no = frm.doc.batch_no
-	// 				frm.refresh_field('items');
-	// 				frm.set_value("type_of_defect", "FLOW-(FL)");
-	// 				frm.set_value("rejected_qty", 0);
-	// 				if (frm.doc.items) {
-	// 					var r_qty = 0;
-	// 					for (var i = 0; i < frm.doc.items.length; i++) {
-	// 						r_qty += frm.doc.items[i].rejected_qty
-	// 					}
-	// 					frm.set_value("total_rejected_qty", r_qty)
-	// 					var r_qty_per = (r_qty / frm.doc.total_inspected_qty_nos) * 100
-	// 					frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
-	// 				}
-	// 			}
-	// 			else {
-	// 				frappe.msgprint("Total <b>Rejected Quantity</b> should be less than the <b>Total Inspected Quantity</b>.");
-	// 				}
-	// 		}
-	// 	}
-	// }
+// 	if (!frm.doc.product_ref_no || frm.doc.product_ref_no == undefined) {
+// 		frappe.msgprint("Product reference no is missing.");
+// 		return
+// 	}
+// 	if (!frm.doc.type_of_defect || frm.doc.type_of_defect == undefined) {
+// 		frappe.msgprint("Please select type of defect.");
+// 		return
+// 	}
+// 	if (!frm.doc.rejected_qty || frm.doc.rejected_qty == undefined) {
+// 		frappe.msgprint("Please enter the rejected qty.");
+// 		return
+// 	}
+// 	if (!frm.doc.machine_no || frm.doc.machine_no == undefined) {
+// 		frappe.msgprint("Please enter the machine number.");
+// 		return
+// 	}
+// 	if (!frm.doc.lot_no || frm.doc.lot_no == undefined) {
+// 		frappe.msgprint("Please enter the lot number.");
+// 		return
+// 	}
+// 	if (!frm.doc.inspector_code || frm.doc.inspector_code == undefined) {
+// 		frappe.msgprint("Please Scan the Inspector.");
+// 		return
+// 	}
+// 	if((frm.doc.inspection_type == "Lot Inspection" || frm.doc.inspection_type == "Line Inspection") && (!frm.one_no_qty_equal_kgs || frm.one_no_qty_equal_kgs == undefined)){
+// 		frappe.msgprint("UOM coversion factor value not found.");
+// 		return
+// 	}
+// 	else {
+// 		if(frm.doc.inspection_type == "Lot Inspection" || frm.doc.inspection_type == "Line Inspection"){
+// 			let cur_rejected_qty = frm.one_no_qty_equal_kgs *  frm.doc.rejected_qty
+// 			if ((frm.doc.total_inspected_qty ? frm.doc.total_inspected_qty : 0) > (cur_rejected_qty + (frm.doc.total_rejected_qty_kg ? frm.doc.total_rejected_qty_kg : 0))) {
+// 				var row = frappe.model.add_child(frm.doc, "Inspection Entry Item", "items");
+// 				row.product_ref_no = frm.doc.product_ref_no;
+// 				row.lot_no = frm.doc.lot_no;
+// 				row.type_of_defect = frm.doc.type_of_defect;
+// 				row.rejected_qty = frm.doc.rejected_qty;
+// 				row.rejected_qty_kg = cur_rejected_qty;
+// 				row.operator_name = frm.doc.operator_name;
+// 				row.machine_no = frm.doc.machine_no;
+// 				row.inspector_name = frm.doc.inspector_name
+// 				row.inspector_code = frm.doc.inspector_code
+// 				row.batch_no = frm.doc.batch_no
+// 				frm.refresh_field('items');
+// 				frm.set_value("type_of_defect", "FLOW-(FL)");
+// 				frm.set_value("rejected_qty", 0);
+// 				if (frm.doc.items) {
+// 					var r_qty = 0;
+// 					var r_qty_kgs = 0;
+// 					for (var i = 0; i < frm.doc.items.length; i++) {
+// 						r_qty += frm.doc.items[i].rejected_qty
+// 						r_qty_kgs += frm.doc.items[i].rejected_qty_kg
+// 					}
+// 					frm.set_value("total_rejected_qty", r_qty)
+// 					frm.set_value("total_rejected_qty_kg", r_qty_kgs)
+// 					var r_qty_per = (r_qty_kgs / frm.doc.total_inspected_qty) * 100
+// 					frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
+// 				}
+// 			}
+// 			else {
+// 				frappe.msgprint("Total <b>Rejected Quantity</b> should be less than the <b>Total Inspected Quantity</b>.");
+// 				}
+// 		}
+// 		else if(frm.doc.inspection_type == "Incoming Inspection" || frm.doc.inspection_type == "Patrol Inspection" || frm.doc.inspection_type == "Final Inspection"){
+// 			if ((frm.doc.total_inspected_qty_nos ? frm.doc.total_inspected_qty_nos : 0) > ((frm.doc.rejected_qty ? frm.doc.rejected_qty : 0) + (frm.doc.total_rejected_qty ? frm.doc.total_rejected_qty : 0))) {
+// 				var row = frappe.model.add_child(frm.doc, "Inspection Entry Item", "items");
+// 				row.product_ref_no = frm.doc.product_ref_no;
+// 				row.lot_no = frm.doc.lot_no;
+// 				row.type_of_defect = frm.doc.type_of_defect;
+// 				row.rejected_qty = frm.doc.rejected_qty;
+// 				row.operator_name = frm.doc.operator_name;
+// 				row.machine_no = frm.doc.machine_no;
+// 				row.inspector_name = frm.doc.inspector_name
+// 				row.inspector_code = frm.doc.inspector_code
+// 				row.batch_no = frm.doc.batch_no
+// 				frm.refresh_field('items');
+// 				frm.set_value("type_of_defect", "FLOW-(FL)");
+// 				frm.set_value("rejected_qty", 0);
+// 				if (frm.doc.items) {
+// 					var r_qty = 0;
+// 					for (var i = 0; i < frm.doc.items.length; i++) {
+// 						r_qty += frm.doc.items[i].rejected_qty
+// 					}
+// 					frm.set_value("total_rejected_qty", r_qty)
+// 					var r_qty_per = (r_qty / frm.doc.total_inspected_qty_nos) * 100
+// 					frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
+// 				}
+// 			}
+// 			else {
+// 				frappe.msgprint("Total <b>Rejected Quantity</b> should be less than the <b>Total Inspected Quantity</b>.");
+// 				}
+// 		}
+// 	}
+// }
 
 
-	// update_opts(frm,option) {
-	// 	let options = ["FLOW-(FL)", "BUBBLE-(BU) / BLISTER-(BL)", "CUTMARK-(CU)",
-	// 		"DEFLASH-(DF)", "RIB", "FOREIGN PARTICLE-(FP)", "UNDER FILL-( UF )",
-	// 		"DIPRESSION-(DP)", "UNDER CURE-(UC)", "SURFACE DEFECT-(SD)", "OVER CURE-(OC) /FAST CURE"
-	// 		, "BURST / TEAR", "BLACK MARK"]
-	// 	let df_options = [...options]
-	// 	frm.doc.items.map(res => {
-	// 		if(!res.type_of_defect.includes(Object.keys(options))){
-	// 			df_options.push(res.type_of_defect)
-	// 		}
-	// 	})
-	// 	frm.doc.items.map(res => {
-	// 		var grid_row = cur_frm.fields_dict['items'].grid.grid_rows_by_docname[res.name],
-	// 		field = frappe.utils.filter_dict(grid_row.docfields, { fieldname: "type_of_defect" })[0];
-	// 		field.options = df_options
-	// 	})
-	// 	refresh_field('items')
-	// },
+// update_opts(frm,option) {
+// 	let options = ["FLOW-(FL)", "BUBBLE-(BU) / BLISTER-(BL)", "CUTMARK-(CU)",
+// 		"DEFLASH-(DF)", "RIB", "FOREIGN PARTICLE-(FP)", "UNDER FILL-( UF )",
+// 		"DIPRESSION-(DP)", "UNDER CURE-(UC)", "SURFACE DEFECT-(SD)", "OVER CURE-(OC) /FAST CURE"
+// 		, "BURST / TEAR", "BLACK MARK"]
+// 	let df_options = [...options]
+// 	frm.doc.items.map(res => {
+// 		if(!res.type_of_defect.includes(Object.keys(options))){
+// 			df_options.push(res.type_of_defect)
+// 		}
+// 	})
+// 	frm.doc.items.map(res => {
+// 		var grid_row = cur_frm.fields_dict['items'].grid.grid_rows_by_docname[res.name],
+// 		field = frappe.utils.filter_dict(grid_row.docfields, { fieldname: "type_of_defect" })[0];
+// 		field.options = df_options
+// 	})
+// 	refresh_field('items')
+// },
