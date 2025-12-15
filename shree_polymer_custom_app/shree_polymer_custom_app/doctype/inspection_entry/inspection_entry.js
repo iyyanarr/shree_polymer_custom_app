@@ -700,12 +700,19 @@ frappe.ui.form.on('Inspection Entry Item', {
 					frm.refresh_field('items');
 					if (frm.doc.items) {
 						var r_qty = 0;
+						var r_qty_kg = 0;
 						for (var i = 0; i < frm.doc.items.length; i++) {
 							if (frm.doc.items[i].rejected_qty) {
 								r_qty += frm.doc.items[i].rejected_qty
 							}
+							if (frm.doc.items[i].rejected_qty_kg) {
+								r_qty_kg += frm.doc.items[i].rejected_qty_kg
+							}
 						}
-						frm.set_value("total_rejected_qty", r_qty)
+						if (frm.doc.items && frm.doc.items.length > 0) {
+							frm.set_value("total_rejected_qty", r_qty)
+							frm.set_value("total_rejected_qty_kg", r_qty_kg)
+						}
 						if (r_qty) {
 							var r_qty_per = (r_qty / frm.doc.total_inspected_qty_nos) * 100
 							// frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
