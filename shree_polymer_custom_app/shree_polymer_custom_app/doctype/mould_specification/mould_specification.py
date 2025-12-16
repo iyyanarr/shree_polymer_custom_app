@@ -33,7 +33,12 @@ class MouldSpecification(Document):
 			
 			# Fix: Calculate as Sum of 'Wt/Piece' x No. Of Piece / No. of Cavities
 			if self.noof_cavities and float(self.noof_cavities) > 0:
-				self.avg_blank_wtproduct_gms = round((total_wt_piece_sum * float(self.no_of_piece)) / float(self.noof_cavities), 3)
+				# Formula: {[(Sum of ‘Avg Wt. of each blank) x No. of Pieces] - Pot Residue} / No. of Cavities
+				pot_residue = self.pot_residue if self.pot_residue else 0.0
+				numerator = (total_wt_piece_sum * float(self.no_of_piece)) - float(pot_residue)
+				# Ensure result is not negative, though business logic should prevent this
+				numerator = max(0.0, numerator)
+				self.avg_blank_wtproduct_gms = round(numerator / float(self.noof_cavities), 3)
 			else:
 				self.avg_blank_wtproduct_gms = round(self.wtpiece_avg_gms / self.no_of_cavity_per_blank,3) if self.no_of_cavity_per_blank else wtlift_avg_gms
 		# Note: Shell weight is stored separately and handled in rejection calculations
@@ -114,7 +119,13 @@ def check_mould_spec_calculation(mould_spec_name):
 		
 		if doc.blank_specifications:
 			total_wt_piece = sum([float(spec.wtpiece_avg_gms or 0) for spec in doc.blank_specifications])
-			expected_avg = (total_wt_piece * float(doc.no_of_piece)) / float(doc.noof_cavities)
+			
+			pot_residue = doc.pot_residue if doc.pot_residue else 0.0
+			numerator = (total_wt_piece * float(doc.no_of_piece)) - float(pot_residue)
+			numerator = max(0.0, numerator)
+			expected_avg = numerator / float(doc.noof_cavities)
+			
+			result["pot_residue"] = pot_residue
 			material_weight_per_piece_kg = expected_avg / 1000
 			
 			result.update({
