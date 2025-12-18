@@ -33,9 +33,17 @@ class MouldSpecification(Document):
 			
 			# Fix: Calculate as Sum of 'Wt/Piece' x No. Of Piece / No. of Cavities
 			if self.noof_cavities and float(self.noof_cavities) > 0:
-				# Formula: {[(Sum of ‘Avg Wt. of each blank) x No. of Pieces] - Pot Residue} / No. of Cavities
+				# Formula: {[(Sum of ‘Avg Wt. of each blank * No of Piece) - Pot Residue} / No. of Cavities
+				
+				# Calculate weighted sum from child table values
+				weighted_wt_piece_sum = 0.0
+				for bl_spec in self.blank_specifications:
+					qty = bl_spec.no_of_piece if bl_spec.no_of_piece else 0
+					weighted_wt_piece_sum += (bl_spec.wtpiece_avg_gms * qty)
+
 				pot_residue = self.pot_residue if self.pot_residue else 0.0
-				numerator = (total_wt_piece_sum * float(self.no_of_piece)) - float(pot_residue)
+				numerator = weighted_wt_piece_sum - float(pot_residue)
+				
 				# Ensure result is not negative, though business logic should prevent this
 				numerator = max(0.0, numerator)
 				self.avg_blank_wtproduct_gms = round(numerator / float(self.noof_cavities), 3)
@@ -118,14 +126,20 @@ def check_mould_spec_calculation(mould_spec_name):
 		}
 		
 		if doc.blank_specifications:
+			# Calculate weighted sum from child table values
 			total_wt_piece = sum([float(spec.wtpiece_avg_gms or 0) for spec in doc.blank_specifications])
-			
+			weighted_wt_piece_sum = 0.0
+			for spec in doc.blank_specifications:
+				qty = spec.no_of_piece if spec.no_of_piece else 0
+				weighted_wt_piece_sum += (float(spec.wtpiece_avg_gms or 0) * flt(qty))
+
 			pot_residue = doc.pot_residue if doc.pot_residue else 0.0
-			numerator = (total_wt_piece * float(doc.no_of_piece)) - float(pot_residue)
+			numerator = weighted_wt_piece_sum - float(pot_residue)
 			numerator = max(0.0, numerator)
 			expected_avg = numerator / float(doc.noof_cavities)
 			
 			result["pot_residue"] = pot_residue
+			result["weighted_wt_piece_sum"] = weighted_wt_piece_sum
 			material_weight_per_piece_kg = expected_avg / 1000
 			
 			result.update({
@@ -136,7 +150,8 @@ def check_mould_spec_calculation(mould_spec_name):
 					{
 						"idx": spec.idx,
 						"blank_type": spec.blank_type,
-						"wtpiece_avg_gms": spec.wtpiece_avg_gms
+						"wtpiece_avg_gms": spec.wtpiece_avg_gms,
+						"no_of_piece": spec.no_of_piece
 					} for spec in doc.blank_specifications
 				]
 			})
