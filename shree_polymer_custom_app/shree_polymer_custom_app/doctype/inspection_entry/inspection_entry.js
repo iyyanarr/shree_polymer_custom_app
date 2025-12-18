@@ -26,6 +26,13 @@ frappe.ui.form.on('Inspection Entry', {
 			}
 		}
 	},
+	total_rejected_qty_kg: function (frm) {
+		if (frm.doc.inspection_type == "Patrol Inspection") {
+			if (!frm.is_script_update) {
+				frm.set_value('is_manual_rejected_weight', 1);
+			}
+		}
+	},
 	bind_rejections(frm) {
 		frm.addtional_rejections = [{ "type_of_defect": "TOOL MARK" },
 		{ "type_of_defect": "BONDING FALUIRE" },
@@ -539,7 +546,9 @@ frappe.ui.form.on('Inspection Entry Item', {
 									}
 								}
 								frm.set_value("total_rejected_qty", r_qty)
+								frm.is_script_update = true;
 								frm.set_value("total_rejected_qty_kg", r_qty_kgs)
+								frm.is_script_update = false;
 								if (r_qty_kgs) {
 									var r_qty_per = (r_qty_kgs / frm.doc.total_inspected_qty) * 100
 									// frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
@@ -589,7 +598,9 @@ frappe.ui.form.on('Inspection Entry Item', {
 									}
 								}
 								frm.set_value("total_rejected_qty", r_qty)
+								frm.is_script_update = true;
 								frm.set_value("total_rejected_qty_kg", r_qty_kgs)
+								frm.is_script_update = false;
 								if (r_qty_kgs) {
 									var r_qty_per = (r_qty_kgs / frm.doc.total_inspected_qty) * 100
 									// frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
@@ -656,7 +667,9 @@ frappe.ui.form.on('Inspection Entry Item', {
 							}
 						}
 						frm.set_value("total_rejected_qty", r_qty)
+						frm.is_script_update = true;
 						frm.set_value("total_rejected_qty_kg", r_qty_kgs)
+						frm.is_script_update = false;
 						if (r_qty_kgs) {
 							var r_qty_per = (r_qty_kgs / frm.doc.total_inspected_qty) * 100
 							// frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
@@ -683,7 +696,9 @@ frappe.ui.form.on('Inspection Entry Item', {
 							}
 						}
 						frm.set_value("total_rejected_qty", r_qty)
+						frm.is_script_update = true;
 						frm.set_value("total_rejected_qty_kg", r_qty_kgs)
+						frm.is_script_update = false;
 						if (r_qty_kgs) {
 							var r_qty_per = (r_qty_kgs / frm.doc.total_inspected_qty) * 100
 							// frm.set_value("total_rejected_qty_in_percentage", r_qty_per)
@@ -711,7 +726,9 @@ frappe.ui.form.on('Inspection Entry Item', {
 						}
 						if (frm.doc.items && frm.doc.items.length > 0) {
 							frm.set_value("total_rejected_qty", r_qty)
+							frm.is_script_update = true;
 							frm.set_value("total_rejected_qty_kg", r_qty_kg)
+							frm.is_script_update = false;
 						}
 						if (r_qty) {
 							var r_qty_per = (r_qty / frm.doc.total_inspected_qty_nos) * 100

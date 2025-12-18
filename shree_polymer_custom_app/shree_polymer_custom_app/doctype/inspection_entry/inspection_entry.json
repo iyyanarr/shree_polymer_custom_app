@@ -57,6 +57,7 @@
         "stock_entry_reference",
         "one_no_qty_equal_kgs",
         "moulding_production_completed",
+        "is_manual_rejected_weight",
         "amended_from"
     ],
     "fields": [
@@ -233,6 +234,14 @@
             "fieldtype": "Float",
             "hidden": 0,
             "label": "Total Rejected Qty (Kg)"
+        },
+        {
+            "default": "0",
+            "depends_on": "eval:doc.inspection_type == \"Patrol Inspection\"",
+            "fieldname": "is_manual_rejected_weight",
+            "fieldtype": "Check",
+            "label": "Is Manual Rejected Weight",
+            "read_only": 1
         },
         {
             "depends_on": "eval:doc.uom == 'Nos' && (doc.inspection_type == \"Incoming Inspection\" || doc.inspection_type == \"Final Inspection\" || doc.inspection_type == \"Final Visual Inspection\" || doc.inspection_type == \"PDIR\")",
