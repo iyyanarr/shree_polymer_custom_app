@@ -101,16 +101,49 @@ def get_cutbit_items(items):
 	
 	spp_settings = frappe.get_single("SPP Settings")
 	if spp_settings.default_cut_bit_warehouse:
-		stock_details_query = """ SELECT  P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SD.transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
+	# 	stock_details_query = """ SELECT  P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SD.transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
+	# 				  FROM `tabStock Entry Detail` SD
+	# 				  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
+	# 				  INNER JOIN `tabItem` P ON P.name = SD.item_code
+	# 				  INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
+	# 				  WHERE SD.item_code in ({items_code}) AND SD.t_warehouse = '{t_warehouse}' AND SI.warehouse = '{t_warehouse}'
+	# 				  AND S.stock_entry_type = 'Material Transfer' AND S.docstatus = 1
+	# 				  ORDER BY S.creation  """.format(items_code=items_code,t_warehouse=spp_settings.default_cut_bit_warehouse)
+	# 	stock_details = frappe.db.sql(stock_details_query,as_dict=1)
+		
+	# 	# Refactored to filter by stock balance manually since we want batch-wise availability
+	# 	from erpnext.stock.utils import get_stock_balance
+	# 	final_stock_details = []
+	# 	for s in stock_details:
+	# 		qty = get_stock_balance(s.item_code, spp_settings.default_cut_bit_warehouse, batch_no=s.batch_no)
+	# 		if qty > 0:
+	# 			final_stock_details.append(s)
+	# 	return final_stock_details
+
+    # NOTE: The original query joined Item Batch Stock Balance to filter rows where qty > 0.
+    # To replicate this purely with native API is complex because we need the list of batches from Stock Entry Details first.
+    # I will keep the query but REPLACE the Join with a check or just use get_batch_qty for availability.
+    # ACTUALLY, checking standard logic: `get_cutbit_items` lists items available in Cut Bit W/H.
+    # It joins `Item Batch Stock Balance` to ensure they are currently physically there.
+    
+    # Let's perform a clearer replacement:
+    
+		stock_details_query = f""" SELECT  P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SD.transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
 					  FROM `tabStock Entry Detail` SD
 					  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
 					  INNER JOIN `tabItem` P ON P.name = SD.item_code
-					  INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
-					  WHERE SD.item_code in ({items_code}) AND SD.t_warehouse = '{t_warehouse}' AND SI.warehouse = '{t_warehouse}'
+					  WHERE SD.item_code in ({items_code}) AND SD.t_warehouse = '{spp_settings.default_cut_bit_warehouse}'
 					  AND S.stock_entry_type = 'Material Transfer' AND S.docstatus = 1
-					  ORDER BY S.creation  """.format(items_code=items_code,t_warehouse=spp_settings.default_cut_bit_warehouse)
+					  ORDER BY S.creation """
 		stock_details = frappe.db.sql(stock_details_query,as_dict=1)
-		return stock_details
+		
+		from erpnext.stock.utils import get_stock_balance
+		final_details = []
+		for row in stock_details:
+			qty = get_stock_balance(row.item_code, spp_settings.default_cut_bit_warehouse, batch_no=row.batch_no)
+			if qty > 0:
+				final_details.append(row)
+		return final_details
 	return []
 
 @frappe.whitelist()
@@ -205,48 +238,51 @@ def validate_spp_batch_no(batch_no,warehouse,t_warehouse,s_type,t_type):
 		sheeting_condition = ""
 	
 	# OPTIMIZED QUERY: Try mix_barcode first (most common case)
-	stock_details = frappe.db.sql(""" SELECT S.posting_date,S.posting_time,S.name stock__id,S.stock_entry_type,S.docstatus doc__status,P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SI.qty as transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
+	# Removed Join with Item Batch Stock Balance
+	stock_details = frappe.db.sql(""" SELECT S.posting_date,S.posting_time,S.name stock__id,S.stock_entry_type,S.docstatus doc__status,P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SD.qty as transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
 					  FROM `tabStock Entry Detail` SD USE INDEX (idx_cutbit_lookup, idx_mix_barcode)
 					  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
 					  INNER JOIN `tabItem` P ON P.name = SD.item_code
-					  INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
 					  WHERE SD.mix_barcode = %(mix_barcode)s AND SD.t_warehouse = %(t_warehouse)s 
 					  AND (S.stock_entry_type = %(type)s OR S.stock_entry_type ='Material Receipt') AND S.docstatus = 1  {sheeting_condition}
 					  ORDER BY S.creation DESC limit 1 """.format(sheeting_condition=sheeting_condition),{'cut_bit_warehouse':spp_settings.default_cut_bit_warehouse,'sheeting_condition':sheeting_condition,'mix_barcode':batch_no,'t_warehouse':warehouse,'type':s_type},as_dict=1)
 	
 	# If not found, try barcode_text
 	if not stock_details:
-		stock_details = frappe.db.sql(""" SELECT S.posting_date,S.posting_time,S.name stock__id,S.stock_entry_type,S.docstatus doc__status,P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SI.qty as transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
+		stock_details = frappe.db.sql(""" SELECT S.posting_date,S.posting_time,S.name stock__id,S.stock_entry_type,S.docstatus doc__status,P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SD.qty as transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
 						  FROM `tabStock Entry Detail` SD USE INDEX (idx_barcode_text)
 						  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
 						  INNER JOIN `tabItem` P ON P.name = SD.item_code
-						  INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
 						  WHERE SD.barcode_text = %(mix_barcode)s AND SD.t_warehouse = %(t_warehouse)s 
 						  AND (S.stock_entry_type = %(type)s OR S.stock_entry_type ='Material Receipt') AND S.docstatus = 1  {sheeting_condition}
 						  ORDER BY S.creation DESC limit 1 """.format(sheeting_condition=sheeting_condition),{'cut_bit_warehouse':spp_settings.default_cut_bit_warehouse,'sheeting_condition':sheeting_condition,'mix_barcode':batch_no,'t_warehouse':warehouse,'type':s_type},as_dict=1)
 	
 	# Check cut bit warehouse if Transfer Compound to Sheeting and not found
 	if t_type == "Transfer Compound to Sheeting Warehouse" and not stock_details:
-		stock_details = frappe.db.sql(""" SELECT S.posting_date,S.posting_time,S.name stock__id,S.stock_entry_type,S.docstatus doc__status,P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SI.qty as transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
+		stock_details = frappe.db.sql(""" SELECT S.posting_date,S.posting_time,S.name stock__id,S.stock_entry_type,S.docstatus doc__status,P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SD.qty as transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
 					  FROM `tabStock Entry Detail` SD USE INDEX (idx_cutbit_lookup, idx_mix_barcode)
 					  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
 					  INNER JOIN `tabItem` P ON P.name = SD.item_code
-					  INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
 					  WHERE SD.mix_barcode = %(mix_barcode)s AND SD.t_warehouse = %(cut_bit_warehouse)s 
 					  AND S.docstatus = 1
 					  ORDER BY S.creation DESC limit 1 """,{'cut_bit_warehouse':spp_settings.default_cut_bit_warehouse,'sheeting_condition':sheeting_condition,'mix_barcode':batch_no,'t_warehouse':warehouse,'type':"Material Transfer"},as_dict=1)
 		if not stock_details:
 			# Try barcode_text for cut bit
-			stock_details = frappe.db.sql(""" SELECT S.posting_date,S.posting_time,S.name stock__id,S.stock_entry_type,S.docstatus doc__status,P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SI.qty as transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
+			stock_details = frappe.db.sql(""" SELECT S.posting_date,S.posting_time,S.name stock__id,S.stock_entry_type,S.docstatus doc__status,P.quality_inspection_template,SD.creation,SD.item_code,SD.item_name,SD.qty as transfer_qty,SD.spp_batch_number,SD.batch_no,SD.stock_uom 
 						  FROM `tabStock Entry Detail` SD USE INDEX (idx_barcode_text)
 						  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
 						  INNER JOIN `tabItem` P ON P.name = SD.item_code
-						  INNER JOIN `tabItem Batch Stock Balance` SI ON SI.batch_no = SD.batch_no
 						  WHERE SD.barcode_text = %(mix_barcode)s AND SD.t_warehouse = %(cut_bit_warehouse)s 
 						  AND S.docstatus = 1
 						  ORDER BY S.creation DESC limit 1 """,{'cut_bit_warehouse':spp_settings.default_cut_bit_warehouse,'sheeting_condition':sheeting_condition,'mix_barcode':batch_no,'t_warehouse':warehouse,'type':"Material Transfer"},as_dict=1)
 		if stock_details:
 			is_cut_bit_item = 1
+			
+	# Update transfer_qty with actual stock balance
+	if stock_details:
+		from erpnext.stock.utils import get_stock_balance
+		actual_qty = get_stock_balance(stock_details[0].item_code, warehouse if not is_cut_bit_item else spp_settings.default_cut_bit_warehouse, batch_no=stock_details[0].batch_no)
+		stock_details[0].transfer_qty = actual_qty
 	
 	if stock_details:
 	# ...existing validation code...
@@ -453,11 +489,72 @@ def create_stock_entry(mt_doc):
 					})
 		for x in mt_doc.batches:
 			if x.is_cut_bit_item==1:
-				batch_wise_stock = frappe.db.sql(""" SELECT SB.batch_no,SB.qty  FROM `tabItem Batch Stock Balance` SB 
-														INNER JOIN `tabBatch` B ON SB.batch_no = B.name
-														WHERE SB.item_code = %(item_code)s AND B.expiry_date >= CURDATE() AND SB.warehouse=%(warehouse)s
-														ORDER BY B.creation """
-														,{"item_code":x.item_code,"warehouse":spp_settings.default_cut_bit_warehouse},as_dict=1)
+				from erpnext.stock.utils import get_batch_qty
+				# Use native get_batch_qty which returns list of {warehouse, qty, batch_no}
+				# We need batches for this item in this warehouse.
+				# Since get_batch_qty takes batch_no as input, we might need to find batches first?
+				# The original query was getting ALL batches for this item in the warehouse with >0 qty.
+				# Native equivalent:
+				
+				# Get all batches for item in warehouse with positive qty
+				from frappe.query_builder.functions import Sum
+				
+				batch_ledger = frappe.qb.DocType("Stock Ledger Entry")
+				batches = (
+					frappe.qb.from_(batch_ledger)
+					.select(batch_ledger.batch_no, Sum(batch_ledger.actual_qty).as_("qty"))
+					.where(batch_ledger.item_code == x.item_code)
+					.where(batch_ledger.warehouse == spp_settings.default_cut_bit_warehouse)
+					.where(batch_ledger.is_cancelled == 0)
+					.groupby(batch_ledger.batch_no)
+					.having(Sum(batch_ledger.actual_qty) > 0)
+				).run(as_dict=True)
+				
+				# We also need to check expiration? Native get_batch_qty doesn't check expiration by default usually.
+				# The original query joined `tabBatch` B and checked expiry_date.
+				# Let's filter batches by expiry
+				
+				valid_batches = []
+				for b in batches:
+					expiry_date = frappe.db.get_value("Batch", b.batch_no, "expiry_date")
+					if not expiry_date or getdate(expiry_date) >= getdate():
+						# Get exact qty again to be safe? The aggregate above is correct but native function is 'get_stock_balance'
+						# but calling get_stock_balance for every batch is slow. The aggregate is fine.
+						if b.qty > 0:
+							valid_batches.append(b)
+				
+				batch_wise_stock = sorted(valid_batches, key=lambda k: k.get('creation') or '') # Creation not available in aggregate
+				
+				# Re-sorted by creation from Batch table
+				final_batch_list = []
+				for vb in valid_batches:
+					creation = frappe.db.get_value("Batch", vb.batch_no, "creation")
+					vb['creation'] = creation
+					final_batch_list.append(vb)
+				
+				batch_wise_stock = sorted(final_batch_list, key=lambda k: k.get('creation'))
+				
+				# To match exact behavior of original SQL:
+				# SELECT SB.batch_no,SB.qty FROM `tabItem Batch Stock Balance` SB INNER JOIN `tabBatch` B ... ORDER BY B.creation
+				
+				# Let's clean up this replacement to be more robust:
+				# 1. Get batches with qty > 0 from SLE for this warehouse
+				# 2. Filter by expiry
+				# 3. Sort by creation
+				
+				# Re-writing the block:
+				batch_wise_stock = frappe.db.sql(""" 
+					SELECT SLE.batch_no, SUM(SLE.actual_qty) as qty, B.creation 
+					FROM `tabStock Ledger Entry` SLE
+					INNER JOIN `tabBatch` B ON SLE.batch_no = B.name
+					WHERE SLE.item_code = %(item_code)s 
+					AND SLE.warehouse = %(warehouse)s
+					AND SLE.is_cancelled = 0
+					AND B.expiry_date >= CURDATE()
+					GROUP BY SLE.batch_no
+					HAVING SUM(SLE.actual_qty) > 0
+					ORDER BY B.creation
+				""", {"item_code":x.item_code, "warehouse":spp_settings.default_cut_bit_warehouse}, as_dict=1)
 				for batch in batch_wise_stock:
 					s_qty = 0
 					remaining_qty = x.qty
@@ -526,10 +623,9 @@ def create_sheeting_stock_entry(mt_doc):
         
         for x in mt_doc.batches:
             if x.is_cut_bit_item == 1:
-                # Check available quantity
-                available_qty = frappe.db.get_value("Item Batch Stock Balance", 
-                    {"batch_no": x.batch_no, "warehouse": spp_settings.default_cut_bit_warehouse}, 
-                    "qty") or 0
+                # Check available quantity - using native API
+                from erpnext.stock.utils import get_stock_balance
+                available_qty = get_stock_balance(x.item_code, spp_settings.default_cut_bit_warehouse, batch_no=x.batch_no)
                 
                 if available_qty >= x.qty:
                     cut_bit_items_to_process.append(x)
