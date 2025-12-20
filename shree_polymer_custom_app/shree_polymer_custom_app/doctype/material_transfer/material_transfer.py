@@ -614,6 +614,7 @@ def create_stock_entry(mt_doc):
 		return {"status":"Failed"}
 
 def create_sheeting_stock_entry(mt_doc):
+    stock_entry = None
     try:
         spp_settings = frappe.get_single("SPP Settings")
         
@@ -771,6 +772,28 @@ def create_sheeting_stock_entry(mt_doc):
     except Exception as e:
         frappe.log_error(message=frappe.get_traceback(), title="Material Transfer Failed")
         frappe.db.rollback()
+        
+        # Explicitly rollback the Stock Entry if it was created/committed
+        if stock_entry and stock_entry.name and frappe.db.exists("Stock Entry", stock_entry.name):
+            try:
+                # 1. Find linked Serial and Batch Bundles
+                bundles = frappe.db.get_all("Stock Entry Detail", 
+                    filters={"parent": stock_entry.name}, 
+                    fields=["serial_and_batch_bundle"])
+                bundle_names = [b.serial_and_batch_bundle for b in bundles if b.serial_and_batch_bundle]
+                
+                # 2. Delete Stock Entry (force=1 to bypass check)
+                frappe.delete_doc("Stock Entry", stock_entry.name, force=1)
+                
+                # 3. Cleanup Orphaned Bundles
+                for bundle in bundle_names:
+                    if frappe.db.exists("Serial and Batch Bundle", bundle):
+                        frappe.delete_doc("Serial and Batch Bundle", bundle, force=1)
+                        
+                frappe.db.commit() # Commit the deletion
+            except Exception as rollback_error:
+                 frappe.log_error(message=f"Failed to rollback Stock Entry {stock_entry.name}: {str(rollback_error)}", title="Rollback Failed")
+
         return {"status": "Failed", "error_message": str(e)}
 
 def create_sheeting_issue_entry(mt_doc,org_batch_no):

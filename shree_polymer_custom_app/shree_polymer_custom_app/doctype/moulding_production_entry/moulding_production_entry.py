@@ -317,42 +317,79 @@ def validate_cavity(self):
 def rollback_entries(self, msg):
     try:
         self.reload()
-        stock__id = frappe.db.get_value(
-            "Stock Entry", {"blanking_dc_no": self.name}, "name")
-        if stock__id:
-            frappe.db.sql(
-                f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{stock__id}' ")
-        frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  blanking_dc_no=%(dc_no)s""", {
-                      "dc_no": self.name})
-        frappe.db.sql(""" UPDATE `tabJob Card` SET docstatus = 0, status = "Work In Progress" WHERE  name=%(name)s""", {
-                      "name": self.job_card})
-        frappe.db.sql(""" UPDATE `tabWork Order` SET status = "In Process",produced_qty = 0 WHERE  name=%(name)s""", {
-                      "name": frappe.db.get_value("Job Card", self.job_card, "work_order")})
-        exe_insp = frappe.db.sql(
-            f" SELECT stock_entry_reference FROM `tabInspection Entry` WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Patrol Inspection' OR inspection_type = 'Lot Inspection') AND docstatus = 1 AND lot_no='{self.scan_lot_number}' ", as_dict=1)
+        
+        # Helper to safely delete Stock Entry and its Bundles
+        def delete_stock_entry_safely(stock_entry_name):
+            if not stock_entry_name:
+                return
+                
+            # 1. Find linked Serial and Batch Bundles BEFORE deleting the entry
+            # check both field in item table
+            bundles = frappe.db.get_all("Stock Entry Detail", 
+                filters={"parent": stock_entry_name}, 
+                fields=["serial_and_batch_bundle"])
+            
+            bundle_names = [b.serial_and_batch_bundle for b in bundles if b.serial_and_batch_bundle]
+            
+            # 2. Delete Stock Entry (Triggers native cleanup of SLE, SED, etc.)
+            # force=1 bypasses submit status checks
+            frappe.delete_doc("Stock Entry", stock_entry_name, force=1)
+            
+            # 3. Explicitly delete the orphaned Bundles
+            for bundle in bundle_names:
+                if frappe.db.exists("Serial and Batch Bundle", bundle):
+                    frappe.delete_doc("Serial and Batch Bundle", bundle, force=1)
+
+        # 1. Rollback Main Stock Entry
+        stock_name = frappe.db.get_value("Stock Entry", {"blanking_dc_no": self.name}, "name")
+        if stock_name:
+            delete_stock_entry_safely(stock_name)
+
+        # 2. Reset Job Card
+        frappe.db.set_value("Job Card", self.job_card, {"docstatus": 0, "status": "Work In Progress"})
+        
+        # 3. Reset Work Order
+        work_order = frappe.db.get_value("Job Card", self.job_card, "work_order")
+        if work_order:
+            frappe.db.set_value("Work Order", work_order, {"status": "In Process", "produced_qty": 0})
+
+        # 4. Rollback Inspection Entries and their Stock Entries
+        exe_insp = frappe.db.get_all("Inspection Entry", 
+            filters={
+                "lot_no": self.scan_lot_number, 
+                "docstatus": 1,
+                "inspection_type": ["in", ["Line Inspection", "Patrol Inspection", "Lot Inspection"]]
+            },
+            fields=["name", "stock_entry_reference"]
+        )
+        
         if exe_insp:
             for ins in exe_insp:
+                # Delete the Stock Entry linked to Inspection
                 if ins.stock_entry_reference:
-                    ins__exe = frappe.get_doc(
-                        "Stock Entry", ins.stock_entry_reference)
-                    if ins__exe.docstatus == 1:
-                        ins__exe.db_set("docstatus", 0)
-                        frappe.db.sql(
-                            f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{ins.stock_entry_reference}' ")
-        bl_dc = frappe.get_doc(self.doctype, self.name)
-        bl_dc.db_set("docstatus", 0)
-        bl_dc.db_set("stock_entry_reference", '')
+                    delete_stock_entry_safely(ins.stock_entry_reference)
+                
+                # Revert Inspection Entry to Draft (Using SQL to avoid validation loops if any)
+                frappe.db.set_value("Inspection Entry", ins.name, "docstatus", 0)
+
+        # 5. Reset MPE
+        self.db_set("docstatus", 0)
+        self.db_set("stock_entry_reference", None)
+        
+        # 6. Delete the Batch
+        del__resp, batch__no = delete_batches([self.scan_lot_number])
+        
         frappe.db.commit()
         self.reload()
         frappe.msgprint(msg)
-        del__resp, batch__no = delete_batches([self.scan_lot_number])
+        
         if not del__resp:
             frappe.msgprint(batch__no)
+            
     except Exception:
         frappe.db.rollback()
         self.reload()
-        frappe.log_error(title="rollback_entries",
-                         message=frappe.get_traceback())
+        frappe.log_error(title="rollback_entries", message=frappe.get_traceback())
         frappe.msgprint("Something went wrong..Not able to rollback..!")
 
 

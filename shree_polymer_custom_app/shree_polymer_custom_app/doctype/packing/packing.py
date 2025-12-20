@@ -55,19 +55,39 @@ def convert_no_into_kgs(self):
 
 def rollback_entries(self,msg = None):
 	try:
-		pass  # Add your logic here
-	except Exception as e:
-		frappe.log_error(message=frappe.get_traceback(), title="Error in try block")
-		frappe.msgprint("An error occurred.")
+		# Helper to safely delete Stock Entry and its Bundles
+		def delete_stock_entry_safely(stock_entry_name):
+			if not stock_entry_name:
+				return
+				
+			# 1. Find linked Serial and Batch Bundles BEFORE deleting the entry
+			bundles = frappe.db.get_all("Stock Entry Detail", 
+				filters={"parent": stock_entry_name}, 
+				fields=["serial_and_batch_bundle"])
+			
+			bundle_names = [b.serial_and_batch_bundle for b in bundles if b.serial_and_batch_bundle]
+			
+			# 2. Delete Stock Entry (Triggers native cleanup of SLE, SED, etc.)
+			if frappe.db.exists("Stock Entry", stock_entry_name):
+				frappe.delete_doc("Stock Entry", stock_entry_name, force=1)
+			
+			# 3. Explicitly delete the orphaned Bundles
+			for bundle in bundle_names:
+				if frappe.db.exists("Serial and Batch Bundle", bundle):
+					frappe.delete_doc("Serial and Batch Bundle", bundle, force=1)
+
 		if self.stock_entry_reference:
-			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{self.stock_entry_reference}' ")
-			frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  name=%(name)s""",{"name":self.stock_entry_reference})
+			delete_stock_entry_safely(self.stock_entry_reference)
+
 		exe_pc = frappe.get_doc(self.doctype, self.name)
 		if exe_pc.docstatus !=2 :
 			exe_pc.db_set("docstatus", 0)
 		exe_pc.db_set("stock_entry_reference",'')
+		
 		if self.packing_serial_no_id:
-			frappe.db.sql(f""" DELETE FROM `tabPacking Serial No` WHERE name IN ('{self.packing_serial_no_id}') """)
+			if frappe.db.exists("Packing Serial No", self.packing_serial_no_id):
+				frappe.delete_doc("Packing Serial No", self.packing_serial_no_id, force=1)
+				
 		frappe.db.commit()
 		if msg:
 			frappe.msgprint(msg)
