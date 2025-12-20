@@ -279,10 +279,11 @@ def generate_barcode(compound):
 
 def check_available_stock(warehouse,item,batch_no):
 	try:
-		from erpnext.stock.utils import get_stock_balance
 		if batch_no:
-			qty = get_stock_balance(item, warehouse, batch_no=batch_no)
+			from erpnext.stock.doctype.batch.batch import get_batch_qty
+			qty = get_batch_qty(item_code=item, warehouse=warehouse, batch_no=batch_no)
 		else:
+			from erpnext.stock.utils import get_stock_balance
 			qty = get_stock_balance(item, warehouse)
 		
 		if qty:

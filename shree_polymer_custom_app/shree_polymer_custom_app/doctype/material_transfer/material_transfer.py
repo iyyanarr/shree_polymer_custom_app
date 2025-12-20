@@ -137,10 +137,10 @@ def get_cutbit_items(items):
 					  ORDER BY S.creation """
 		stock_details = frappe.db.sql(stock_details_query,as_dict=1)
 		
-		from erpnext.stock.utils import get_stock_balance
+		from erpnext.stock.doctype.batch.batch import get_batch_qty
 		final_details = []
 		for row in stock_details:
-			qty = get_stock_balance(row.item_code, spp_settings.default_cut_bit_warehouse, batch_no=row.batch_no)
+			qty = get_batch_qty(item_code=row.item_code, warehouse=spp_settings.default_cut_bit_warehouse, batch_no=row.batch_no)
 			if qty > 0:
 				final_details.append(row)
 		return final_details
@@ -280,8 +280,8 @@ def validate_spp_batch_no(batch_no,warehouse,t_warehouse,s_type,t_type):
 			
 	# Update transfer_qty with actual stock balance
 	if stock_details:
-		from erpnext.stock.utils import get_stock_balance
-		actual_qty = get_stock_balance(stock_details[0].item_code, warehouse if not is_cut_bit_item else spp_settings.default_cut_bit_warehouse, batch_no=stock_details[0].batch_no)
+		from erpnext.stock.doctype.batch.batch import get_batch_qty
+		actual_qty = get_batch_qty(item_code=stock_details[0].item_code, warehouse=warehouse if not is_cut_bit_item else spp_settings.default_cut_bit_warehouse, batch_no=stock_details[0].batch_no)
 		stock_details[0].transfer_qty = actual_qty
 	
 	if stock_details:
@@ -625,8 +625,8 @@ def create_sheeting_stock_entry(mt_doc):
         for x in mt_doc.batches:
             if x.is_cut_bit_item == 1:
                 # Check available quantity - using native API
-                from erpnext.stock.utils import get_stock_balance
-                available_qty = get_stock_balance(x.item_code, spp_settings.default_cut_bit_warehouse, batch_no=x.batch_no)
+                from erpnext.stock.doctype.batch.batch import get_batch_qty
+                available_qty = get_batch_qty(item_code=x.item_code, warehouse=spp_settings.default_cut_bit_warehouse, batch_no=x.batch_no)
                 
                 if available_qty >= x.qty:
                     cut_bit_items_to_process.append(x)
