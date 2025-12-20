@@ -55,6 +55,9 @@ def convert_no_into_kgs(self):
 
 def rollback_entries(self,msg = None):
 	try:
+		if msg:
+			frappe.log_error(title=f"Packing Rollback Triggered: {self.name}", message=f"Reason: {msg}")
+
 		# Helper to safely delete Stock Entry and its Bundles
 		def delete_stock_entry_safely(stock_entry_name):
 			if not stock_entry_name:

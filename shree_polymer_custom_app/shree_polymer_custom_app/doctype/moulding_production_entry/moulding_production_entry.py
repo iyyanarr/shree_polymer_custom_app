@@ -316,6 +316,9 @@ def validate_cavity(self):
 
 def rollback_entries(self, msg):
     try:
+        # Log the cause of the rollback
+        frappe.log_error(title=f"MPE Rollback Triggered: {self.name}", message=f"Reason: {msg}")
+
         self.reload()
         
         # Helper to safely delete Stock Entry and its Bundles

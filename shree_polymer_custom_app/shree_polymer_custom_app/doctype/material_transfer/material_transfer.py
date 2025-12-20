@@ -770,7 +770,7 @@ def create_sheeting_stock_entry(mt_doc):
         return {"status": "Success", "st_entry": st_entry}
         
     except Exception as e:
-        frappe.log_error(message=frappe.get_traceback(), title="Material Transfer Failed")
+        frappe.log_error(message=frappe.get_traceback(), title=f"Material Transfer Failed: {mt_doc.name}")
         frappe.db.rollback()
         
         # Explicitly rollback the Stock Entry if it was created/committed
