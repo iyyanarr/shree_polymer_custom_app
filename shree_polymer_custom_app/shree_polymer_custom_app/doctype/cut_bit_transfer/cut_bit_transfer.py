@@ -108,7 +108,7 @@ def validate_clip_barcode(batch_no,t_type,warehouse):
 		
 		# Replace Item Batch Stock Balance qty with native get_batch_qty if st_details exists
 		if st_details:
-			from erpnext.stock.utils import get_batch_qty
+			from erpnext.stock.doctype.batch.batch import get_batch_qty
 			for detail in st_details:
 				native_qty = get_batch_qty(detail.batch_no, detail.warehouse, detail.item_code)
 				detail.qty = native_qty if native_qty is not None else detail.qty

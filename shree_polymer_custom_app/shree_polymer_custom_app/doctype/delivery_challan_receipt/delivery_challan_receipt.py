@@ -236,7 +236,7 @@ def get_batch_items(item_code,warehouse=None):
 		
 		# Replace Item Batch Stock Balance qty with native get_batch_qty
 		if batch_items:
-			from erpnext.stock.utils import get_batch_qty
+			from erpnext.stock.doctype.batch.batch import get_batch_qty
 			for b_item in batch_items:
 				native_qty = get_batch_qty(b_item.batch_no, warehouse, b_item.item_code)
 				b_item.qty = native_qty if native_qty is not None else b_item.qty
@@ -297,7 +297,7 @@ def validate_barcode(batch_no,warehouse=None,is_internal_mixing=0,batch_type=Non
 					""" End """
 					
 					# Replace Item Batch Stock Balance qty with native get_batch_qty
-					from erpnext.stock.utils import get_batch_qty
+					from erpnext.stock.doctype.batch.batch import get_batch_qty
 					for stock_item in check_item_qty:
 						native_qty = get_batch_qty(stock_item.batch_no, stock_item.warehouse, stock_item.item_code)
 						stock_item.qty = native_qty if native_qty is not None else stock_item.qty

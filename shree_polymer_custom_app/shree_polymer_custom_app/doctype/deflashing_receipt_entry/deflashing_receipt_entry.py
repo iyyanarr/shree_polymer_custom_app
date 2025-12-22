@@ -703,7 +703,8 @@ def check_uom_bom(item):
 
 def check_available_stock(warehouse,item,batch_no):
 	try:
-		from erpnext.stock.utils import get_batch_qty, get_stock_balance
+		from erpnext.stock.doctype.batch.batch import get_batch_qty
+		from erpnext.stock.utils import get_stock_balance
 		if batch_no:
 			qty = get_batch_qty(batch_no, warehouse, item)
 		else:
@@ -772,7 +773,7 @@ def validate_lot_barcode(bar_code,w__barcode):
 	
 def check_dc_stocks(dd_despatch_info,warhouseid):
 	try:
-		from erpnext.stock.utils import get_batch_qty
+		from erpnext.stock.doctype.batch.batch import get_batch_qty
 		batch_no = dd_despatch_info[0].get("batch_no")
 		item_code = dd_despatch_info[0].get("item")
 		qty = get_batch_qty(batch_no, warhouseid, item_code)

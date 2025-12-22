@@ -368,7 +368,7 @@ def validate_clip_barcode(batch_no,item_produced=None):
 				return  {"status":"Failed","message":"Scanned clip <b>"+batch_no+"</b> not exist in the <b>"+spp_settings.default_sheeting_warehouse+"</b>"}
 			
 			# Replace Item Batch Stock Balance qty with native get_batch_qty
-			from erpnext.stock.utils import get_batch_qty
+			from erpnext.stock.doctype.batch.batch import get_batch_qty
 			for s_detail in st_details:
 				native_qty = get_batch_qty(s_detail.batch_no, spp_settings.default_sheeting_warehouse, s_detail.item_code)
 				s_detail.qty = native_qty if native_qty is not None else s_detail.qty
@@ -443,7 +443,7 @@ def check_validate_stock_get_details(bl_bin,spp_settings):
 	istb_entry = frappe.db.sql(istb_query,as_dict=1)
 	if istb_entry:
 		# Replace Item Batch Stock Balance qty with native get_batch_qty
-		from erpnext.stock.utils import get_batch_qty
+		from erpnext.stock.doctype.batch.batch import get_batch_qty
 		for entry in istb_entry:
 			native_qty = get_batch_qty(entry.batch_no, spp_settings.default_sheeting_warehouse, bl_bin[0].item)
 			entry.qty = native_qty if native_qty is not None else entry.qty

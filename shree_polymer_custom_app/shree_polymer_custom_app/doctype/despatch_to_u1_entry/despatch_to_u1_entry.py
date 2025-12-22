@@ -251,7 +251,8 @@ def create_stock_entry(self):
 
 def check_available_stock(warehouse,item,batch_no):
 	try:
-		from erpnext.stock.utils import get_batch_qty, get_stock_balance
+		from erpnext.stock.doctype.batch.batch import get_batch_qty
+		from erpnext.stock.utils import get_stock_balance
 		if batch_no:
 			qty = get_batch_qty(batch_no, warehouse, item)
 		else:

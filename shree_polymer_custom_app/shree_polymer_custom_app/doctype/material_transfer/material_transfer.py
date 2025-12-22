@@ -489,7 +489,7 @@ def create_stock_entry(mt_doc):
 					})
 		for x in mt_doc.batches:
 			if x.is_cut_bit_item==1:
-				from erpnext.stock.utils import get_batch_qty
+				from erpnext.stock.doctype.batch.batch import get_batch_qty
 				# Use native get_batch_qty which returns list of {warehouse, qty, batch_no}
 				# We need batches for this item in this warehouse.
 				# Since get_batch_qty takes batch_no as input, we might need to find batches first?
