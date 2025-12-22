@@ -73,10 +73,16 @@ def rollback_wo_se_jc(info,msg = None):
 		if info.work_order_ref:
 			stock__id = frappe.db.get_value("Stock Entry",{"work_order":info.work_order_ref},"name")
 			if stock__id:
-				frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{stock__id}' ")
-			frappe.db.sql(f" DELETE FROM `tabStock Entry` WHERE work_order = '{info.work_order_ref}' ")
-			frappe.db.sql(f" DELETE FROM `tabJob Card` WHERE work_order = '{info.work_order_ref}' ")
-			frappe.db.sql(f" DELETE FROM `tabWork Order` WHERE name = '{info.work_order_ref}' ")
+				delete_stock_entry_safely(stock__id)
+			
+			# Delete Job Cards associated with the Work Order
+			job_cards = frappe.db.get_all("Job Card", filters={"work_order": info.work_order_ref})
+			for jc in job_cards:
+				frappe.delete_doc("Job Card", jc.name, force=1)
+			
+			# Delete the Work Order
+			if frappe.db.exists("Work Order", info.work_order_ref):
+				frappe.delete_doc("Work Order", info.work_order_ref, force=1)
 		# lot__r = frappe.get_doc(info.doctype, info.name)
 		# lot__r.db_set("docstatus", 0)
 		frappe.db.commit()

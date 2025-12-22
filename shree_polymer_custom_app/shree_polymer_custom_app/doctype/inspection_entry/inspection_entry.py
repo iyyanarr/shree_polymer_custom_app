@@ -3,7 +3,13 @@ from frappe.model.document import Document
 from frappe.utils import (cint,date_diff,flt,get_datetime,get_link_to_form,getdate,nowdate
 )
 from frappe.utils import cint, cstr, duration_to_seconds, flt,add_to_date, update_progress_bar,format_time, formatdate, getdate, nowdate,now
-from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series,get_details_by_lot_no,get_parent_lot,get_workstation_by_operation,generate_batch_no,delete_batches
+from shree_polymer_custom_app.shree_polymer_custom_app.api import (get_stock_entry_naming_series, 
+																 get_details_by_lot_no, 
+																 get_parent_lot, 
+																 get_workstation_by_operation, 
+																 generate_batch_no, 
+																 delete_batches, 
+																 delete_stock_entry_safely)
 # By GOPI
 class InspectionEntry(Document):
 	def validate(self):
@@ -151,16 +157,8 @@ class InspectionEntry(Document):
 
 def rollback_vs_pdir(self,lrt = None):
 	self.reload()
-	def del_st(st_id):
-		frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{st_id}' ")
-		frappe.db.sql(f" DELETE FROM `tabStock Entry` WHERE name = '{st_id}' ")	
-	# vu__ins__st_entry = frappe.db.get_value(self.doctype,{"lot_no":self.lot_no,"inspection_type":"Final Visual Inspection"},['name',"stock_entry_reference"],as_dict = 1)
-	# if vu__ins__st_entry:
-	# 	del_st(vu__ins__st_entry.stock_entry_reference)
-	# 	frappe.db.set_value(self.doctype,vu__ins__st_entry.name,"stock_entry_reference","")
-	# 	frappe.db.set_value(self.doctype,vu__ins__st_entry.name,"batch_no","")
 	if self.stock_entry_reference:
-		del_st(self.stock_entry_reference)
+		delete_stock_entry_safely(self.stock_entry_reference)
 	exe_info = frappe.get_doc(self.doctype,self.name)
 	exe_info.db_set('docstatus',0)
 	exe_info.db_set('stock_entry_reference','')
@@ -338,13 +336,14 @@ def rollback_entries(self,msg):
 	try:
 		self.reload()
 		if self.stock_entry_reference:
-			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{self.stock_entry_reference}' ")
-			frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  name=%(name)s""",{"name":self.stock_entry_reference})
-			bl_dc = frappe.get_doc(self.doctype, self.name)
-			bl_dc.db_set("docstatus", 0)
-			frappe.db.commit()
-			self.reload()
-			frappe.msgprint(msg)
+			delete_stock_entry_safely(self.stock_entry_reference)
+			
+		bl_dc = frappe.get_doc(self.doctype, self.name)
+		bl_dc.db_set("docstatus", 0)
+		bl_dc.db_set("stock_entry_reference", "")
+		frappe.db.commit()
+		self.reload()
+		frappe.msgprint(msg)
 	except Exception:
 		frappe.db.rollback()
 		self.reload()
@@ -355,12 +354,14 @@ def rollback__vs_entry__only(self,msg):
 	try:
 		self.reload()
 		if self.vs_pdir_work_order_ref:
-			stock__id = frappe.db.get_value("Stock Entry",{"work_order":self.vs_pdir_work_order_ref},"name")
+			stock__id = frappe.db.get_value("Stock Entry", {"work_order": self.vs_pdir_work_order_ref}, "name")
 			if stock__id:
-				frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{stock__id}' ")
-			frappe.db.sql(f" DELETE FROM `tabStock Entry` WHERE work_order = '{self.vs_pdir_work_order_ref}' ")
-			frappe.db.sql(f" DELETE FROM `tabJob Card` WHERE work_order = '{self.vs_pdir_work_order_ref}' ")
-			frappe.db.sql(f" DELETE FROM `tabWork Order` WHERE name = '{self.vs_pdir_work_order_ref}' ")
+				delete_stock_entry_safely(stock__id)
+			
+			if frappe.db.exists("Work Order", self.vs_pdir_work_order_ref):
+				# Deleting Work Order also deletes linked Job Cards if not submitted
+				frappe.delete_doc("Work Order", self.vs_pdir_work_order_ref, force=1)
+
 		lot__r = frappe.get_doc(self.doctype, self.name)
 		lot__r.db_set("docstatus", 0)
 		lot__r.db_set("vs_pdir_stock_entry_ref", '')

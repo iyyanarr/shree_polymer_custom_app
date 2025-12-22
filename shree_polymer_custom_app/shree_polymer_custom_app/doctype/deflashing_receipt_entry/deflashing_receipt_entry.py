@@ -4,7 +4,10 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import flt,getdate,add_to_date,now
-from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series,generate_batch_no,get_parent_lot
+from shree_polymer_custom_app.shree_polymer_custom_app.api import (get_stock_entry_naming_series, 
+																 generate_batch_no, 
+																 get_parent_lot, 
+																 delete_stock_entry_safely)
 
 class DeflashingReceiptEntry(Document):
 	def validate(self):
@@ -247,15 +250,21 @@ class DeflashingReceiptEntry(Document):
 def rollback_entries(self,msg):
 	try:
 		self.reload()
+		# 1. Rollback Main Stock Entry
 		if self.stock_entry_reference:
-			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{self.stock_entry_reference}' ")
-			frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  name=%(name)s""",{"name":self.stock_entry_reference})
+			delete_stock_entry_safely(self.stock_entry_reference)
+		
+		# 2. Rollback Scrap Stock Entry
 		if self.scrap_stock_entry_ref:
-			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{self.scrap_stock_entry_ref}' ")
-			frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  name=%(name)s""",{"name":self.scrap_stock_entry_ref})
+			delete_stock_entry_safely(self.scrap_stock_entry_ref)
+			
+		# 3. Rollback Work Order and Job Card
 		if self.work_order_ref:
-			frappe.db.sql(f""" DELETE FROM `tabJob Card` WHERE work_order='{self.work_order_ref}'""")
-			frappe.db.sql(f""" DELETE FROM `tabWork Order` WHERE name='{self.work_order_ref}'""")
+			if frappe.db.exists("Work Order", self.work_order_ref):
+				# Deleting Work Order also deletes linked Job Cards if not submitted
+				# But here we delete doc to be safe and thorough
+				frappe.delete_doc("Work Order", self.work_order_ref, force=1)
+
 		def_rec = frappe.get_doc(self.doctype, self.name)
 		def_rec.db_set("docstatus", 0)
 		def_rec.db_set("stock_entry_reference", "")
@@ -332,23 +341,37 @@ def undo_dc_status(self):
 
 def manual_rollback_entries(self,msg):
 	try:
+		# For manual rollback, it's safer to just delete and let the user recreate 
+		# than to manually delete SLEs and update docstatus to 0 via SQL.
 		if self.stock_entry_reference:
-			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{self.stock_entry_reference}' ")
-			frappe.db.sql(""" UPDATE `tabStock Entry` SET docstatus = 0 WHERE name=%(st_entry)s""",{"st_entry":self.stock_entry_reference})
-			work_order__ = frappe.db.get_value("Stock Entry",self.stock_entry_reference,"work_order")
-			if work_order__:
-				frappe.db.set_value("Work Order",work_order__,"produced_qty",0)
-		exe_insp = frappe.db.sql(f" SELECT name,stock_entry_reference FROM `tabInspection Entry` WHERE inspection_type IN ('Incoming Inspection','Final Inspection') AND docstatus = 1 AND lot_no='{self.scan_lot_number}' ORDER BY creation DESC LIMIT 1",as_dict = 1)	
+			delete_stock_entry_safely(self.stock_entry_reference)
+			
+		exe_insp = frappe.db.get_all("Inspection Entry", 
+			filters={
+				"inspection_type": ["in", ["Incoming Inspection", "Final Inspection"]], 
+				"docstatus": 1, 
+				"lot_no": self.scan_lot_number
+			},
+			fields=["name", "stock_entry_reference"],
+			order_by="creation DESC",
+			limit=1
+		)
+		
 		if exe_insp:
 			for ins in exe_insp:
-				inc__exe = frappe.get_doc("Inspection Entry",ins.name)
-				inc__exe.db_set("docstatus", 0)
+				# Revert Inspection Entry to Draft
+				frappe.db.set_value("Inspection Entry", ins.name, "docstatus", 0)
+				
+				# Delete the Stock Entry linked to Inspection if it exists
 				if ins.stock_entry_reference:
-					ins__exe = frappe.get_doc("Stock Entry",ins.stock_entry_reference)
-					if ins__exe.docstatus == 1:
-						ins__exe.db_set("docstatus", 0)
-						frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{ins.stock_entry_reference}' ")
+					delete_stock_entry_safely(ins.stock_entry_reference)
+					
 		undo_dc_status(self)
+		# Clear references in parent
+		self.db_set("stock_entry_reference", "")
+		self.db_set("scrap_stock_entry_ref", "")
+		self.db_set("work_order_ref", "")
+		
 		frappe.db.commit()
 		frappe.msgprint(msg)
 	except Exception:

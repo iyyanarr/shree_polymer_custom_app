@@ -5,7 +5,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, duration_to_seconds, flt, update_progress_bar,format_time, formatdate, getdate, nowdate,now,get_datetime,add_to_date
 import json
-from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series
+from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series, delete_stock_entry_safely
 
 class MaterialTransfer(Document):
 	def validate(self):
@@ -774,25 +774,9 @@ def create_sheeting_stock_entry(mt_doc):
         frappe.db.rollback()
         
         # Explicitly rollback the Stock Entry if it was created/committed
-        if stock_entry and stock_entry.name and frappe.db.exists("Stock Entry", stock_entry.name):
-            try:
-                # 1. Find linked Serial and Batch Bundles
-                bundles = frappe.db.get_all("Stock Entry Detail", 
-                    filters={"parent": stock_entry.name}, 
-                    fields=["serial_and_batch_bundle"])
-                bundle_names = [b.serial_and_batch_bundle for b in bundles if b.serial_and_batch_bundle]
-                
-                # 2. Delete Stock Entry (force=1 to bypass check)
-                frappe.delete_doc("Stock Entry", stock_entry.name, force=1)
-                
-                # 3. Cleanup Orphaned Bundles
-                for bundle in bundle_names:
-                    if frappe.db.exists("Serial and Batch Bundle", bundle):
-                        frappe.delete_doc("Serial and Batch Bundle", bundle, force=1)
-                        
-                frappe.db.commit() # Commit the deletion
-            except Exception as rollback_error:
-                 frappe.log_error(message=f"Failed to rollback Stock Entry {stock_entry.name}: {str(rollback_error)}", title="Rollback Failed")
+        if stock_entry and stock_entry.name:
+            delete_stock_entry_safely(stock_entry.name)
+            frappe.db.commit() # Commit the deletion
 
         return {"status": "Failed", "error_message": str(e)}
 

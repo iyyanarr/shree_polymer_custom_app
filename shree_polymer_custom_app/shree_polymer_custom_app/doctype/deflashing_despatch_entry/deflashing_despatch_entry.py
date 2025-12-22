@@ -4,7 +4,10 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, duration_to_seconds, flt, getdate
-from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series, get_details_by_lot_no, get_parent_lot
+from shree_polymer_custom_app.shree_polymer_custom_app.api import (get_stock_entry_naming_series, 
+																 get_details_by_lot_no, 
+																 get_parent_lot, 
+																 delete_stock_entry_safely)
 
 class DeflashingDespatchEntry(Document):
 	def validate(self):
@@ -261,8 +264,8 @@ def rollback__entries(self):
 		if self.stock_entry_reference:
 			ref = self.stock_entry_reference.split(',')
 			for st__ref in ref:
-				frappe.db.sql(""" DELETE FROM `tabDelivery Note` WHERE name=%(name)s""",{"name":st__ref})
-				frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Delivery Note' AND voucher_no = '{st__ref}' ")
+				if frappe.db.exists("Delivery Note", st__ref):
+					frappe.delete_doc("Delivery Note", st__ref, force=1)
 		dde = frappe.get_doc(self.doctype, self.name)
 		dde.db_set("docstatus", 0)
 		dde.db_set("stock_entry_reference", '')
@@ -316,8 +319,7 @@ def make_stock_entry(self):
 	except Exception as e:
 		self.reload()
 		if self.stock_entry_reference:
-			frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE name=%(name)s""",{"name":self.stock_entry_reference})
-			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{self.stock_entry_reference}' ")
+			delete_stock_entry_safely(self.stock_entry_reference)
 		dde = frappe.get_doc(self.doctype, self.name)
 		dde.db_set("docstatus", 0)
 		dde.db_set("stock_entry_reference", '')

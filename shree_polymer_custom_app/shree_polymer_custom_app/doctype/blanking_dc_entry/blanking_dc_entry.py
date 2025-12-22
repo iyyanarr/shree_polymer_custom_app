@@ -5,6 +5,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, duration_to_seconds, flt,add_to_date, update_progress_bar,format_time, formatdate, getdate, nowdate,now
+from shree_polymer_custom_app.shree_polymer_custom_app.api import delete_stock_entry_safely
 
 global_st_entries = []
 class BlankingDCEntry(Document):
@@ -156,8 +157,8 @@ def rollback__entries(self):
 	try:
 		self.reload()
 		if self.stock_entry_reference:
-			frappe.db.sql(""" DELETE FROM `tabDelivery Note` WHERE name=%(name)s""",{"name":self.stock_entry_reference})
-			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Delivery Note' AND voucher_no = '{self.stock_entry_reference}' ")
+			if frappe.db.exists("Delivery Note", self.stock_entry_reference):
+				frappe.delete_doc("Delivery Note", self.stock_entry_reference, force=1)
 		for x in self.items:
 			frappe.db.delete('Item Bin Mapping',{'compound':x.get('scanned_item'),"qty":x.net_weight,'is_retired':'0',"blanking__bin":x.bin_code,'spp_batch_number':x.spp_batch_number})
 		bl_dc = frappe.get_doc("Blanking DC Entry", self.name)
@@ -242,9 +243,10 @@ def make_material_transfer(mt_doc):
 	except Exception as e:
 		frappe.db.rollback()
 		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.blanking_dc_entry.blanking_dc_entry.make_material_transfer")
-		frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":mt_doc.name})
-		if stock_entry:
-			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{stock_entry.name}' ")
+		# Get the Stock Entry name linked to this DC
+		st_entries = frappe.db.get_all("Stock Entry", filters={"blanking_dc_no": mt_doc.name}, fields=["name"])
+		for entry in st_entries:
+			delete_stock_entry_safely(entry.name)
 		for x in mt_doc.items:
 			frappe.db.delete('Item Bin Mapping',{'compound':x.get('scanned_item'),"qty":x.net_weight,'is_retired':'0',"blanking__bin":x.bin_code,'spp_batch_number':x.spp_batch_number})
 		bl_dc = frappe.get_doc("Blanking DC Entry", mt_doc.name)
@@ -547,18 +549,33 @@ def create_blanking_wo(sp_entry):
 			except Exception as e:
 				frappe.db.rollback()
 				frappe.log_error(message=frappe.get_traceback(),title="Blanking WO Error")
-				frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":sp_entry.name})
-				frappe.db.sql(""" DELETE FROM `tabWork Order` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":sp_entry.name})
-				frappe.db.sql(""" DELETE FROM `tabJob Card` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":sp_entry.name})
+				
+				# Get the Stock Entry name linked to this DC
+				st_entries = frappe.db.get_all("Stock Entry", filters={"blanking_dc_no": sp_entry.name}, fields=["name"])
+				for entry in st_entries:
+					delete_stock_entry_safely(entry.name)
+					
+				# Get and delete Work Orders linked to this DC
+				wo_entries = frappe.db.get_all("Work Order", filters={"blanking_dc_no": sp_entry.name}, fields=["name"])
+				for entry in wo_entries:
+					if frappe.db.exists("Work Order", entry.name):
+						frappe.delete_doc("Work Order", entry.name, force=1)
+						
 				frappe.db.commit()
 				bl_dc = frappe.get_doc("Blanking DC Entry", sp_entry.name)
 				bl_dc.db_set("docstatus", 0)
 				return False
 		else:
 			frappe.db.rollback()
-			frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":sp_entry.name})
-			frappe.db.sql(""" DELETE FROM `tabWork Order` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":sp_entry.name})
-			frappe.db.sql(""" DELETE FROM `tabJob Card` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":sp_entry.name})
+			st_entries = frappe.db.get_all("Stock Entry", filters={"blanking_dc_no": sp_entry.name}, fields=["name"])
+			for entry in st_entries:
+				delete_stock_entry_safely(entry.name)
+			
+			wo_entries = frappe.db.get_all("Work Order", filters={"blanking_dc_no": sp_entry.name}, fields=["name"])
+			for entry in wo_entries:
+				if frappe.db.exists("Work Order", entry.name):
+					frappe.delete_doc("Work Order", entry.name, force=1)
+					
 			frappe.db.commit()
 			bl_dc = frappe.get_doc("Blanking DC Entry", sp_entry.name)
 			bl_dc.db_set("docstatus", 0)
@@ -700,10 +717,17 @@ def make_blanking_stock_entry(mt_doc,work_order_id,sp_entry, purpose, qty=None):
 	except Exception as e:
 		frappe.db.rollback()
 		frappe.log_error(message=frappe.get_traceback(),title="Blanking SE Error")
-		frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":mt_doc.name})
-		frappe.db.sql(""" DELETE FROM `tabWork Order` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":mt_doc.name})
-		frappe.db.sql(""" DELETE FROM `tabJob Card` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":mt_doc.name})
-		frappe.db.sql(""" UPDATE `tabBlanking DC Item` SET stock_entry_reference='' WHERE  name=%(dc_no)s""",{"dc_no":sp_entry.name})
+		
+		st_entries = frappe.db.get_all("Stock Entry", filters={"blanking_dc_no": mt_doc.name}, fields=["name"])
+		for entry in st_entries:
+			delete_stock_entry_safely(entry.name)
+			
+		wo_entries = frappe.db.get_all("Work Order", filters={"blanking_dc_no": mt_doc.name}, fields=["name"])
+		for entry in wo_entries:
+			if frappe.db.exists("Work Order", entry.name):
+				frappe.delete_doc("Work Order", entry.name, force=1)
+				
+		frappe.db.set_value("Blanking DC Item",sp_entry.name,"stock_entry_reference","")
 		frappe.db.commit()
 		# frappe.throw(e)
 		bl_dc = frappe.get_doc("Blanking DC Entry", mt_doc.name)
@@ -753,9 +777,16 @@ def create_mt_stock_entry(mt_doc):
 	except Exception as e:
 		frappe.db.rollback()
 		frappe.log_error(message=frappe.get_traceback(),title="Blanking SE Error")
-		frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":mt_doc.name})
-		frappe.db.sql(""" DELETE FROM `tabWork Order` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":mt_doc.name})
-		frappe.db.sql(""" DELETE FROM `tabJob Card` WHERE  blanking_dc_no=%(dc_no)s""",{"dc_no":mt_doc.name})
+		
+		st_entries = frappe.db.get_all("Stock Entry", filters={"blanking_dc_no": mt_doc.name}, fields=["name"])
+		for entry in st_entries:
+			delete_stock_entry_safely(entry.name)
+			
+		wo_entries = frappe.db.get_all("Work Order", filters={"blanking_dc_no": mt_doc.name}, fields=["name"])
+		for entry in wo_entries:
+			if frappe.db.exists("Work Order", entry.name):
+				frappe.delete_doc("Work Order", entry.name, force=1)
+				
 		frappe.db.commit()
 		# frappe.throw(e)
 		bl_dc = frappe.get_doc("Blanking DC Entry", mt_doc.name)

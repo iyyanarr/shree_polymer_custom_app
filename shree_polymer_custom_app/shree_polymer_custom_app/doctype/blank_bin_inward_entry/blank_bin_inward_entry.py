@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, duration_to_seconds, flt,add_to_date, update_progress_bar,format_time, formatdate, getdate, nowdate,now
+from shree_polymer_custom_app.shree_polymer_custom_app.api import delete_stock_entry_safely
 
 
 class BlankBinInwardEntry(Document):
@@ -42,8 +43,8 @@ def rollback_entries(self,spp_settings):
 	refs = frappe.db.get_value("Blank Bin Inward Entry",self.name,"stock_entry_reference")
 	if refs:
 		for k in refs.split(","):
-			frappe.db.sql(f" DELETE FROM `tabStock Entry` WHERE name = '{k}' ")
-			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{k}' ")
+			delete_stock_entry_safely(k)
+
 	doc = frappe.get_doc(self.doctype,self.name)
 	doc.db_set("docstatus",0)
 	frappe.db.commit()

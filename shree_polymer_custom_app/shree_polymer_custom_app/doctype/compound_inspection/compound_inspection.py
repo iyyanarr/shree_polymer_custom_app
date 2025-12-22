@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import time_diff_in_hours,now,flt,add_to_date,time_diff,get_datetime,getdate
+from shree_polymer_custom_app.shree_polymer_custom_app.api import delete_stock_entry_safely
 
 class CompoundInspection(Document):
 	def compare_parameters(self,parameter_type):
@@ -184,16 +185,23 @@ def rollback_entries(self,q_ins_id,batch_no,st_items_row_id):
 	try:
 		flag = False
 		if q_ins_id:
-			frappe.db.delete("Quality Inspection",q_ins_id)
+			if frappe.db.exists("Quality Inspection", q_ins_id):
+				frappe.delete_doc("Quality Inspection", q_ins_id, force=1)
+		
 		if self.stock_id:
-			exe_stock = frappe.get_doc("Stock Entry",self.stock_id)
-			if exe_stock.docstatus == 1:
-				exe_stock.db_set("docstatus",0)
-				frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{exe_stock.name}' ")
-				frappe.db.sql(f"UPDATE `tabStock Entry Detail` SET batch_no = '' WHERE name = '{st_items_row_id}' ")
-			frappe.db.set_value("Work Order",exe_stock.work_order,"produced_qty",0)
+			# Instead of manually deleting SLEs and reverting docstatus via SQL,
+			# we use the safe deletion utility which ensures proper cleanup.
+			delete_stock_entry_safely(self.stock_id)
+			
+			# Reset Work Order produced qty if needed
+			wo_name = frappe.db.get_value("Stock Entry", self.stock_id, "work_order")
+			if wo_name:
+				frappe.db.set_value("Work Order", wo_name, "produced_qty", 0)
+				
 		if batch_no:
-			frappe.db.sql(f" DELETE FROM `tabBatch` WHERE name = '{batch_no}' ")
+			if frappe.db.exists("Batch", batch_no):
+				frappe.delete_doc("Batch", batch_no, force=1)
+				
 		self.db_set('docstatus',0)
 		frappe.db.commit()
 		flag = True

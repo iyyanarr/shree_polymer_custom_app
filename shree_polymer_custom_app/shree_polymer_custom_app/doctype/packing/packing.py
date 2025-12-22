@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, duration_to_seconds, flt, update_progress_bar,format_time, formatdate, getdate, nowdate,now,get_datetime
-from shree_polymer_custom_app.shree_polymer_custom_app.api import get_details_by_lot_no,get_parent_lot
+from shree_polymer_custom_app.shree_polymer_custom_app.api import get_details_by_lot_no,get_parent_lot, delete_stock_entry_safely
 
 class Packing(Document):
 	def validate(self):
@@ -57,27 +57,6 @@ def rollback_entries(self,msg = None):
 	try:
 		if msg:
 			frappe.log_error(title=f"Packing Rollback Triggered: {self.name}", message=f"Reason: {msg}")
-
-		# Helper to safely delete Stock Entry and its Bundles
-		def delete_stock_entry_safely(stock_entry_name):
-			if not stock_entry_name:
-				return
-				
-			# 1. Find linked Serial and Batch Bundles BEFORE deleting the entry
-			bundles = frappe.db.get_all("Stock Entry Detail", 
-				filters={"parent": stock_entry_name}, 
-				fields=["serial_and_batch_bundle"])
-			
-			bundle_names = [b.serial_and_batch_bundle for b in bundles if b.serial_and_batch_bundle]
-			
-			# 2. Delete Stock Entry (Triggers native cleanup of SLE, SED, etc.)
-			if frappe.db.exists("Stock Entry", stock_entry_name):
-				frappe.delete_doc("Stock Entry", stock_entry_name, force=1)
-			
-			# 3. Explicitly delete the orphaned Bundles
-			for bundle in bundle_names:
-				if frappe.db.exists("Serial and Batch Bundle", bundle):
-					frappe.delete_doc("Serial and Batch Bundle", bundle, force=1)
 
 		if self.stock_entry_reference:
 			delete_stock_entry_safely(self.stock_entry_reference)

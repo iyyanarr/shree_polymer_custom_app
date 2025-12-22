@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, duration_to_seconds, flt, add_to_date, update_progress_bar, format_time, formatdate, getdate, nowdate, now
-from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series, generate_batch_no, delete_batches
+from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series,generate_batch_no,delete_batches,delete_stock_entry_safely
 
 
 class MouldingProductionEntry(Document):
@@ -321,28 +321,6 @@ def rollback_entries(self, msg):
 
         self.reload()
         
-        # Helper to safely delete Stock Entry and its Bundles
-        def delete_stock_entry_safely(stock_entry_name):
-            if not stock_entry_name:
-                return
-                
-            # 1. Find linked Serial and Batch Bundles BEFORE deleting the entry
-            # check both field in item table
-            bundles = frappe.db.get_all("Stock Entry Detail", 
-                filters={"parent": stock_entry_name}, 
-                fields=["serial_and_batch_bundle"])
-            
-            bundle_names = [b.serial_and_batch_bundle for b in bundles if b.serial_and_batch_bundle]
-            
-            # 2. Delete Stock Entry (Triggers native cleanup of SLE, SED, etc.)
-            # force=1 bypasses submit status checks
-            frappe.delete_doc("Stock Entry", stock_entry_name, force=1)
-            
-            # 3. Explicitly delete the orphaned Bundles
-            for bundle in bundle_names:
-                if frappe.db.exists("Serial and Batch Bundle", bundle):
-                    frappe.delete_doc("Serial and Batch Bundle", bundle, force=1)
-
         # 1. Rollback Main Stock Entry
         stock_name = frappe.db.get_value("Stock Entry", {"blanking_dc_no": self.name}, "name")
         if stock_name:
@@ -401,28 +379,34 @@ def manual_rollback_entries(self, msg):
         stock__id = frappe.db.get_value("Stock Entry", {"blanking_dc_no": self.name}, [
                                         "name", "work_order"], as_dict=1)
         if stock__id:
-            frappe.db.sql(
-                f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{stock__id.name}' ")
+            # Use the new safe deletion utility for the main stock entry
+            delete_stock_entry_safely(stock__id.name)
             if stock__id.work_order:
                 frappe.db.set_value(
                     "Work Order", stock__id.work_order, "produced_qty", 0)
+        
+        # Revert the MPE docstatus to 0
         frappe.db.sql(""" UPDATE `tabStock Entry` SET docstatus = 0 WHERE blanking_dc_no=%(dc_no)s""", {
                       "dc_no": self.name})
+        
         exe_insp = frappe.db.sql(
             f" SELECT stock_entry_reference,name FROM `tabInspection Entry` WHERE (inspection_type = 'Line Inspection' OR inspection_type = 'Patrol Inspection' OR inspection_type = 'Lot Inspection') AND docstatus = 1 AND lot_no='{self.scan_lot_number}' ORDER BY inspection_type DESC LIMIT 1 ", as_dict=1)
         if exe_insp:
             for ins in exe_insp:
-                if ins.stock_entry_reference:
-                    ins__exe = frappe.get_doc(
-                        "Stock Entry", ins.stock_entry_reference)
-                    if ins__exe.docstatus == 1:
-                        ins__exe.db_set("docstatus", 0)
-                        frappe.db.sql(
-                            f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{ins.stock_entry_reference}' ")
-                        frappe.db.commit()
+                try:
+                    if ins.stock_entry_reference:
+                        # Use the new safe deletion utility for inspection-related stock entries
+                        delete_stock_entry_safely(ins.stock_entry_reference)
+                    
+                    # Revert Inspection Entry to Draft
                     exe_ins = frappe.get_doc("Inspection Entry", ins.name)
                     exe_ins.db_set("docstatus", 0)
                     frappe.db.commit()
+                except Exception:
+                    frappe.db.rollback()
+                    frappe.log_error(title="manual_rollback_entries - Inspection Entry",
+                                     message=frappe.get_traceback())
+                    frappe.msgprint(f"Something went wrong while rolling back Inspection Entry {ins.name}..!")
         frappe.msgprint(msg)
     except Exception:
         frappe.db.rollback()

@@ -1268,6 +1268,26 @@ def validate_stock_entry(st_ids):
 		return {"status":"failed"}
 	else:
 		return {"status":"success"}
+
+def delete_stock_entry_safely(stock_entry_name):
+	if not stock_entry_name:
+		return
+		
+	# 1. Find linked Serial and Batch Bundles BEFORE deleting the entry
+	bundles = frappe.db.get_all("Stock Entry Detail", 
+		filters={"parent": stock_entry_name}, 
+		fields=["serial_and_batch_bundle"])
+	
+	bundle_names = [b.serial_and_batch_bundle for b in bundles if b.serial_and_batch_bundle]
+	
+	# 2. Delete Stock Entry (Triggers native cleanup of SLE, SED, etc.)
+	if frappe.db.exists("Stock Entry", stock_entry_name):
+		frappe.delete_doc("Stock Entry", stock_entry_name, force=1)
+	
+	# 3. Explicitly delete the orphaned Bundles
+	for bundle in bundle_names:
+		if frappe.db.exists("Serial and Batch Bundle", bundle):
+			frappe.delete_doc("Serial and Batch Bundle", bundle, force=1)
 def create_serial_batch_bundle(item_code, batch_no, warehouse, qty, voucher_type, parent_doc):
     """ERPNext v14+ compliant bundle creation with audit trail"""
     bundle = frappe.new_doc("Serial and Batch Bundle")

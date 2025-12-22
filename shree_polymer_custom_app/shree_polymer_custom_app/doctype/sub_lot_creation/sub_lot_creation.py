@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, duration_to_seconds, flt,getdate
-from shree_polymer_custom_app.shree_polymer_custom_app.api import get_details_by_lot_no,generate_batch_no,delete_batches,get_decimal_values_without_roundoff,get_workstation_by_operation
+from shree_polymer_custom_app.shree_polymer_custom_app.api import get_details_by_lot_no,generate_batch_no,delete_batches,get_decimal_values_without_roundoff,get_workstation_by_operation,delete_stock_entry_safely
 
 class SubLotCreation(Document):
 	""" The function is used in print format 75*75 """
@@ -131,13 +131,11 @@ def update_lot_barcode(doc):
 	except Exception:
 		frappe.log_error(title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.sub_lot_creation.sub_lot_creation.update_lot_barcode",message=frappe.get_traceback())
 		frappe.throw("Barcode generation failed..!")
-
 def rollback_entries(self,msg):
 	try:
 		self.reload()
 		if self.stock_entry_reference:
-			frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{self.stock_entry_reference}' ")
-			frappe.db.sql(""" DELETE FROM `tabStock Entry` WHERE  name=%(st_ref)s""",{"st_ref":self.stock_entry_reference})
+			delete_stock_entry_safely(self.stock_entry_reference)
 		del__resp,batch__no = delete_batches([self.sub_lot_no])
 		if not del__resp:
 			frappe.msgprint(batch__no)
