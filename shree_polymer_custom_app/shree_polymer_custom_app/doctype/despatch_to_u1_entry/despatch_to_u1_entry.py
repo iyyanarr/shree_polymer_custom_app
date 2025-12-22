@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import flt,getdate,add_to_date,now
-from shree_polymer_custom_app.shree_polymer_custom_app.api import get_details_by_lot_no,get_parent_lot
+from shree_polymer_custom_app.shree_polymer_custom_app.api import get_details_by_lot_no,get_parent_lot, delete_stock_entry_safely
 from frappe.utils import get_datetime, nowtime
 from frappe import throw, logger
 
@@ -28,6 +28,11 @@ class DespatchToU1Entry(Document):
 			self.total_lots = total_lots
 		else:
 			frappe.throw("Please add some items before save.")
+
+	def on_cancel(self):
+		if self.stock_entry_reference:
+			delete_stock_entry_safely(self.stock_entry_reference)
+		self.reload()
 
 	def on_submit(self):
 		if self.items:
@@ -246,16 +251,14 @@ def create_stock_entry(self):
 
 def check_available_stock(warehouse,item,batch_no):
 	try:
+		from erpnext.stock.utils import get_batch_qty, get_stock_balance
 		if batch_no:
-			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' AND batch_no='{batch_no}' """
+			qty = get_batch_qty(batch_no, warehouse, item)
 		else:
-			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' """
-		qty = frappe.db.sql(query,as_dict=1)
+			qty = get_stock_balance(item, warehouse)
+		
 		if qty:
-			if qty[0].qty:
-				return {"status":"Success","qty":qty[0].qty}
-			else:
-				return {"status":"Failed","message":f"Stock is not available for the item <b>{item}</b>"}	
+			return {"status":"Success","qty":qty}
 		else:
 			return {"status":"Failed","message":f"Stock is not available for the item <b>{item}</b>"}
 	except Exception:	

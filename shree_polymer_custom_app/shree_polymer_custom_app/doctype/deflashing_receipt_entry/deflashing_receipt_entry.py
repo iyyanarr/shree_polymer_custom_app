@@ -703,16 +703,14 @@ def check_uom_bom(item):
 
 def check_available_stock(warehouse,item,batch_no):
 	try:
+		from erpnext.stock.utils import get_batch_qty, get_stock_balance
 		if batch_no:
-			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' AND batch_no='{batch_no}' """
+			qty = get_batch_qty(batch_no, warehouse, item)
 		else:
-			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' """
-		qty = frappe.db.sql(query,as_dict=1)
+			qty = get_stock_balance(item, warehouse)
+		
 		if qty:
-			if qty[0].qty:
-				return {"status":"success","qty":qty[0].qty}
-			else:
-				return {"status":"failed","message":f"Stock is not available for the item <b>{item}</b>"}	
+			return {"status":"success","qty":qty}
 		else:
 			return {"status":"failed","message":f"Stock is not available for the item <b>{item}</b>"}
 	except Exception:	
@@ -773,27 +771,25 @@ def validate_lot_barcode(bar_code,w__barcode):
 		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.deflashing_receipt_entry.deflashing_receipt_entry.validate_lot_barcode")
 	
 def check_dc_stocks(dd_despatch_info,warhouseid):
-	# query = f""" SELECT SLE.item_code,SLE.warehouse,SLE.batch_no,B.batch_qty qty,SLE.stock_uom FROM `tabStock Ledger Entry` SLE INNER JOIN `tabBatch` B ON B.batch_id = SLE.batch_no WHERE SLE.voucher_type = 'Delivery Note' AND SLE.voucher_no = '{dd_despatch_info[0].stock_entry_reference}' AND warehouse = '{warhouseid}' """
-	query = f""" SELECT 
-					IBSB.item_code,IBSB.warehouse,IBSB.batch_no,IBSB.qty,IBSB.stock_uom 
-				FROM `tabItem Batch Stock Balance` IBSB
-					INNER JOIN `tabStock Ledger Entry` SLE ON SLE.batch_no = IBSB.batch_no
-						AND SLE.warehouse = IBSB.warehouse
-					INNER JOIN `tabBatch` B ON B.batch_id = SLE.batch_no 
-				WHERE SLE.voucher_type = 'Delivery Note' 
-					AND SLE.voucher_no = '{dd_despatch_info[0].stock_entry_reference}' 
-					AND SLE.warehouse = '{warhouseid}' AND SLE.item_code = IBSB.item_code """
-	sle_details = frappe.db.sql(query , as_dict = 1)
-	if sle_details:
-		frappe.response.job_card = dd_despatch_info[0].get("job_card")
-		frappe.response.item = dd_despatch_info[0].get("item")
-		frappe.response.qty = sle_details[0].get('qty')
-		frappe.response.spp_batch_number = dd_despatch_info[0].get("spp_batch_no")
-		frappe.response.batch_no = dd_despatch_info[0].get("batch_no","")
-		frappe.response.from_warehouse = warhouseid
-		frappe.response.status = "success"
-		return True
-	return False
+	try:
+		from erpnext.stock.utils import get_batch_qty
+		batch_no = dd_despatch_info[0].get("batch_no")
+		item_code = dd_despatch_info[0].get("item")
+		qty = get_batch_qty(batch_no, warhouseid, item_code)
+		
+		if qty:
+			frappe.response.job_card = dd_despatch_info[0].get("job_card")
+			frappe.response.item = item_code
+			frappe.response.qty = qty
+			frappe.response.spp_batch_number = dd_despatch_info[0].get("spp_batch_no")
+			frappe.response.batch_no = batch_no or ""
+			frappe.response.from_warehouse = warhouseid
+			frappe.response.status = "success"
+			return True
+		return False
+	except Exception:
+		frappe.log_error(message=frappe.get_traceback(), title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.deflashing_receipt_entry.deflashing_receipt_entry.check_dc_stocks")
+		return False
 
 @frappe.whitelist()
 def validate_warehouse(bar_code):

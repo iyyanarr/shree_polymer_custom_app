@@ -766,16 +766,14 @@ def make_inc_stock_entry(self):
 
 def check_available_stock(warehouse,item,batch_no):
 	try:
+		from erpnext.stock.utils import get_batch_qty, get_stock_balance
 		if batch_no:
-			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' AND batch_no='{batch_no}' """
+			qty = get_batch_qty(batch_no, warehouse, item)
 		else:
-			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' """
-		qty = frappe.db.sql(query,as_dict=1)
+			qty = get_stock_balance(item, warehouse)
+		
 		if qty:
-			if qty[0].qty:
-				return {"status":"Success","qty":qty[0].qty}
-			else:
-				return {"status":"Failed","message":f"Stock is not available for the item <b>{item}</b>"}	
+			return {"status":"Success","qty":qty}
 		else:
 			return {"status":"Failed","message":f"Stock is not available for the item <b>{item}</b>"}
 	except Exception:	

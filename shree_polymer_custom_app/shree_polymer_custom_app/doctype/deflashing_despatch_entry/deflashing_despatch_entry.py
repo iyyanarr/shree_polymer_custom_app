@@ -266,6 +266,8 @@ def rollback__entries(self):
 			for st__ref in ref:
 				if frappe.db.exists("Delivery Note", st__ref):
 					frappe.delete_doc("Delivery Note", st__ref, force=1)
+				elif frappe.db.exists("Stock Entry", st__ref):
+					delete_stock_entry_safely(st__ref)
 		dde = frappe.get_doc(self.doctype, self.name)
 		dde.db_set("docstatus", 0)
 		dde.db_set("stock_entry_reference", '')
@@ -274,7 +276,7 @@ def rollback__entries(self):
 		frappe.msgprint("Something went wrong, not able to make <b>Delivery Note</b>..!")
 	except Exception:
 		frappe.msgprint('Something went wrong not able to rollback..!')
-		frappe.log_error(title='rollback__entries error',message = frappe.get_traceback())		
+		frappe.log_error(title='rollback__entries error',message = frappe.get_traceback())
 
 def make_stock_entry(self):
 	try:
@@ -330,16 +332,14 @@ def make_stock_entry(self):
 
 def check_available_stock(warehouse,item,batch_no):
 	try:
+		from erpnext.stock.utils import get_batch_qty, get_stock_balance
 		if batch_no:
-			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' AND batch_no='{batch_no}' """
+			qty = get_batch_qty(batch_no, warehouse, item)
 		else:
-			query = f""" SELECT qty FROM `tabItem Batch Stock Balance` WHERE item_code='{item}' AND warehouse='{warehouse}' """
-		qty = frappe.db.sql(query,as_dict=1)
+			qty = get_stock_balance(item, warehouse)
+		
 		if qty:
-			if qty[0].qty:
-				return {"status":"success","qty":qty[0].qty}
-			else:
-				return {"status":"failed","message":f"Stock is not available for the item <b>{item}</b>"}	
+			return {"status":"success","qty":qty}
 		else:
 			return {"status":"failed","message":f"Stock is not available for the item <b>{item}</b>"}
 	except Exception:	

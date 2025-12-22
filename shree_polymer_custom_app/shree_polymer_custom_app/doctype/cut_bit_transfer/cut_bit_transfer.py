@@ -3,12 +3,17 @@
 
 import frappe
 from frappe.model.document import Document
-from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series
+from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series, delete_stock_entry_safely
 
 class CutBitTransfer(Document):
 
 	def on_submit(self):
 		create_stock_entry(self)
+		self.reload()
+
+	def on_cancel(self):
+		if self.stock_entry_reference:
+			delete_stock_entry_safely(self.stock_entry_reference)
 		self.reload()
 
 	# def on_update(self):
@@ -100,6 +105,14 @@ def validate_clip_barcode(batch_no,t_type,warehouse):
 		
 		if st_details and clip_mapping:
 			st_details[0].qty = clip_mapping[0].qty
+		
+		# Replace Item Batch Stock Balance qty with native get_batch_qty if st_details exists
+		if st_details:
+			from erpnext.stock.utils import get_batch_qty
+			for detail in st_details:
+				native_qty = get_batch_qty(detail.batch_no, detail.warehouse, detail.item_code)
+				detail.qty = native_qty if native_qty is not None else detail.qty
+
 		return {"status":"Success","stock":st_details,"source_warehouse":s_warehouse}
 
 	return  {"status":"Failed","message":"Scanned "+ct_type+" <b>"+batch_no+"</b> not exist in the <b>"+s_warehouse+"</b>"}

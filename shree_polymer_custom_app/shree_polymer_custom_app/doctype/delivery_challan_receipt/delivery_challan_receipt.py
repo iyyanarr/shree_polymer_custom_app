@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, duration_to_seconds, flt,add_to_date, update_progress_bar,format_time, formatdate, getdate, nowdate,now
-from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series
+from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series, delete_stock_entry_safely
 
 class DeliveryChallanReceipt(Document):
 	def validate(self):
@@ -94,34 +94,61 @@ def rollback_wo_se_jc(info,msg):
 			for h_items in info.hld_items:
 				if h_items.work_order_ref:
 					stock__id = frappe.db.get_value("Stock Entry",{"work_order":h_items.work_order_ref},"name")
-					frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{stock__id}' ")
-					frappe.db.sql(f" DELETE FROM `tabStock Entry` WHERE work_order = '{h_items.work_order_ref}' ")
-					frappe.db.sql(f" DELETE FROM `tabJob Card` WHERE work_order = '{h_items.work_order_ref}' ")
-					frappe.db.sql(f" DELETE FROM `tabWork Order` WHERE name = '{h_items.work_order_ref}' ")
+					if stock__id:
+						delete_stock_entry_safely(stock__id)
+					
+					# Delete Job Cards associated with the Work Order
+					job_cards = frappe.db.get_all("Job Card", filters={"work_order": h_items.work_order_ref})
+					for jc in job_cards:
+						if frappe.db.exists("Job Card", jc.name):
+							frappe.delete_doc("Job Card", jc.name, force=1)
+					
+					# Delete the Work Order
+					if frappe.db.exists("Work Order", h_items.work_order_ref):
+						frappe.delete_doc("Work Order", h_items.work_order_ref, force=1)
+
 		if info.dc_items:
 			for dc_items in info.dc_items:
 				if dc_items.work_order_ref:
 					stock__id = frappe.db.get_value("Stock Entry",{"work_order":dc_items.work_order_ref},"name")
-					frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{stock__id}' ")
-					frappe.db.sql(f" DELETE FROM `tabStock Entry` WHERE work_order = '{dc_items.work_order_ref}' ")
-					frappe.db.sql(f" DELETE FROM `tabJob Card` WHERE work_order = '{dc_items.work_order_ref}' ")
-					frappe.db.sql(f" DELETE FROM `tabWork Order` WHERE name = '{dc_items.work_order_ref}' ")
+					if stock__id:
+						delete_stock_entry_safely(stock__id)
+					
+					# Delete Job Cards associated with the Work Order
+					job_cards = frappe.db.get_all("Job Card", filters={"work_order": dc_items.work_order_ref})
+					for jc in job_cards:
+						if frappe.db.exists("Job Card", jc.name):
+							frappe.delete_doc("Job Card", jc.name, force=1)
+					
+					# Delete the Work Order
+					if frappe.db.exists("Work Order", dc_items.work_order_ref):
+						frappe.delete_doc("Work Order", dc_items.work_order_ref, force=1)
+
 				if dc_items.dc_no:
 					m_item = frappe.db.get_all("Delivery Note Item",filters={"parent":dc_items.dc_no,"parenttype":"Delivery Note","scan_barcode":dc_items.scan_barcode,"item_code":dc_items.item_code})
 					if m_item:
 						for x in m_item:
 							frappe.db.set_value("Delivery Note Item",x.name,"is_received",0)
 							frappe.db.set_value("Delivery Note Item",x.name,"dc_receipt_no","")
+		
 		if info.stock_entry_reference:
 			for stock_id in info.stock_entry_reference.split(','):
 				work__order = frappe.db.get_value("Stock Entry",{"name":stock_id},"work_order")
-				frappe.db.sql(f" DELETE FROM `tabStock Ledger Entry` WHERE voucher_type = 'Stock Entry' AND voucher_no = '{stock_id}' ")
-				frappe.db.sql(f" DELETE FROM `tabStock Entry` WHERE name = '{stock_id}' ")
-				frappe.db.sql(f" DELETE FROM `tabJob Card` WHERE work_order = '{work__order}' ")
-				frappe.db.sql(f" DELETE FROM `tabWork Order` WHERE name = '{work__order}' ")
+				delete_stock_entry_safely(stock_id)
+				
+				if work__order:
+					# Delete Job Cards associated with the Work Order
+					job_cards = frappe.db.get_all("Job Card", filters={"work_order": work__order})
+					for jc in job_cards:
+						if frappe.db.exists("Job Card", jc.name):
+							frappe.delete_doc("Job Card", jc.name, force=1)
+					
+					# Delete the Work Order
+					if frappe.db.exists("Work Order", work__order):
+						frappe.delete_doc("Work Order", work__order, force=1)
+
 		bl_dc = frappe.get_doc(info.doctype, info.name)
 		bl_dc.db_set("docstatus", 0)
-		# bl_dc.db_set("stock_entry_reference", '')
 		frappe.db.commit()
 		info.reload()
 		frappe.msgprint(msg)
@@ -206,6 +233,14 @@ def get_batch_items(item_code,warehouse=None):
 										ORDER BY SD.creation""",{"warehouse":warehouse,"bar_code":x.item_code},as_dict=1)
 			for item in items:
 				batch_items.append(item)
+		
+		# Replace Item Batch Stock Balance qty with native get_batch_qty
+		if batch_items:
+			from erpnext.stock.utils import get_batch_qty
+			for b_item in batch_items:
+				native_qty = get_batch_qty(b_item.batch_no, warehouse, b_item.item_code)
+				b_item.qty = native_qty if native_qty is not None else b_item.qty
+
 		return {"status":"failed","message":batch_items}
 	except Exception:
 		frappe.log_error(title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.delivery_challan_receipt.delivery_challan_receipt.get_batch_items",message=frappe.get_traceback())
@@ -260,6 +295,13 @@ def validate_barcode(batch_no,warehouse=None,is_internal_mixing=0,batch_type=Non
 					if len(bom__) > 1:
 						return {"status":"Failed","message":f"Multiple BOM's found for Item to Produce - <b>{bom[0].item}</b>"}
 					""" End """
+					
+					# Replace Item Batch Stock Balance qty with native get_batch_qty
+					from erpnext.stock.utils import get_batch_qty
+					for stock_item in check_item_qty:
+						native_qty = get_batch_qty(stock_item.batch_no, stock_item.warehouse, stock_item.item_code)
+						stock_item.qty = native_qty if native_qty is not None else stock_item.qty
+
 					if batch_type:
 						if batch_type == "Master Batch":
 							it__gp = frappe.db.get_value('Item',bom[0].item,'item_group')
