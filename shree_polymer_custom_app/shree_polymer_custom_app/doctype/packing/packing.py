@@ -21,11 +21,12 @@ class Packing(Document):
 			res = make_repack_entry(self)
 			if res.get('status') == "failed":
 				self.reload()
-				rollback_entries(self)
-				frappe.msgprint(res.get('message'))
+				rollback_entries(self, res.get('message'))
 			if res.get('status') == "success":
 				res.get('st_entry').notify_update()
 				self.reload()
+		else:
+			frappe.throw("Barcode generation failed..!")
 
 	def on_cancel(self):
 		rollback_entries(self)
@@ -70,14 +71,13 @@ def rollback_entries(self,msg = None):
 			if frappe.db.exists("Packing Serial No", self.packing_serial_no_id):
 				frappe.delete_doc("Packing Serial No", self.packing_serial_no_id, force=1)
 				
-		frappe.db.commit()
-		if msg:
-			frappe.msgprint(msg)
-		self.reload()
+		# frappe.db.commit() (Removed for atomicity)
 	except Exception:
 		self.reload()
 		frappe.log_error(title='packing rollback entrie error',message = frappe.get_traceback())
 		frappe.msgprint("Something went wrong, not able to rollback..!")
+	if msg:
+		frappe.throw(msg)
 
 def generate_barcode_serial_no(self):
 	try:
@@ -102,7 +102,7 @@ def generate_barcode_serial_no(self):
 				rollback_entries(self,bar__resp.get('message'))
 				frappe.db.rollback()
 				return 'failed'
-			frappe.db.commit()	
+			# frappe.db.commit() (Removed for atomicity)
 			return 'success'
 		# return 'success'	
 	except Exception:
@@ -158,7 +158,7 @@ def make_repack_entry(mt_doc):
 		
 		stock_entry.insert(ignore_permissions=True)
 		frappe.db.set_value(mt_doc.doctype, mt_doc.name, "stock_entry_reference", stock_entry.name)
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 		
 		st_entry = frappe.get_doc("Stock Entry", stock_entry.name)
 		st_entry.docstatus = 1

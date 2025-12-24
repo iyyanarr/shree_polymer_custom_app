@@ -103,9 +103,10 @@ class InspectionEntry(Document):
 					submit_vs_entry__only(self)
 			else:
 				frappe.throw(psdir.get('message'))	
-		except Exception:
+		except Exception as e:
 			frappe.log_error(title="submit visual and pdir error",message=frappe.get_traceback())
 			rollback_vs_pdir(self,lrt)
+			frappe.throw(str(e) if str(e) else "Something went wrong during <b>Visual/PDIR Inspection</b> submission.")
 	
 	def submit__vs_pdir_no_rejection(self):
 		try:
@@ -124,7 +125,7 @@ class InspectionEntry(Document):
 						update_qty = self.total_inspected_qty_nos
 						frappe.db.sql(f""" UPDATE `tabLot Resource Tagging` SET qty_after_rejection_nos = {update_qty}  
 										WHERE scan_lot_no='{self.lot_no}' AND  docstatus = 1 """,as_dict = 1)
-						frappe.db.commit()
+						# frappe.db.commit() (Removed for atomicity)
 						lrt = frappe.get_doc("Lot Resource Tagging",exe_lrt[0].name)
 						lrt__resp = lrt.run_method('make_wo_stock_entry')
 						if lrt__resp:
@@ -147,9 +148,10 @@ class InspectionEntry(Document):
 					frappe.throw(f"<b>Active and Default Bom</b> not found for the item <b>{self.product_ref_no}</b>..!")
 			else:
 				submit_vs_entry__only(self)
-		except Exception:
+		except Exception as e:
 			frappe.log_error(title="submit visual and pdir error",message=frappe.get_traceback())
 			rollback_vs_pdir(self,lrt)
+			frappe.throw(str(e) if str(e) else "Something went wrong during <b>Visual/PDIR Inspection</b> submission.")
 
 	def make__vs__pdir(self):
 		resp_ = make_vs_pdir_stock_entry(self)
@@ -163,7 +165,7 @@ def rollback_vs_pdir(self,lrt = None):
 	exe_info.db_set('docstatus',0)
 	exe_info.db_set('stock_entry_reference','')
 	# exe_info.db_set('batch_no','')
-	frappe.db.commit()
+	# frappe.db.commit() (Removed for atomicity)
 	if lrt:
 		lrt.run_method('rollback_____')
 			
@@ -308,7 +310,7 @@ def submit_inspection_stock_entry_immediately(self):
 				""")
 				print(f"  ✅ Updated batch reference in Inspection Entry")
 		
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 		
 		print(f"\n✅✅✅ SUCCESS: Submitted {submitted_count} inspection stock entries for lot {self.lot_no}")
 		print(f"✅ All stock entries now have batch: {target_batch}\n")
@@ -341,14 +343,14 @@ def rollback_entries(self,msg):
 		bl_dc = frappe.get_doc(self.doctype, self.name)
 		bl_dc.db_set("docstatus", 0)
 		bl_dc.db_set("stock_entry_reference", "")
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 		self.reload()
-		frappe.msgprint(msg)
 	except Exception:
 		frappe.db.rollback()
 		self.reload()
-		frappe.log_error(title="rollback_entries",message=frappe.get_traceback())
+		frappe.log_error(title="manual_rollback_entries",message=frappe.get_traceback())
 		frappe.msgprint("Something went wrong..Not able to rollback..!")
+	frappe.throw(msg)
 
 def rollback__vs_entry__only(self,msg):
 	try:
@@ -365,12 +367,12 @@ def rollback__vs_entry__only(self,msg):
 		lot__r = frappe.get_doc(self.doctype, self.name)
 		lot__r.db_set("docstatus", 0)
 		lot__r.db_set("vs_pdir_stock_entry_ref", '')
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 		del__resp,batch__no = delete_batches([self.lot_no])
 		if not del__resp:
 			frappe.msgprint(batch__no)
 		if msg:
-			frappe.msgprint(msg)
+			frappe.throw(msg)
 	except Exception:
 		frappe.db.rollback()
 		self.reload()
@@ -452,7 +454,7 @@ def make_stock_entry_vs_entry__only(self,work_order):
 			stock_entry.insert(ignore_permissions=True)
 			""" Store stock entry ref in child table """
 			frappe.db.set_value(self.doctype,self.name,"vs_pdir_stock_entry_ref",stock_entry.name)
-			frappe.db.commit()
+			# frappe.db.commit() (Removed for atomicity)
 			""" End """
 			sub_entry = frappe.get_doc("Stock Entry",stock_entry.name)
 			sub_entry.docstatus = 1
@@ -538,7 +540,7 @@ def create_work_order_vs_entry__only(doc_info):
 			wo.qty = doc_info.vs_pdir_qty_after_rejection
 			wo.insert(ignore_permissions=True)
 			frappe.db.set_value(doc_info.doctype,doc_info.name,"vs_pdir_work_order_ref",wo.name)
-			frappe.db.commit()
+			# frappe.db.commit() (Removed for atomicity)
 			wo_ = frappe.get_doc("Work Order",wo.name)
 			wo_.docstatus = 1
 			wo_.save(ignore_permissions=True)
@@ -606,7 +608,7 @@ def make_vs_pdir_stock_entry(self):
 				})
 			stock_entry.insert(ignore_permissions = True)
 			frappe.db.set_value(self.doctype,self.name,"stock_entry_reference",stock_entry.name)
-			frappe.db.commit()
+			# frappe.db.commit() (Removed for atomicity)
 			sub_entry = frappe.get_doc("Stock Entry",stock_entry.name)
 			sub_entry.docstatus=1
 			sub_entry.save(ignore_permissions=True)
@@ -624,7 +626,7 @@ def make_vs_pdir_stock_entry(self):
 										WHERE scan_lot_no='{self.lot_no}' AND  docstatus = 1 """,as_dict = 1)
 				else:
 					return {"status":'failed',"message":stock_status.get('message')}
-			frappe.db.commit()
+			# frappe.db.commit() (Removed for atomicity)
 			return {"status":"success"}
 		else:
 			return {"status":"failed","message":f"<b>Active and Default Bom</b> not found for the item <b>{self.product_ref_no}</b>..!"}
@@ -699,7 +701,7 @@ def make_stock_entry(self):
 					
 					stock_entry.insert(ignore_permissions=True)
 					frappe.db.set_value(self.doctype,self.name,"stock_entry_reference",stock_entry.name)
-					frappe.db.commit()
+					# frappe.db.commit() (Removed for atomicity)
 					""" Restrict stock entry submission for line and patrol respections """
 					# if self.inspection_type == "Line Inspection" or self.inspection_type == "Patrol Inspection":
 					# 	if int(self.moulding_production_completed) == 1:
@@ -752,7 +754,7 @@ def make_inc_stock_entry(self):
 			})
 		stock_entry.insert(ignore_permissions = True)
 		frappe.db.set_value(self.doctype,self.name,"stock_entry_reference",stock_entry.name)
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 		""" Restrict stock entry submission """
 		# sub_entry = frappe.get_doc("Stock Entry",stock_entry.name)
 		# sub_entry.docstatus=1

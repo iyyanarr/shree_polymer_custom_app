@@ -127,7 +127,7 @@ def update_lot_barcode(doc):
 			new_image.paste(barcode_image, (0, margin))
 			new_image.save(str(frappe.local.site)+'/public/files/{filename}.png'.format(filename=doc.sub_lot_no), 'PNG')
 			frappe.db.set_value(doc.doctype,doc.name,"barcode_attach","/files/" + doc.sub_lot_no + ".png")
-			frappe.db.commit()
+			# frappe.db.commit() (Removed for atomicity)
 	except Exception:
 		frappe.log_error(title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.sub_lot_creation.sub_lot_creation.update_lot_barcode",message=frappe.get_traceback())
 		frappe.throw("Barcode generation failed..!")
@@ -146,15 +146,12 @@ def rollback_entries(self,msg):
 			frappe.db.sql(f" DELETE FROM `tabLot Resource Tagging` WHERE scan_lot_no = '{self.sub_lot_no}' ")
 		bl_dc = frappe.get_doc(self.doctype, self.name)
 		bl_dc.db_set("docstatus", 0)
-		frappe.db.commit()
-		self.reload()
-		frappe.msgprint(msg)
-		frappe.enqueue("shree_polymer_custom_app.shree_polymer_custom_app.api.update_stock_balance", queue='default')
 	except Exception:
 		frappe.db.rollback()
 		self.reload()
 		frappe.log_error(title="rollback_entries",message=frappe.get_traceback())
 		frappe.msgprint("Something went wrong..Not able to rollback..!")
+	frappe.throw(msg)
 
 def update_sublot(each):
 	serial_no = 1
@@ -168,7 +165,7 @@ def update_sublot(each):
 	sl_no.insert(ignore_permissions = True)
 	each.sub_lot_no = sl_no.generated_lot_no
 	frappe.db.set_value(each.doctype,each.name,"sub_lot_no",sl_no.generated_lot_no)
-	frappe.db.commit()
+	# frappe.db.commit() (Removed for atomicity)
 	return sl_no.generated_lot_no
 
 def check_uom_bom(item):
@@ -254,7 +251,7 @@ def make_repack_entry(self):
 			stock_entry.save(ignore_permissions=True)
 			""" Update stock entry reference """
 			frappe.db.set_value(self.doctype,self.name,"stock_entry_reference",stock_entry.name)
-			frappe.db.commit()
+			# frappe.db.commit() (Removed for atomicity)
 			""" End """
 			st_entry = frappe.get_doc("Stock Entry",stock_entry.name)
 			st_entry.docstatus=1

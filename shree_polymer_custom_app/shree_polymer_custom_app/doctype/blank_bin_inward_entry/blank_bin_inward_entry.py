@@ -30,26 +30,29 @@ class BlankBinInwardEntry(Document):
 			rollback_entries(self,spp_settings)
 
 def rollback_entries(self,spp_settings):
-	for item in self.items:
-		if self.move_to_cut_bit_warehouse:
-			frappe.db.sql(""" UPDATE `tabItem Bin Mapping` SET is_retired=0,qty=%(qty)s WHERE name =%(name)s """,{"qty":item.get('available_qty'),"name":item.get('ibm_id')})
-		else:
-			frappe.db.sql(""" UPDATE `tabItem Bin Mapping` SET qty=%(qty)s WHERE name =%(name)s """,{"qty":item.get('available_qty'),"name":item.get('ibm_id')})
-		last_mov = frappe.db.sql(f" SELECT AMI.target_location FROM `tabAsset Movement` AM INNER JOIN `tabAsset Movement Item` AMI ON AM.name = AMI.parent WHERE AMI.asset = '{item.get('bin_code')}' ORDER BY AMI.creation DESC LIMIT 1 ",as_dict = 1)
-		if last_mov:
-			if not last_mov[0].target_location == spp_settings.to_location:
-				make_asset_movement(spp_settings,item,m_type="from_to")
-	
-	refs = frappe.db.get_value("Blank Bin Inward Entry",self.name,"stock_entry_reference")
-	if refs:
-		for k in refs.split(","):
-			delete_stock_entry_safely(k)
+	try:
+		for item in self.items:
+			if self.move_to_cut_bit_warehouse:
+				frappe.db.sql(""" UPDATE `tabItem Bin Mapping` SET is_retired=0,qty=%(qty)s WHERE name =%(name)s """,{"qty":item.get('available_qty'),"name":item.get('ibm_id')})
+			else:
+				frappe.db.sql(""" UPDATE `tabItem Bin Mapping` SET qty=%(qty)s WHERE name =%(name)s """,{"qty":item.get('available_qty'),"name":item.get('ibm_id')})
+			last_mov = frappe.db.sql(f" SELECT AMI.target_location FROM `tabAsset Movement` AM INNER JOIN `tabAsset Movement Item` AMI ON AM.name = AMI.parent WHERE AMI.asset = '{item.get('bin_code')}' ORDER BY AMI.creation DESC LIMIT 1 ",as_dict = 1)
+			if last_mov:
+				if not last_mov[0].target_location == spp_settings.to_location:
+					make_asset_movement(spp_settings,item,m_type="from_to")
+		
+		refs = frappe.db.get_value("Blank Bin Inward Entry",self.name,"stock_entry_reference")
+		if refs:
+			for k in refs.split(","):
+				delete_stock_entry_safely(k)
 
-	doc = frappe.get_doc(self.doctype,self.name)
-	doc.db_set("docstatus",0)
-	frappe.db.commit()
-	frappe.msgprint("Something went wrong..!")
-	self.reload()
+		doc = frappe.get_doc(self.doctype,self.name)
+		doc.db_set("docstatus",0)
+		# frappe.db.commit() (Removed for atomicity)
+	except Exception:
+		frappe.log_error(title="Blank bin inward entry error", message = frappe.get_traceback())
+		frappe.msgprint("Something went wrong..!")
+	frappe.throw("Something went wrong..!")
 
 def asset_movement(spp_settings,c__bin,update_type):
 	if update_type == "update":
@@ -94,7 +97,7 @@ def update_stock_ref(doc_id,stock_id):
 	else:
 		store__val = stock_id
 	frappe.db.set_value("Blank Bin Inward Entry",doc_id,'stock_entry_reference',store__val)
-	frappe.db.commit()
+	# frappe.db.commit() (Removed for atomicity)
 
 def make_stock_entry(self):
 	try:

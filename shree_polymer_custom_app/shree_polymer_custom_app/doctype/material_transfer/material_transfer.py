@@ -35,27 +35,20 @@ class MaterialTransfer(Document):
 		if self.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
 			if not self.sheeting_clip:
 				frappe.throw("Please choose Clips.")
-			# ct_validation = validate_cut_bit_qty(self)
-			# if ct_validation.get("status")==False:
-			# 	frappe.throw(ct_validation.get("message"))
-			# qi_validation = validate_qi(self)
-			# if qi_validation.get("status")==False:
-			# 	frappe.throw(qi_validation.get("message"))
 			clip_validation = validate_sheeting_clips(self)
 			if clip_validation.get("status")==False:
 				frappe.throw(clip_validation.get("message"))
 		if self.material_transfer_type == "Transfer Batches to Mixing Center":
 			if self.source_warehouse != self.target_warehouse:
-				# create_dc(self)
 				create_delivery_note(self)
 			else:
-				create_stock_entry(self)
-			# else:
-				# frappe.throw(v_bom.get("message"))
+				resp = create_stock_entry(self)
+				if resp and resp.get("status") == "Failed":
+					frappe.throw("Material Transfer Failed: <b>Stock Entry</b> creation error.")
 		if self.material_transfer_type == "Transfer Compound to Sheeting Warehouse":
 			resp = create_sheeting_stock_entry(self)
 			if resp.get("status")=="Failed":
-				self.reload()
+				frappe.throw(resp.get("error_message") if resp.get("error_message") else "Material Transfer Failed: <b>Stock Entry</b> creation error.")
 		self.reload()
 
 def validate_bom_items(mt_doc):
@@ -378,7 +371,7 @@ def create_dc(mt_doc):
 			})
 	spp_dc.save(ignore_permissions=True)
 	frappe.db.set_value("Material Transfer",mt_doc.name,"dc_no",spp_dc.name)
-	frappe.db.commit()
+	# frappe.db.commit() (Removed for atomicity)
 
 def create_delivery_note(mt_doc):
 	spp_dc = frappe.new_doc("Delivery Note")
@@ -426,7 +419,7 @@ def create_delivery_note(mt_doc):
 			frappe.db.sql(f" UPDATE `tabDelivery Note` SET posting_date = '{mt_doc.transfer_date}' WHERE name = '{spp_dc.name}' ")
 			""" End """
 			frappe.db.set_value("Material Transfer",mt_doc.name,"dc_no",spp_dc.name)
-			frappe.db.commit()
+			# frappe.db.commit() (Removed for atomicity)
 			# frappe.db.sql("DELETE FROM `tabStock Ledger Entry` WHERE voucher_no=%(voucher_no)s",{"voucher_no":spp_dc.name})
 			# frappe.db.commit()
 		# else:
@@ -591,7 +584,7 @@ def create_stock_entry(mt_doc):
 		frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{mt_doc.transfer_date}' WHERE name = '{st_entry.name}' ")
 		""" End """
 		frappe.db.set_value("Material Transfer",mt_doc.name,"stock_entry_ref",st_entry.name)
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 		if mt_doc.sheeting_clip:
 			t_qty = 0
 			for batch in mt_doc.batches:
@@ -606,7 +599,7 @@ def create_stock_entry(mt_doc):
 					"spp_batch_number":cl_spp_no
 					})
 				clip_mapping.save(ignore_permissions=True)
-				frappe.db.commit()
+				# frappe.db.commit() (Removed for atomicity)
 		return {"status":"Success","st_entry":st_entry}
 	except Exception as e:
 		frappe.log_error(message=frappe.get_traceback(),title="Material Transfer Failed")
@@ -748,7 +741,7 @@ def create_sheeting_stock_entry(mt_doc):
         # Update posting date and time
         frappe.db.sql(f"UPDATE `tabStock Entry` SET posting_date = '{mt_doc.transfer_date}' WHERE name = '{st_entry.name}'")
         frappe.db.set_value("Material Transfer", mt_doc.name, "stock_entry_ref", st_entry.name)
-        frappe.db.commit()
+        # frappe.db.commit() (Removed for atomicity)
         
         # Create clip mappings
         if mt_doc.sheeting_clip:
@@ -765,7 +758,7 @@ def create_sheeting_stock_entry(mt_doc):
                     "spp_batch_number": spp_batch_no
                 })
                 clip_mapping.save(ignore_permissions=True)
-            frappe.db.commit()
+            # frappe.db.commit() (Removed for atomicity)
             
         return {"status": "Success", "st_entry": st_entry}
         
@@ -776,7 +769,7 @@ def create_sheeting_stock_entry(mt_doc):
         # Explicitly rollback the Stock Entry if it was created/committed
         if stock_entry and stock_entry.name:
             delete_stock_entry_safely(stock_entry.name)
-            frappe.db.commit() # Commit the deletion
+            # frappe.db.commit() # Commit the deletion (Removed for atomicity)
 
         return {"status": "Failed", "error_message": str(e)}
 

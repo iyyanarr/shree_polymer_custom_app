@@ -187,7 +187,7 @@ class MouldingProductionEntry(Document):
                         else:
                             frappe.db.set_value(
                                 self.doctype, self.name, "batch_details", self.updated_batch_details)
-                            frappe.db.commit()
+                            # frappe.db.commit() (Removed for atomicity)
                             self.reload()
                     else:
                         frappe.throw(
@@ -362,7 +362,6 @@ def rollback_entries(self, msg):
         
         frappe.db.commit()
         self.reload()
-        frappe.msgprint(msg)
         
         if not del__resp:
             frappe.msgprint(batch__no)
@@ -372,6 +371,7 @@ def rollback_entries(self, msg):
         self.reload()
         frappe.log_error(title="rollback_entries", message=frappe.get_traceback())
         frappe.msgprint("Something went wrong..Not able to rollback..!")
+    frappe.throw(msg)
 
 
 def manual_rollback_entries(self, msg):
@@ -844,7 +844,7 @@ def make_stock_entry(self):
                 """ Update stock entry reference """
                 frappe.db.set_value(self.doctype, self.name,
                                     "stock_entry_reference", stock_entry.name)
-                frappe.db.commit()
+                # frappe.db.commit() (Removed for atomicity)
                 """ End """
                 
                 ref_res, batch__no = generate_batch_no(
@@ -887,7 +887,7 @@ def make_stock_entry(self):
                     print(f"🏁 Completing Work Order: {work_order_id}")
                     frappe.db.set_value("Work Order", work_order_id, "status", "Completed")
                     
-                    frappe.db.commit()
+                    # frappe.db.commit() (Removed for atomicity)
                     print("✅ Moulding Production Entry submission complete - Stock Entry SUBMITTED")
                     
                     return {"status": "success"}

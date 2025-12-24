@@ -43,7 +43,7 @@ def make_material_transfer(self):
 				})
 		stock_entry.insert(ignore_permissions=True)
 		frappe.db.set_value(self.doctype,self.name,"stock_entry_reference",stock_entry.name)
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 		sub_entry = frappe.get_doc("Stock Entry",stock_entry.name)
 		sub_entry.docstatus = 1
 		sub_entry.save(ignore_permissions=True)
@@ -67,9 +67,9 @@ def rollback_entries(self,msg):
 		def_rec = frappe.get_doc(self.doctype, self.name)
 		def_rec.db_set("docstatus", 0)
 		def_rec.db_set("stock_entry_reference", "")
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 		self.reload()
-		frappe.msgprint(msg)
+		frappe.throw(msg)
 	except Exception:
 		frappe.db.rollback()
 		frappe.log_error(title="manual_rollback_entries",message=frappe.get_traceback())
@@ -83,7 +83,7 @@ def update_dc_status(self):
 								scan_barcode = '{x.lot_number}' AND item_code = '{x.item}'
 								AND spp_batch_no = '{x.spp_batch_no}' AND batch_no = '{x.batch_no}'
 								AND target_warehouse = '{x.source_warehouse_id}' """)
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 
 def undo_dc_status(self):
 	for x in self.items:
@@ -92,7 +92,7 @@ def undo_dc_status(self):
 								scan_barcode = '{x.lot_number}' AND item_code = '{x.item}'
 								AND spp_batch_no = '{x.spp_batch_no}' AND batch_no = '{x.batch_no}'
 								AND target_warehouse = '{x.source_warehouse_id}' """)
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 def check_available_stock(warehouse,item,batch_no):
 	try:
 		if batch_no:

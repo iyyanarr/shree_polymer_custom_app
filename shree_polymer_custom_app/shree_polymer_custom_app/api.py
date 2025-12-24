@@ -268,7 +268,6 @@ def get_stock_ledger_info(items_code):
 @frappe.whitelist()
 def update_consumed_items(doc,method):
 	frappe.db.sql(""" UPDATE `tabMaterial Reserved Stock` SET is_consumed=1 WHERE stock_entry_reference=%(stock_entry_reference)s """,{"stock_entry_reference":doc.name})
-	frappe.db.commit()
 	
 def attach_mix_barcode(doc,method):
 	update_se_barcode(doc)
@@ -800,7 +799,6 @@ def update_qty(doc):
 	try:
 		if not doc.total_qty_after_inspection:
 			frappe.db.sql(" UPDATE `tabJob Card` SET total_qty_after_inspection = {0} WHERE name = '{1}'".format(doc.total_completed_qty,doc.name))
-			frappe.db.commit()
 	except Exception:
 		frappe.log_error(title="shree_polymer_custom_app.shree_polymer_custom_app.api.update_qty",message=frappe.get_traceback())
 
@@ -812,7 +810,6 @@ def generate_batch_no(batch_id,item = None,qty = None,reference_doctype = None,r
 		else:
 			if not reference_doctype and not reference_name:
 				frappe.db.sql(f""" UPDATE `tabBatch` SET item = '{item}',batch_qty = {qty} WHERE name = '{batch_id}' """)
-				frappe.db.commit()
 			else:
 				res,msg = gen_batch(batch_id,item,qty,reference_doctype,reference_name)
 				return res,msg
@@ -839,20 +836,20 @@ def gen_batch(batch_id,item,qty,reference_doctype,reference_name):
 		return True,batch__.name
 	else:
 		frappe.db.sql(f""" UPDATE `tabBatch` SET reference_doctype='{reference_doctype}',reference_name='{reference_name}' WHERE name='{batch_id}' """)
-		frappe.db.commit()
 		return True,batch_id
 	
 def delete_batches(batch_ids):
 	try:
-		cond_ = ""
 		for b_ in batch_ids:
-			cond_ += f"'{b_}',"
-		cond_ = cond_[:-1]
-		frappe.db.sql(f""" DELETE FROM `tabBatch` WHERE name IN ({cond_}) """)
-		frappe.db.commit()
+			if frappe.db.exists("Batch", b_):
+				try:
+					frappe.delete_doc("Batch", b_, force=1)
+				except (frappe.LinkExistsError, Exception):
+					# If batch is linked, we may not want to delete it if it's used elsewhere
+					pass
 		return True,""
 	except Exception:
-		frappe.log_error(title="shree_polymer_custom_app.shree_polymer_custom_app.api.delete_batch",message=frappe.get_traceback())
+		frappe.log_error(title="shree_polymer_custom_app.shree_polymer_custom_app.api.delete_batches",message=frappe.get_traceback())
 		return False,"Not able to delete batches"
 	
 def find_material_trns_entry(lot_no):
@@ -1059,7 +1056,7 @@ def update_raw_materials(doc,event):
 					set__values +=f"{item.item_code} - {item.item_name},"
 				set__values = set__values[:-1]
 				frappe.db.set_value(doc.doctype,doc.name,"raw_materials",set__values)
-				frappe.db.commit()
+				# frappe.db.commit() (Removed for atomicity)
 	except Exception:
 		frappe.log_error(title = "Error while updating raw materials for link field options",message = frappe.get_traceback())
 
@@ -1270,24 +1267,61 @@ def validate_stock_entry(st_ids):
 		return {"status":"success"}
 
 def delete_stock_entry_safely(stock_entry_name):
-	if not stock_entry_name:
+	if not stock_entry_name or not frappe.db.exists("Stock Entry", stock_entry_name):
 		return
+
+	try:
+		# 1. Broad Identification of linked entities
+		details = frappe.get_all("Stock Entry Detail", 
+			filters={"parent": stock_entry_name}, 
+			fields=["serial_and_batch_bundle", "batch_no"])
 		
-	# 1. Find linked Serial and Batch Bundles BEFORE deleting the entry
-	bundles = frappe.db.get_all("Stock Entry Detail", 
-		filters={"parent": stock_entry_name}, 
-		fields=["serial_and_batch_bundle"])
-	
-	bundle_names = [b.serial_and_batch_bundle for b in bundles if b.serial_and_batch_bundle]
-	
-	# 2. Delete Stock Entry (Triggers native cleanup of SLE, SED, etc.)
-	if frappe.db.exists("Stock Entry", stock_entry_name):
+		bundle_names = list(set([d.serial_and_batch_bundle for d in details if d.serial_and_batch_bundle]))
+		batch_names = list(set([d.batch_no for d in details if d.batch_no]))
+		
+		created_batches = frappe.get_all("Batch", 
+			filters={"reference_doctype": "Stock Entry", "reference_name": stock_entry_name},
+			pluck="name")
+		all_batches = list(set(batch_names + created_batches))
+
+		# 2. Break circular links in detail records
+		frappe.db.sql("""
+			UPDATE `tabStock Entry Detail` 
+			SET batch_no = NULL, serial_and_batch_bundle = NULL 
+			WHERE parent = %s
+		""", stock_entry_name)
+
+		# 3. Break back-links from Batches to the Stock Entry
+		# This is critical for ERPNext v15 as it tries to delete these batches in on_trash
+		frappe.db.sql("""
+			UPDATE `tabBatch` 
+			SET reference_doctype = NULL, reference_name = NULL 
+			WHERE reference_doctype = 'Stock Entry' AND reference_name = %s
+		""", stock_entry_name)
+		
+		# 4. Delete the Stock Entry itself
+		# We use force=1 to ignore any remaining permission/validation issues
 		frappe.delete_doc("Stock Entry", stock_entry_name, force=1)
-	
-	# 3. Explicitly delete the orphaned Bundles
-	for bundle in bundle_names:
-		if frappe.db.exists("Serial and Batch Bundle", bundle):
-			frappe.delete_doc("Serial and Batch Bundle", bundle, force=1)
+
+		# 5. Explicitly clean up orphaned bundles
+		for bundle in bundle_names:
+			if frappe.db.exists("Serial and Batch Bundle", bundle):
+				try:
+					frappe.delete_doc("Serial and Batch Bundle", bundle, force=1)
+				except Exception:
+					pass
+
+		# 6. Clean up orphaned batches that were created for this failed SE
+		for batch in all_batches:
+			if frappe.db.exists("Batch", batch):
+				try:
+					frappe.delete_doc("Batch", batch, force=1)
+				except (frappe.LinkExistsError, Exception):
+					# If batch is used elsewhere (e.g., successful SE), keep it
+					pass
+					
+	except Exception as e:
+		frappe.log_error(title="delete_stock_entry_safely failed", message=frappe.get_traceback())
 def create_serial_batch_bundle(item_code, batch_no, warehouse, qty, voucher_type, parent_doc):
     """ERPNext v14+ compliant bundle creation with audit trail"""
     bundle = frappe.new_doc("Serial and Batch Bundle")

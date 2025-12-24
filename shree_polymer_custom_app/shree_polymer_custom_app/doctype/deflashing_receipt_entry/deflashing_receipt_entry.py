@@ -270,13 +270,12 @@ def rollback_entries(self,msg):
 		def_rec.db_set("stock_entry_reference", "")
 		def_rec.db_set("scrap_stock_entry_ref", "")
 		def_rec.db_set("work_order_ref", "")
-		frappe.db.commit()
 		self.reload()
-		frappe.msgprint(msg)
 	except Exception:
 		frappe.db.rollback()
 		frappe.log_error(title="manual_rollback_entries",message=frappe.get_traceback())
 		frappe.msgprint("Something went wrong..Not able to rollback..!")
+	frappe.throw(msg)
 
 def submit_inspection_entry(self,st_entry,deflash_scrap_warehouse):
 	exe_insp = frappe.db.sql(f" SELECT stock_entry_reference,name,posting_date FROM `tabInspection Entry` WHERE inspection_type IN ('Incoming Inspection','Final Inspection') AND docstatus = 1 AND lot_no='{self.scan_lot_number}' ",as_dict = 1)	
@@ -287,16 +286,16 @@ def submit_inspection_entry(self,st_entry,deflash_scrap_warehouse):
 					if st.t_warehouse and st.t_warehouse != deflash_scrap_warehouse :
 						frappe.db.sql(f" UPDATE `tabInspection Entry` SET batch_no='{st.batch_no}',spp_batch_number='{st.spp_batch_number}' WHERE name = '{ins.name}' ")
 						frappe.db.sql(f" UPDATE `tabStock Entry Detail` SET batch_no='{st.batch_no}' WHERE inspection_ref = '{ins.name}' ")
-						frappe.db.commit()
+						# frappe.db.commit() (Removed for atomicity)
 				ins__exe = frappe.get_doc("Stock Entry",ins.stock_entry_reference)
 				if ins__exe.docstatus == 0:
 					ins__exe.docstatus = 1
 					ins__exe.save(ignore_permissions = True)
 					if ins.posting_date:
 						""" Update posting date and time """
-						frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{ins.posting_date}' WHERE name = '{ins__exe.name}' ")
+						# frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{ins.posting_date}' WHERE name = '{ins__exe.name}' ")
 						""" End """
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 	
 def update_dc_status(self):
 	query = f""" SELECT DDEI.stock_entry_reference, DDEI.lot_number,DDEI.job_card,DDEI.batch_no,DDEI.item,DDEI.spp_batch_no,DDEI.qty,DDEI.warehouse_id
@@ -312,7 +311,7 @@ def update_dc_status(self):
 								scan_barcode = '{x.lot_number}' AND item_code = '{x.item}'
 								AND spp_batch_no = '{x.spp_batch_no}' AND batch_no = '{x.batch_no}'
 								AND target_warehouse = '{x.warehouse_id}' """)
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 		all_dc_items = frappe.db.sql(f""" SELECT DNI.name,DNI.is_received FROM `tabDelivery Note Item` DNI 
 							   				INNER JOIN `tabDelivery Note` DN ON DN.name = DNI.parent 
 							   					WHERE DN.name = '{x.stock_entry_reference}' AND DNI.is_received = 0 """)
@@ -320,7 +319,7 @@ def update_dc_status(self):
 			frappe.db.set_value("Delivery Note",x.stock_entry_reference,"received_status","Partially Completed")
 		else:
 			frappe.db.set_value("Delivery Note",x.stock_entry_reference,"received_status","Completed")
-		frappe.db.commit()	
+		# frappe.db.commit()	
 
 def undo_dc_status(self):
 	query = f""" SELECT DDEI.stock_entry_reference, DDEI.lot_number,DDEI.job_card,DDEI.batch_no,DDEI.item,DDEI.spp_batch_no,DDEI.qty,DDEI.warehouse_id
@@ -337,7 +336,7 @@ def undo_dc_status(self):
 								AND target_warehouse = '{x.warehouse_id}' """)
 		
 		frappe.db.set_value("Delivery Note",x.stock_entry_reference,"received_status","Pending")
-		frappe.db.commit()	
+		# frappe.db.commit()	
 
 def manual_rollback_entries(self,msg):
 	try:
@@ -372,12 +371,12 @@ def manual_rollback_entries(self,msg):
 		self.db_set("scrap_stock_entry_ref", "")
 		self.db_set("work_order_ref", "")
 		
-		frappe.db.commit()
-		frappe.msgprint(msg)
+		# frappe.db.commit() (Removed for atomicity)
 	except Exception:
 		frappe.db.rollback()
 		frappe.log_error(title="manual_rollback_entries",message=frappe.get_traceback())
 		frappe.msgprint("Something went wrong..Not able to rollback..!")
+	frappe.throw(msg)
 
 def make_stock_entry(self,work_order):
 	try:
@@ -473,7 +472,7 @@ def make_stock_entry(self,work_order):
 			frappe.db.sql(f" UPDATE `tabStock Entry` SET posting_date = '{self.posting_date}' WHERE name = '{stock_entry.name}' ")
 			""" End """
 			frappe.db.set_value(self.doctype,self.name,"stock_entry_reference",stock_entry.name)
-			frappe.db.commit()
+			# frappe.db.commit() (Removed for atomicity)
 			ref_res,batch__no = generate_batch_no(batch_id = batch__no,reference_doctype = "Stock Entry",reference_name = stock_entry.name)
 			if ref_res:
 				# serial_no = 1
@@ -524,7 +523,7 @@ def make_material_transfer(self):
 			})
 		stock_entry.insert(ignore_permissions=True)
 		frappe.db.set_value(self.doctype,self.name,"scrap_stock_entry_ref",stock_entry.name)
-		frappe.db.commit()
+		# frappe.db.commit() (Removed for atomicity)
 		sub_entry = frappe.get_doc("Stock Entry",stock_entry.name)
 		sub_entry.docstatus=1
 		sub_entry.save(ignore_permissions=True)
@@ -583,7 +582,7 @@ def create_work_order(doc_info):
 				wo.insert(ignore_permissions=True)
 				""" Update work order reference """
 				frappe.db.set_value(doc_info.doctype,doc_info.name,"work_order_ref",wo.name)
-				frappe.db.commit()
+				# frappe.db.commit() (Removed for atomicity)
 				""" end """
 				wo_ = frappe.get_doc("Work Order",wo.name)
 				wo_.docstatus = 1
