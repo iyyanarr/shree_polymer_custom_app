@@ -334,24 +334,24 @@ def rollback_entries(self, msg):
         if work_order:
             frappe.db.set_value("Work Order", work_order, {"status": "In Process", "produced_qty": 0})
 
-        # 4. Rollback Inspection Entries and their Stock Entries
-        exe_insp = frappe.db.get_all("Inspection Entry", 
-            filters={
-                "lot_no": self.scan_lot_number, 
-                "docstatus": 1,
-                "inspection_type": ["in", ["Line Inspection", "Patrol Inspection", "Lot Inspection"]]
-            },
-            fields=["name", "stock_entry_reference"]
-        )
+        # 4. Rollback Inspection Entries and their Stock Entries (DISABLED as per requirement)
+        # exe_insp = frappe.db.get_all("Inspection Entry", 
+        #     filters={
+        #         "lot_no": self.scan_lot_number, 
+        #         "docstatus": 1,
+        #         "inspection_type": ["in", ["Line Inspection", "Patrol Inspection", "Lot Inspection"]]
+        #     },
+        #     fields=["name", "stock_entry_reference"]
+        # )
         
-        if exe_insp:
-            for ins in exe_insp:
-                # Delete the Stock Entry linked to Inspection
-                if ins.stock_entry_reference:
-                    delete_stock_entry_safely(ins.stock_entry_reference)
+        # if exe_insp:
+        #     for ins in exe_insp:
+        #         # Delete the Stock Entry linked to Inspection
+        #         if ins.stock_entry_reference:
+        #             delete_stock_entry_safely(ins.stock_entry_reference)
                 
-                # Revert Inspection Entry to Draft (Using SQL to avoid validation loops if any)
-                frappe.db.set_value("Inspection Entry", ins.name, "docstatus", 0)
+        #         # Revert Inspection Entry to Draft (Using SQL to avoid validation loops if any)
+        #         frappe.db.set_value("Inspection Entry", ins.name, "docstatus", 0)
 
         # 5. Reset MPE
         self.db_set("docstatus", 0)
