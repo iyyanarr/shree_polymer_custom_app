@@ -3,12 +3,13 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import flt
 
 class MouldSpecification(Document):
 	def before_naming(self):
 		self.naming_id = self.mould_ref + '-' + self.spp_ref
 	def validate(self):
-		self.no_of_cavity_per_blank = round(float(self.noof_cavities) / float(self.no_of_piece),3) if self.no_of_piece else self.noof_cavities 
+		self.no_of_cavity_per_blank = round(flt(self.noof_cavities) / flt(self.no_of_piece), 3) if flt(self.no_of_piece) else flt(self.noof_cavities)
 		if self.mould_status == "ACTIVE":
 			exe = frappe.db.get_value(self.doctype,{"name":["!=",self.name],"mould_ref":self.mould_ref,"compound_code":self.compound_code,"spp_ref":self.spp_ref,"mould_status":"ACTIVE"})
 			if exe:
@@ -19,36 +20,36 @@ class MouldSpecification(Document):
 			total_wt_piece_sum = 0.0  # Sum of all Wt/Piece
 			
 			for bl_spec in self.blank_specifications:
-				bl_spec.wtlift_min_gms = round(bl_spec.wtpiece_min_gms * float(self.no_of_piece),3)
-				bl_spec.wtlift_max_gms = round(bl_spec.wtpiece_max_gms * float(self.no_of_piece),3)
-				bl_spec.wtpiece_avg_gms = round(((bl_spec.wtpiece_min_gms + bl_spec.wtpiece_max_gms)/2),3) if bl_spec.wtpiece_min_gms + bl_spec.wtpiece_max_gms else 0
-				bl_spec.wtlift_avg_gms = round(((bl_spec.wtlift_min_gms + bl_spec.wtlift_max_gms)/2),3) if bl_spec.wtlift_min_gms + bl_spec.wtlift_max_gms else 0
-				wtpiece_avg_gms += bl_spec.wtpiece_avg_gms
-				wtlift_avg_gms += bl_spec.wtlift_avg_gms
+				bl_spec.wtlift_min_gms = round(flt(bl_spec.wtpiece_min_gms) * flt(self.no_of_piece), 3)
+				bl_spec.wtlift_max_gms = round(flt(bl_spec.wtpiece_max_gms) * flt(self.no_of_piece), 3)
+				bl_spec.wtpiece_avg_gms = round(((flt(bl_spec.wtpiece_min_gms) + flt(bl_spec.wtpiece_max_gms)) / 2), 3) if flt(bl_spec.wtpiece_min_gms) + flt(bl_spec.wtpiece_max_gms) else 0
+				bl_spec.wtlift_avg_gms = round(((flt(bl_spec.wtlift_min_gms) + flt(bl_spec.wtlift_max_gms)) / 2), 3) if flt(bl_spec.wtlift_min_gms) + flt(bl_spec.wtlift_max_gms) else 0
+				wtpiece_avg_gms += flt(bl_spec.wtpiece_avg_gms)
+				wtlift_avg_gms += flt(bl_spec.wtlift_avg_gms)
 				# Add to total sum for new calculation
-				total_wt_piece_sum += bl_spec.wtpiece_avg_gms
+				total_wt_piece_sum += flt(bl_spec.wtpiece_avg_gms)
 				
-			self.wtpiece_avg_gms = round(wtpiece_avg_gms / len(self.blank_specifications),3)
-			self.wtlift_avg_gms = round(wtlift_avg_gms / len(self.blank_specifications),3)
+			self.wtpiece_avg_gms = round(wtpiece_avg_gms / len(self.blank_specifications), 3)
+			self.wtlift_avg_gms = round(wtlift_avg_gms / len(self.blank_specifications), 3)
 			
 			# Fix: Calculate as Sum of 'Wt/Piece' x No. Of Piece / No. of Cavities
-			if self.noof_cavities and float(self.noof_cavities) > 0:
+			if flt(self.noof_cavities) > 0:
 				# Formula: {[(Sum of ‘Avg Wt. of each blank * No of Piece) - Pot Residue} / No. of Cavities
 				
 				# Calculate weighted sum from child table values
 				weighted_wt_piece_sum = 0.0
 				for bl_spec in self.blank_specifications:
-					qty = bl_spec.no_of_piece if bl_spec.no_of_piece else 0
-					weighted_wt_piece_sum += (bl_spec.wtpiece_avg_gms * qty)
+					qty = flt(bl_spec.no_of_piece)
+					weighted_wt_piece_sum += (flt(bl_spec.wtpiece_avg_gms) * qty)
 
-				pot_residue = self.pot_residue if self.pot_residue else 0.0
-				numerator = weighted_wt_piece_sum - float(pot_residue)
+				pot_residue = flt(self.pot_residue)
+				numerator = weighted_wt_piece_sum - pot_residue
 				
 				# Ensure result is not negative, though business logic should prevent this
 				numerator = max(0.0, numerator)
-				self.avg_blank_wtproduct_gms = round(numerator / float(self.noof_cavities), 3)
+				self.avg_blank_wtproduct_gms = round(numerator / flt(self.noof_cavities), 3)
 			else:
-				self.avg_blank_wtproduct_gms = round(self.wtpiece_avg_gms / self.no_of_cavity_per_blank,3) if self.no_of_cavity_per_blank else wtlift_avg_gms
+				self.avg_blank_wtproduct_gms = round(flt(self.wtpiece_avg_gms) / flt(self.no_of_cavity_per_blank), 3) if flt(self.no_of_cavity_per_blank) else wtlift_avg_gms
 		# Note: Shell weight is stored separately and handled in rejection calculations
 		# The avg_blank_wtproduct_gms should contain only the compound/material weight
 
