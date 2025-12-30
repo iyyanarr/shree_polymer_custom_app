@@ -637,86 +637,43 @@ def make_vs_pdir_stock_entry(self):
 
 def make_stock_entry(self):
 	try:
-		bom = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name INNER JOIN `tabItem` I ON I.name=B.item  WHERE BI.item_code=%(item_code)s AND B.is_active=1 AND I.default_bom=B.name """,{"item_code":self.product_ref_no},as_dict=1)
-		if bom:
-			# check_uom = frappe.db.get_all("UOM Conversion Detail",filters={"parent":bom[0].item,"uom":"Kg"},fields=['conversion_factor'])
-			# if check_uom:
-			# 	each_no_qty = 1 / check_uom[0].conversion_factor
-			moulding_ref = frappe.db.get_value("Job Card",{"batch_code":self.lot_no},["mould_reference","production_item"],as_dict = 1)
-			if moulding_ref:
-				# on 8/3/23
-				# wt_per_pi_gms = frappe.db.get_value("Mould Specification",{"mould_ref":frappe.db.get_value("Asset",moulding_ref.mould_reference,"item_code")},"avg_blank_wtproduct_gms")
-				
-				# Get mould specification details including shell weight
-				mould_spec = frappe.db.get_value("Mould Specification",
-					{"mould_ref":frappe.db.get_value("Asset",moulding_ref.mould_reference,"item_code"),
-					 "spp_ref":moulding_ref.production_item,"mould_status":"ACTIVE"},
-					["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
-				
-				if mould_spec:
-					# Calculate total weight including shell weight if present
-					base_wt_per_pi_gms = float(mould_spec.avg_blank_wtproduct_gms)
-					if mould_spec.shell_weight:
-						# Add shell weight to get total product weight
-						base_wt_per_pi_gms = base_wt_per_pi_gms + float(mould_spec.shell_weight)
-					
-					wt_per_pi_gms = base_wt_per_pi_gms
-				else:
-					wt_per_pi_gms = frappe.db.get_value("Mould Specification",
-						{"mould_ref":frappe.db.get_value("Asset",moulding_ref.mould_reference,"item_code"),
-						 "spp_ref":moulding_ref.production_item,"mould_status":"ACTIVE"},"avg_blank_wtproduct_gms")
-				# end
-				# each_no_qty = flt(float(wt_per_pi_gms) / 1000 , 3) 
-				each_no_qty = float(wt_per_pi_gms) / 1000 
-				t_qty = each_no_qty * self.total_rejected_qty
-				if flt(t_qty, 3)>0:
-					spp_settings = frappe.get_single("SPP Settings")
-					stock_entry = frappe.new_doc("Stock Entry")
-					stock_entry.purpose = "Material Transfer"
-					stock_entry.company = "SPP"
-					stock_entry.naming_series = "MAT-STE-.YYYY.-"
-					""" For identifying procees name to change the naming series the field is used """
-					naming_status,naming_series = get_stock_entry_naming_series(spp_settings,self.inspection_type)
-					if naming_status:
-						stock_entry.naming_series = naming_series
-					""" End """
-					stock_entry.stock_entry_type = "Material Transfer"
-					stock_entry.from_warehouse = spp_settings.unit_2_warehouse
-					stock_entry.to_warehouse = spp_settings.rejection_warehouse
-					stock_entry.append("items",{
-						"item_code":self.product_ref_no,
-						"s_warehouse":spp_settings.unit_2_warehouse,
-						"t_warehouse":spp_settings.rejection_warehouse,
-						"stock_uom": "Kg",
-						"uom": "Kg",
-						"use_serial_batch_fields": 1,
-						# "batch_no":self.batch_no if self.batch_no else "",
-						"conversion_factor_uom":1,
-						"transfer_qty":flt(t_qty, 3),
-						"qty":flt(t_qty, 3),
-						"inspection_ref":self.name,
-						"source_ref_document":self.doctype,
-						"source_ref_id":self.name
-						})
-					
-					stock_entry.insert(ignore_permissions=True)
-					frappe.db.set_value(self.doctype,self.name,"stock_entry_reference",stock_entry.name)
-					# frappe.db.commit() (Removed for atomicity)
-					""" Restrict stock entry submission for line and patrol respections """
-					# if self.inspection_type == "Line Inspection" or self.inspection_type == "Patrol Inspection":
-					# 	if int(self.moulding_production_completed) == 1:
-					# 		sub_entry = frappe.get_doc("Stock Entry",stock_entry.name)
-					# 		sub_entry.docstatus=1
-					# 		sub_entry.save(ignore_permissions=True)
-					# else:
-					# 	sub_entry = frappe.get_doc("Stock Entry",stock_entry.name)
-					# 	sub_entry.docstatus=1
-					# 	sub_entry.save(ignore_permissions=True)
-					return {"status":"success"}
-			else:
-				frappe.throw("Please define UOM for Kgs for the item <b>"+bom[0].item+"</b>")
+		if flt(self.total_rejected_qty_kg, 3) > 0:
+			spp_settings = frappe.get_single("SPP Settings")
+			stock_entry = frappe.new_doc("Stock Entry")
+			stock_entry.purpose = "Material Transfer"
+			stock_entry.company = "SPP"
+			stock_entry.naming_series = "MAT-STE-.YYYY.-"
+			""" For identifying procees name to change the naming series the field is used """
+			naming_status,naming_series = get_stock_entry_naming_series(spp_settings,self.inspection_type)
+			if naming_status:
+				stock_entry.naming_series = naming_series
+			""" End """
+			stock_entry.stock_entry_type = "Material Transfer"
+			stock_entry.from_warehouse = spp_settings.unit_2_warehouse
+			stock_entry.to_warehouse = spp_settings.rejection_warehouse
+			stock_entry.append("items",{
+				"item_code":self.product_ref_no,
+				"s_warehouse":spp_settings.unit_2_warehouse,
+				"t_warehouse":spp_settings.rejection_warehouse,
+				"stock_uom": "Kg",
+				"uom": "Kg",
+				"use_serial_batch_fields": 1,
+				# "batch_no":self.batch_no if self.batch_no else "",
+				"conversion_factor_uom":1,
+				"transfer_qty":flt(self.total_rejected_qty_kg, 3),
+				"qty":flt(self.total_rejected_qty_kg, 3),
+				"inspection_ref":self.name,
+				"source_ref_document":self.doctype,
+				"source_ref_id":self.name
+				})
+			
+			stock_entry.insert(ignore_permissions=True)
+			frappe.db.set_value(self.doctype,self.name,"stock_entry_reference",stock_entry.name)
+			# frappe.db.commit() (Removed for atomicity)
+			return {"status":"success"}
 		else:
-			frappe.throw("No BOM found associated with the item <b>"+self.product_ref_no+"</b>")
+			# If no weight, we still return success but don't create an entry
+			return {"status":"success"}
 	except Exception as e:
 		frappe.db.rollback()
 		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.inspection_entry.inspection_entry.make_stock_entry")

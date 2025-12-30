@@ -5,6 +5,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, cstr, duration_to_seconds, flt, add_to_date, update_progress_bar, format_time, formatdate, getdate, nowdate, now
 from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series,generate_batch_no,delete_batches,delete_stock_entry_safely
+from erpnext.stock.doctype.batch.batch import get_batch_qty
 
 
 class MouldingProductionEntry(Document):
@@ -173,9 +174,9 @@ class MouldingProductionEntry(Document):
                 vcd = validate_comsumption_details(self)
                 if vcd.get('status') == 'success':
                     # 🆕 NEW VALIDATION: Check actual warehouse stock before creating Stock Entry
-                    #stock_val = validate_actual_warehouse_stock(self)
-                    #if stock_val.get('status') == 'failed':
-                    #    frappe.throw(stock_val.get('message'))
+                    stock_val = validate_actual_warehouse_stock(self)
+                    if stock_val.get('status') == 'failed':
+                        frappe.throw(stock_val.get('message'))
                     
                     # Only proceed if stock validation passed
                     ins_info = frappe.db.get_value("Inspection Entry", {"lot_no": self.scan_lot_number, "docstatus": 1, "inspection_type": "Line Inspection"}, [
@@ -617,43 +618,24 @@ def validate_actual_warehouse_stock(self):
         # Step 4: Check warehouse stock for each batch
         shortages = []
         for batch_no, batch_info in batch_consumption.items():
-            # Query actual warehouse stock (READ-ONLY)
-            stock_query = """
-                SELECT IBSB.qty as available_qty, IBSB.warehouse
-                FROM `tabItem Batch Stock Balance` IBSB
-                WHERE IBSB.batch_no = %(batch_no)s
-                AND IBSB.item_code = %(compound)s
-                AND IBSB.warehouse = %(warehouse)s
-            """
+            # Use erpnext native get_batch_qty to get stock info (READ-ONLY)
+            available_qty = get_batch_qty(
+                batch_no=batch_no,
+                warehouse=source_warehouse,
+                item_code=batch_info['compound']
+            )
+            available_qty = flt(available_qty, 3)
+            required_qty = flt(batch_info['consumed_qty'], 3)
             
-            stock_result = frappe.db.sql(stock_query, {
-                'batch_no': batch_no,
-                'compound': batch_info['compound'],
-                'warehouse': source_warehouse
-            }, as_dict=1)
-            
-            if not stock_result:
-                # No stock found for this batch in warehouse
+            # Check if stock is insufficient
+            if available_qty < required_qty:
                 shortages.append({
                     'batch_no': batch_no,
                     'spp_batch_number': batch_info.get('spp_batch_number', 'N/A'),
-                    'required': batch_info['consumed_qty'],
-                    'available': 0.0,
-                    'shortage': batch_info['consumed_qty']
+                    'required': required_qty,
+                    'available': available_qty,
+                    'shortage': flt(required_qty - available_qty, 3)
                 })
-            else:
-                available_qty = flt(stock_result[0].available_qty, 3)
-                required_qty = flt(batch_info['consumed_qty'], 3)
-                
-                # Check if stock is insufficient
-                if available_qty < required_qty:
-                    shortages.append({
-                        'batch_no': batch_no,
-                        'spp_batch_number': batch_info.get('spp_batch_number', 'N/A'),
-                        'required': required_qty,
-                        'available': available_qty,
-                        'shortage': flt(required_qty - available_qty, 3)
-                    })
         
         # Step 5: Return result
         if shortages:
