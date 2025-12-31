@@ -92,10 +92,12 @@ class MouldingProductionEntry(Document):
             frappe.throw(f"Source batch details not found..!")
         self.cmpr_balbin_get_cmp_qty()
         self.weight = flt(self.weight, 3)
-        self.weight_without_shell = flt(
-            flt((self.weight + self.line_rejection_qty), 3), 3)
+        
+        # Calculate total output weight (Produced + Rejection + Purge + Leakage)
+        total_output_weight = flt(self.weight + self.line_rejection_qty + flt(self.purged_compound) + flt(self.compound_leakage), 3)
+        self.weight_without_shell = total_output_weight
+
         s_resp = validate_shell(self)
-        # frappe.log_error(title='--validate shell--',message=s_resp)
         if s_resp.get('status') == 'failed':
             frappe.throw(s_resp.get('message'))
         else:
@@ -115,11 +117,9 @@ class MouldingProductionEntry(Document):
                 self.shell_qty_kgs = s_resp.get('total_shell_qty_in_kgs')
                 self.shell_qty_nos = s_resp.get('total_shell_qty_in_nos')
                 self.shell_item = s_resp.get('shell_item')
-                self.weight_without_shell = flt(flt(
-                    (self.weight + self.line_rejection_qty), 3) - s_resp.get('total_shell_qty_in_kgs'), 3)
+                self.weight_without_shell = flt(total_output_weight - s_resp.get('total_shell_qty_in_kgs'), 3)
             else:
-                self.weight_without_shell = flt(
-                    flt((self.weight + self.line_rejection_qty), 3), 3)
+                self.weight_without_shell = total_output_weight
 
     def validate_inspection_qty(self, batch_no):
         return {"status": "success"}
@@ -524,25 +524,28 @@ def validate_consumption_with_spp_settings(self):
 
 def validate_mat_qty(self):
     try:
-        total_consumed_qty = (
+        # Total material available (Compound available according to bins + Shells)
+        total_available_qty = (
             flt(flt(self.compound_available_qty, 3) + flt(self.shell_qty_kgs, 3), 3))
+        
+        # Total material produced/consumed (Finished + Rejection + Purge + Leakage)
+        total_required_qty = flt(self.weight + self.line_rejection_qty + flt(self.purged_compound) + flt(self.compound_leakage), 3)
+        
         spp_settings = frappe.get_single("SPP Settings")
         if not spp_settings.maximum__allowed_qty and spp_settings.maximum__allowed_qty != 0:
             return {"status": "failed", "message": "The '%' of excess Qty allowed for the <b>Production Entry</b> not mapped in <b>SPP Settings</b>..!"}
-        if not total_consumed_qty == flt((self.weight + self.line_rejection_qty), 3):
-            if flt((self.weight + self.line_rejection_qty), 3) > total_consumed_qty:
+        
+        if not total_available_qty == total_required_qty:
+            if total_required_qty > total_available_qty:
                 if spp_settings.maximum__allowed_qty:
-                    one_percen = flt(total_consumed_qty / 100, 3)
-                    actual_percen = flt(
-                        flt((self.weight + self.line_rejection_qty), 3) / one_percen, 3)
-                    allowd_percen = flt(
-                        100.0 + spp_settings.maximum__allowed_qty, 3)
+                    one_percen = flt(total_available_qty / 100, 3)
+                    actual_percen = flt(total_required_qty / one_percen, 3)
+                    allowd_percen = flt(100.0 + spp_settings.maximum__allowed_qty, 3)
                     if actual_percen > allowd_percen:
-                        total_with_extra_qty = flt(
-                            spp_settings.maximum__allowed_qty * one_percen, 3)
-                        return {"status": "failed", "message": f"The <b>Produced Qty - {flt((self.weight + self.line_rejection_qty),3)} kgs</b> should be less than or equal to total <b>Available Qty -> {str(flt(self.compound_available_qty,3)) + '+ ' + str(total_with_extra_qty) } {' + ' + str(flt(self.shell_qty_kgs,3)) +' = ' +str(flt(total_consumed_qty + total_with_extra_qty,3)) if self.shell_qty_kgs else ' = ' +str(flt(total_consumed_qty + total_with_extra_qty,3))} Kgs</b>"}
+                        total_with_extra_qty = flt(spp_settings.maximum__allowed_qty * one_percen, 3)
+                        return {"status": "failed", "message": f"The <b>Total Required Qty (Prod+Rej+Purge) - {total_required_qty} kgs</b> should be less than or equal to total <b>Available Qty -> {str(flt(self.compound_available_qty,3)) + '+ ' + str(total_with_extra_qty) } {' + ' + str(flt(self.shell_qty_kgs,3)) +' = ' +str(flt(total_available_qty + total_with_extra_qty,3)) if self.shell_qty_kgs else ' = ' +str(flt(total_available_qty + total_with_extra_qty,3))} Kgs</b>"}
                 elif spp_settings.maximum__allowed_qty == 0:
-                    return {"status": "failed", "message": f"The <b>Produced Qty - {flt((self.weight + self.line_rejection_qty),3)} kgs</b> should be less than or equal to total <b>Available Qty -> {flt(self.compound_available_qty,3)} {'+ ' + str(flt(self.shell_qty_kgs,3))+ ' = ' +str(total_consumed_qty) if self.shell_qty_kgs else ''} Kgs</b>"}
+                    return {"status": "failed", "message": f"The <b>Total Required Qty (Prod+Rej+Purge) - {total_required_qty} kgs</b> should be less than or equal to total <b>Available Qty -> {flt(self.compound_available_qty,3)} {'+ ' + str(flt(self.shell_qty_kgs,3))+ ' = ' +str(total_available_qty) if self.shell_qty_kgs else ''} Kgs</b>"}
         return {"status": 'success'}
     except Exception:
         frappe.log_error(title="error in validate mat qty",
@@ -1027,21 +1030,41 @@ def append_source_details(stock_entry, self, work_order):
                         (exe_b['consumed__qty'] + b__['consumed__qty']), 3)
             if not match_found:
                 final_batch_details.append(b__)
+    # Calculate total quantity to subtract from normal consumption lines if there's a purge
+    total_purge_qty = flt(self.purged_compound) + flt(self.compound_leakage)
+    remaining_purge_to_deduct = total_purge_qty
+
     for f__b in final_batch_details:
-        stock_entry.append("items", {
-            "item_code": self.compound,
-            "s_warehouse": work_order.source_warehouse,
-            "t_warehouse": None,
-            "stock_uom": "Kg",
-            "uom": "Kg",
-            "conversion_factor_uom": 1,
-            "is_finished_item": 0,
-            "use_serial_batch_fields": 1,
-            "transfer_qty": flt(f__b.get('consumed__qty'), 3),
-            "qty": flt(f__b.get('consumed__qty'), 3),
-            "spp_batch_number": f__b.get('spp_batch_number'),
-            "batch_no": f__b.get('batch_no__'),  # ✅ FIX: Explicitly set batch_no to prevent FIFO auto-selection
-        })
+        # Calculate how much of this batch item is "normal" consumption vs "purge"
+        full_batch_qty = flt(f__b.get('consumed__qty'), 3)
+        normal_consumption_qty = full_batch_qty
+        
+        if remaining_purge_to_deduct > 0:
+            if remaining_purge_to_deduct >= full_batch_qty:
+                # This entire line's quantity is covered by purge scrap
+                normal_consumption_qty = 0
+                remaining_purge_to_deduct = flt(remaining_purge_to_deduct - full_batch_qty, 3)
+            else:
+                # Part of this line is normal, part is purge
+                normal_consumption_qty = flt(full_batch_qty - remaining_purge_to_deduct, 3)
+                remaining_purge_to_deduct = 0
+        
+        # Only add a normal consumption line if there's quantity left after purge deduction
+        if normal_consumption_qty > 0:
+            stock_entry.append("items", {
+                "item_code": self.compound,
+                "s_warehouse": work_order.source_warehouse,
+                "t_warehouse": None,
+                "stock_uom": "Kg",
+                "uom": "Kg",
+                "conversion_factor_uom": 1,
+                "is_finished_item": 0,
+                "use_serial_batch_fields": 1,
+                "transfer_qty": flt(normal_consumption_qty, 3),
+                "qty": flt(normal_consumption_qty, 3),
+                "spp_batch_number": f__b.get('spp_batch_number'),
+                "batch_no": f__b.get('batch_no__'),
+            })
     
     # Add purged compound + leakage as scrap transfer (for Injection Moulding)
     total_purge_qty = flt(self.purged_compound) + flt(self.compound_leakage)
