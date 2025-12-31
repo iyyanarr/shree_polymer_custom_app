@@ -7,7 +7,16 @@ from frappe.utils import flt
 
 class MouldSpecification(Document):
 	def before_naming(self):
-		self.naming_id = self.mould_ref + '-' + self.spp_ref
+		if not self.naming_id:
+			self.naming_id = self.mould_ref + '-' + self.spp_ref
+		elif self.amended_from and self.naming_id == (self.mould_ref + '-' + self.spp_ref):
+			# If it's an amendment and naming_id is still the base one,
+			# clear it so Frappe can generate a new one (e.g., with -1 suffix)
+			# or we can manually append it.
+			# But field:naming_id means we MUST provide it.
+			base = self.mould_ref + '-' + self.spp_ref
+			count = frappe.db.count("Mould Specification", {"naming_id": ["like", f"{base}%"]})
+			self.naming_id = f"{base}-{count}"
 	def validate(self):
 		self.no_of_cavity_per_blank = round(flt(self.noof_cavities) / flt(self.no_of_piece), 3) if flt(self.no_of_piece) else flt(self.noof_cavities)
 		if self.mould_status == "ACTIVE":
