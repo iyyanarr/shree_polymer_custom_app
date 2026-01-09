@@ -623,8 +623,8 @@ function generate_weight_breakdown_html(frm, lot_data) {
 		? total_production_weight / (total_cavities * blank_weight_kg)
 		: 0;
 
-	// Get shell weight from the document
-	const shell_weight = parseFloat(frm.doc.shell_qty_kgs || 0);
+	// Get shell weight: Prioritize API-calculated theoretical weight from Mould Spec
+	const shell_weight = parseFloat(lot_data.shell_weight_kg || frm.doc.shell_qty_kgs || 0);
 
 	// FIX: Compound consumption = Total Production + Scrap - Shell Weight
 	// This gives the actual compound consumed (excluding shell which is a separate material)
@@ -675,6 +675,7 @@ function generate_weight_breakdown_html(frm, lot_data) {
 							e. Compound Consumption Working
 							<div style="font-size: 11px; color: #666; font-weight: normal; margin-top: 4px;">
 								Total Prod (${total_production_weight.toFixed(3)}) + Scrap (${scrap_compound.toFixed(3)})${shell_weight > 0 ? ` - Shell (${shell_weight.toFixed(3)})` : ''}
+								<br/><i>(Shell weight pulled from Mould Specification)</i>
 							</div>
 						</td>
 						<td style="padding: 10px; text-align: right; font-size: 17px; font-weight: bold; color: #1565c0;">${total_compound_consumption.toFixed(3)}</td>

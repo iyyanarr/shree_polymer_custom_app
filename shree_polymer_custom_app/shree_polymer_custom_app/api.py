@@ -1417,16 +1417,20 @@ def get_lot_details(lot_number, doctype=None, docname=None, mould_reference=None
 		
 		# Fetch blank weight from Mould Specification if mould_reference provided
 		if mould_ref:
-			# Try to fetch submitted mould specs (might be multiple for same mould_ref)
+			# Fetch precisely matching ACTIVE mould spec
 			mould_specs = frappe.db.get_all("Mould Specification", 
-				filters={"mould_ref": mould_ref, "docstatus": 1},
+				filters={
+					"mould_ref": mould_ref, 
+					"mould_status": "ACTIVE",
+					"compound_code": frappe.db.get_value("Moulding Production Entry", docname, "compound") if doctype == "Moulding Production Entry" else None
+				},
 				fields=["name", "avg_blank_wtproduct_gms", "modified"],
 				order_by="modified desc")
 			
-			# If no submitted specs, try draft
+			# Fallback to general submitted spec if precise ACTIVE one not found
 			if not mould_specs:
 				mould_specs = frappe.db.get_all("Mould Specification", 
-					filters={"mould_ref": mould_ref},
+					filters={"mould_ref": mould_ref, "docstatus": 1},
 					fields=["name", "avg_blank_wtproduct_gms", "modified"],
 					order_by="modified desc")
 			
@@ -1490,11 +1494,41 @@ def get_lot_details(lot_number, doctype=None, docname=None, mould_reference=None
 					"calculated_weight_kg": calculated_rejection_weight
 				}
 		
+		# Calculate shell weight if it's a shell-based mould
+		shell_weight_kg = 0.0
+		if mould_ref:
+			# This part replicates frontend/backend logic to show expected shell weight
+			bom = None
+			if doctype == "Moulding Production Entry" and docname:
+				bom = frappe.db.get_value("Job Card", frappe.db.get_value(doctype, docname, "job_card"), "bom_no")
+			
+			if bom:
+				shell_details = frappe.db.sql(""" SELECT BI.item_code FROM `tabBOM Item` BI 
+													INNER JOIN `tabBOM` B ON B.name = BI.parent
+													INNER JOIN `tabItem` I ON I.name = BI.item_code
+													WHERE I.item_group = 'Shell' AND B.name = %(bom)s """, {"bom": bom}, as_dict=1)
+				if shell_details:
+					# Pull specific weight from Spec (already fetched above for blank_weight)
+					shell_weight_gms = 0.0
+					if mould_spec:
+						shell_weight_gms = flt(frappe.db.get_value("Mould Specification", mould_spec.name, "shell_weight"), 3)
+					
+					if shell_weight_gms > 0:
+						# Get lifts and cavities from doc if available
+						lifts = 0
+						cavities = 0
+						if doctype == "Moulding Production Entry" and docname:
+							lifts, cavities = frappe.db.get_value(doctype, docname, ["number_of_lifts", "no_of_running_cavities"])
+						
+						if lifts and cavities:
+							shell_weight_kg = flt((shell_weight_gms / 1000.0) * (lifts * cavities), 3)
+
 		return {
 			"status": "success",
 			"bin_details": bin_details,
 			"rejection_details": rejection_details,
 			"blank_weight_kg": flt(blank_weight_kg),
+			"shell_weight_kg": flt(shell_weight_kg),
 			"mould_reference": mould_ref,
 			"lot_number": lot_number
 		}
