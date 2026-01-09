@@ -140,22 +140,28 @@ class MouldingProductionEntry(Document):
         # return {"status":"success"}
 
     def validate_get_line_ins_qty(self):
-        ins_info = frappe.db.get_all("Inspection Entry", {"lot_no": self.scan_lot_number, "docstatus": 1, "inspection_type": ["in",["Line Inspection","Patrol Inspection"]]}, [
-                                       "stock_entry_reference", "name","inspection_type"])
-        
-        total_rejected_qty = 0.0
+        # Fetch theoretical rejection weight instead of weighed rejection
+        ins_info = frappe.db.get_all("Inspection Entry", {"lot_no": self.scan_lot_number, "docstatus": 1, "inspection_type": ["in", ["Line Inspection", "Patrol Inspection"]]}, [
+            "name", "total_rejected_qty"])
+
+        total_rejected_qty_nos = 0
         if ins_info:
             for ins in ins_info:
-                if ins.stock_entry_reference:
-                    query = f""" SELECT SED.qty FROM `tabStock Entry` SE INNER JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name 
-                                WHERE SED.source_ref_document = "Inspection Entry" AND SED.source_ref_id = '{ins.name}' AND SE.name = '{ins.stock_entry_reference}' """
-                    qty_info = frappe.db.sql(query, as_dict=1)
-                    if qty_info:
-                        total_rejected_qty += flt(qty_info[0].qty, 3)
-                    else:
-                        frappe.throw(
-                            f"<b>{ins.inspection_type}</b> entry stock details not found for <b>{ins.name}</b>..!")
-        self.line_rejection_qty = total_rejected_qty
+                total_rejected_qty_nos += flt(ins.total_rejected_qty, 3)
+
+        # Get Avg Blank Weight from Mould Specification
+        avg_blank_weight_kg = 0.0
+        mould_spec = frappe.db.get_value("Mould Specification", 
+            {"mould_ref": self.mould_reference, "compound_code": self.compound, "mould_status": "ACTIVE"}, 
+            "avg_blank_wtproduct_gms")
+        
+        if mould_spec:
+            avg_blank_weight_kg = flt(mould_spec, 3) / 1000
+        else:
+            # Fallback to 0 if not found, but log it
+            frappe.log_error(title="Mould Spec Missing", message=f"No Active Mould Spec found for {self.mould_reference}")
+
+        self.line_rejection_qty = flt(total_rejected_qty_nos * avg_blank_weight_kg, 3)
 
     def cmpr_balbin_get_cmp_qty(self):
         import json
@@ -458,38 +464,45 @@ def validate_comsumption_details(self):
                     )
                     is__bb["balance__qty"] = flt((flt(is__bb["qty"], 3) - is__bb_compound_qty), 3)
         
-        # Handle fresh bins with existing logic
-        if consumed_qty != weight:
+        # Handle fresh bins with corrected inventory logic
+        if consumed_qty < weight:
             for k in self.updated_batch_details:
-                # Only process fresh bins (not balance bins)
                 if not k.get('is_balance_bin'):
-                    compound__qty = flt((flt(k["qty"], 3) / self.compound_available_qty) * flt(weight, 3), 3)
-                    if inital_validate and weight <= compound__qty:
+                    # Proportional share logic
+                    compound__qty_share = flt((flt(k["qty"], 3) / self.compound_available_qty) * flt(weight, 3), 3)
+                    
+                    if inital_validate and weight <= compound__qty_share:
                         consumed_qty = weight
                         k["consumed__qty"] = weight
-                        k["balance__qty"] = flt((compound__qty - weight), 3)
+                        k["balance__qty"] = flt((flt(k["qty"], 3) - weight), 3) # Fix: Subtract from actual qty
                         k["is__consumed"] = 1
                         break
                     else:
                         inital_validate = False
-                        if weight == flt((consumed_qty + compound__qty), 3):
-                            consumed_qty = flt(consumed_qty + compound__qty, 3)
-                            k["consumed__qty"] = compound__qty
-                            k["balance__qty"] = 0
-                            k["is__consumed"] = 1
-                            break
-                        elif weight > flt((consumed_qty + compound__qty), 3):
-                            consumed_qty = flt(consumed_qty + compound__qty, 3)
-                            k["consumed__qty"] = compound__qty
-                            k["balance__qty"] = 0
+                        remaining_to_consume = flt(weight - consumed_qty, 3)
+                        
+                        if remaining_to_consume >= compound__qty_share:
+                            # Consume the whole share
+                            consumed_qty = flt(consumed_qty + compound__qty_share, 3)
+                            k["consumed__qty"] = compound__qty_share
+                            k["balance__qty"] = flt((flt(k["qty"], 3) - compound__qty_share), 3) # Fix: Subtract share from actual
                             k["is__consumed"] = 1
                         else:
-                            required_qty = flt((weight - consumed_qty), 3)
-                            consumed_qty += required_qty
-                            k["consumed__qty"] = required_qty
-                            k["balance__qty"] = flt((compound__qty - required_qty), 3)
+                            # Consume only what's needed
+                            k["consumed__qty"] = remaining_to_consume
+                            consumed_qty = weight
+                            k["balance__qty"] = flt((flt(k["qty"], 3) - remaining_to_consume), 3) # Fix: Subtract from actual
                             k["is__consumed"] = 1
                             break
+        
+        # Validation: Shortage Block
+        if flt(weight, 3) > flt(self.compound_available_qty, 3):
+            frappe.throw(
+                f"<b>Insufficient compound stock scanned!</b><br>"
+                f"Net Compound Required: {weight} Kg<br>"
+                f"Available in Scanned Bins: {self.compound_available_qty} Kg<br><br>"
+                f"Please scan more bins or check the weights."
+            )
         
         # ...existing validation code...
         vcwspps = validate_consumption_with_spp_settings(self)
@@ -702,9 +715,20 @@ def validate_shell(self):
         if check_uom:
             shell_item = shell_details[0].item_code
             total_shell_qty_in_nos = self.number_of_lifts * self.no_of_running_cavities
-            one_no_shell_qty_kgs = flt(1 / check_uom[0].conversion_factor, 3)
-            total_shell_qty_in_kgs = flt(
-                one_no_shell_qty_kgs * total_shell_qty_in_nos, 3)
+            
+            # Use shell weight from Mould Specification if available
+            shell_weight_gms = 0.0
+            mould_spec = frappe.db.get_value("Mould Specification", 
+                {"mould_ref": self.mould_reference, "compound_code": self.compound, "mould_status": "ACTIVE"}, 
+                "shell_weight")
+            
+            if mould_spec:
+                shell_weight_gms = flt(mould_spec, 3)
+            else:
+                # Fallback to UOM conversion
+                shell_weight_gms = flt(1000 / check_uom[0].conversion_factor, 3)
+            
+            total_shell_qty_in_kgs = flt((shell_weight_gms / 1000) * total_shell_qty_in_nos, 3)
             query = f""" SELECT B.batch_id,IBSB.qty batch_qty FROM `tabBatch` B 
 							INNER JOIN `tabItem Batch Stock Balance` IBSB ON 
 								IBSB.batch_no = B.batch_id AND IBSB.item_code = B.item
