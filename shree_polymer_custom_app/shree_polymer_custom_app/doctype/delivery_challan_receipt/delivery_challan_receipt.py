@@ -12,23 +12,14 @@ class DeliveryChallanReceipt(Document):
 			frappe.throw("The <b>Mixing Date</b> can't be greater than <b>Today Date</b>..!")
 
 	def on_submit(self):
-		try:
-			fb_mix = validate_final_batches(self)
-			if fb_mix:
-				try:
-					wo,message = create_wo(self)
-					if wo:
-						update_over_all_dn_status(self,"Not Hold")
-					else:
-						frappe.db.rollback()
-						rollback_wo_se_jc(self,message)
-				except Exception:
-					frappe.db.rollback()
-					rollback_wo_se_jc(self,"Delivery Note update failed..!")
-			self.reload()
-		except Exception:
-			rollback_wo_se_jc(self,"Stock Entry Creation Error..!")
-			frappe.log_error(title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.delivery_challan_receipt.delivery_challan_receipt.on_submit",message=frappe.get_traceback())
+		fb_mix = validate_final_batches(self)
+		if fb_mix:
+			wo, message = create_wo(self)
+			if wo:
+				update_over_all_dn_status(self, "Not Hold")
+			else:
+				frappe.throw(message or "Work Order creation failed..!")
+		self.reload()
 	
 	def on_cancel(self):
 		self.reload()
@@ -40,7 +31,6 @@ class DeliveryChallanReceipt(Document):
 						for x in m_item:
 							frappe.db.set_value("Delivery Note Item",x.name,"is_received",0)
 							frappe.db.set_value("Delivery Note Item",x.name,"dc_receipt_no","")
-			frappe.db.commit()
 
 def update_over_all_dn_status(self,dc_type):
 	if dc_type == "Not Hold":
@@ -51,7 +41,6 @@ def update_over_all_dn_status(self,dc_type):
 				frappe.db.set_value("Delivery Note",x.dc_no,"received_status","Partially Completed")
 			else:
 				frappe.db.set_value("Delivery Note",x.dc_no,"received_status","Completed")
-		frappe.db.commit()
 	elif dc_type == "Hold":
 		""" Dc no was not fetch while scanning the barcode before use thid function need to fetch dc no first  """
 		for x in self.hld_items:
@@ -68,24 +57,19 @@ def update_over_all_dn_status(self,dc_type):
 				frappe.db.set_value("Delivery Note",x.dc_no,"received_status","Partially Completed")
 			else:
 				frappe.db.set_value("Delivery Note",x.dc_no,"received_status","Completed")
-		frappe.db.commit()
 
-def update_stock_ref(doc_id,stock_id):
+def update_stock_ref(doc_id, stock_id):
 	""" Reference """
-	store__val = ""
-	exe_entries = frappe.db.get_value("Delivery Challan Receipt",doc_id,'stock_entry_reference')
+	exe_entries = frappe.db.get_value("Delivery Challan Receipt", doc_id, 'stock_entry_reference')
 	if exe_entries:
-		exe_entries += "," + stock_id
-		store__val += exe_entries
+		store__val = exe_entries + "," + stock_id
 	else:
 		store__val = stock_id
-	frappe.db.set_value("Delivery Challan Receipt",doc_id,'stock_entry_reference',store__val)
-	frappe.db.commit()
+	frappe.db.set_value("Delivery Challan Receipt", doc_id, 'stock_entry_reference', store__val)
 	""" End """
 
 def update_workorder_ref(work_order,doctype,name):
 	frappe.db.sql(f" UPDATE `tab{doctype}` SET work_order_ref='{work_order}' WHERE name='{name}' ")
-	frappe.db.commit()
 
 def rollback_wo_se_jc(info,msg):
 	try:
@@ -149,7 +133,6 @@ def rollback_wo_se_jc(info,msg):
 
 		bl_dc = frappe.get_doc(info.doctype, info.name)
 		bl_dc.db_set("docstatus", 0)
-		frappe.db.commit()
 		info.reload()
 		frappe.msgprint(msg)
 	except Exception:
@@ -157,7 +140,6 @@ def rollback_wo_se_jc(info,msg):
 		frappe.log_error(title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.delivery_challan_receipt.delivery_challan_receipt.rollback_wo_se_jc",message=frappe.get_traceback())
 		bl_dc = frappe.get_doc(info.doctype, info.name)
 		bl_dc.db_set("docstatus", 0)
-		frappe.db.commit()
 		info.reload()
 		frappe.msgprint("Something went wrong , Not able to rollback changes..!")
 
@@ -616,9 +598,11 @@ def make_stock_entry(w_item,sp_item_qty,sp_item_batch_no,sp_item_spp_batch_no,sp
 		update_stock_ref(mt_doc.name,stock_entry.name)
 		# frappe.db.set_value(mt_doc.doctype,mt_doc.name,"stock_entry_reference",stock_entry.name)
 		# frappe.db.commit()
-		st_entry = frappe.get_doc("Stock Entry",stock_entry.name)
-		st_entry.docstatus=1
-		st_entry.save(ignore_permissions=True)
+		st_entry = frappe.get_doc("Stock Entry", stock_entry.name)
+		item_group = frappe.db.get_value("Item", compound_code, "item_group")
+		if item_group != "Compound":
+			st_entry.docstatus = 1
+			st_entry.save(ignore_permissions=True)
 		""" Update creation date"""
 		if mt_doc.dc_receipt_date:
 			""" Update posting date and time """
@@ -630,10 +614,8 @@ def make_stock_entry(w_item,sp_item_qty,sp_item_batch_no,sp_item_spp_batch_no,sp
 			m_item = frappe.db.get_all("Delivery Note Item",filters={"parent":w_item.dc_no,"parenttype":"Delivery Note","scan_barcode":dc_item.scan_barcode,"item_code":dc_item.item_code})
 			if m_item:
 				for x in m_item:
-					frappe.db.set_value("Delivery Note Item",x.name,"is_received",1)
-					frappe.db.set_value("Delivery Note Item",x.name,"dc_receipt_no",mt_doc.name)
-					frappe.db.set_value("Delivery Note Item",x.name,"dc_receipt_date",(getdate() if not mt_doc.dc_receipt_date else mt_doc.dc_receipt_date))
-		frappe.db.commit()
+					frappe.db.set_value("Delivery Note Item", x.name, "dc_receipt_no", mt_doc.name)
+					frappe.db.set_value("Delivery Note Item", x.name, "dc_receipt_date", (getdate() if not mt_doc.dc_receipt_date else mt_doc.dc_receipt_date))
 		return {"status":"Success","st_entry":stock_entry}
 	except Exception as e:
 		frappe.log_error(message=frappe.get_traceback(),title="DC Receipt Stock Entry Error")
@@ -863,7 +845,6 @@ def update_receive_status(mt_doc):
 				frappe.db.set_value("Delivery Note Item",x.name,"is_received",1)
 				frappe.db.set_value("Delivery Note Item",x.name,"dc_receipt_no",mt_doc.name)
 				frappe.db.set_value("Delivery Note Item",x.name,"dc_receipt_date",(getdate() if not mt_doc.dc_receipt_date else mt_doc.dc_receipt_date))
-			frappe.db.commit()
 
 def create_hold_wos(dc_rec):
 	try:
@@ -1010,9 +991,11 @@ def make_hold_stock_entry(w_item,sp_item_qty,sp_item_batch_no,sp_item_spp_batch_
 		update_stock_ref(mt_doc.name,stock_entry.name)
 		# frappe.db.set_value(mt_doc.doctype,mt_doc.name,"stock_entry_reference",stock_entry.name)
 		# frappe.db.commit()
-		st_entry = frappe.get_doc("Stock Entry",stock_entry.name)
-		st_entry.docstatus=1
-		st_entry.save(ignore_permissions=True)
+		st_entry = frappe.get_doc("Stock Entry", stock_entry.name)
+		item_group = frappe.db.get_value("Item", compound_code, "item_group")
+		if item_group != "Compound":
+			st_entry.docstatus = 1
+			st_entry.save(ignore_permissions=True)
 		""" Update creation date"""
 		if mt_doc.dc_receipt_date:
 			if mt_doc.dc_receipt_date:
@@ -1232,9 +1215,11 @@ def make_mb_stock_entry(sp_item_qty,sp_item_batch_no,sp_item_spp_batch_no,sp_ite
 					})
 		stock_entry.insert(ignore_permissions = True)
 		update_stock_ref(mt_doc.name,stock_entry.name)
-		st_entry = frappe.get_doc("Stock Entry",stock_entry.name)
-		st_entry.docstatus=1
-		st_entry.save(ignore_permissions=True)
+		st_entry = frappe.get_doc("Stock Entry", stock_entry.name)
+		item_group = frappe.db.get_value("Item", compound_code, "item_group")
+		if item_group != "Compound":
+			st_entry.docstatus = 1
+			st_entry.save(ignore_permissions=True)
 		""" Update creation date"""
 		if mt_doc.dc_receipt_date:
 			if mt_doc.dc_receipt_date:
@@ -1260,7 +1245,6 @@ def update_master_batch_details(stock_entry,mt_doc,w_item):
 		frappe.db.sql(f"""  UPDATE `tabDC Item` SET mb_batch_code = '{exe_info[0].batch_no}',
 								mb_item_code = '{exe_info[0].item_code}',mb_warehouse = '{exe_info[0].t_warehouse}'
 							WHERE name = '{w_item.name}' """)
-		frappe.db.commit()
 		bom_items = frappe.db.sql(""" SELECT B.item FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name WHERE BI.item_code = %(item_code)s AND B.is_default=1 AND B.is_active=1 """,{"item_code":exe_info[0].item_code},as_dict=1)
 		if bom_items:
 			for k in mt_doc.dc_items:
@@ -1268,7 +1252,6 @@ def update_master_batch_details(stock_entry,mt_doc,w_item):
 					if k.item_to_manufacture == bom_items[0].item:
 						frappe.db.sql(f"""  UPDATE `tabDC Item` SET mb_item_to_manufacture = '{bom_items[0].item}'
 							WHERE parent = '{mt_doc.name}' """)
-						frappe.db.commit()
 					else:
 						frappe.throw(f"The Master batch compound - {bom_items[0].item} is differ from final batch compound - {k.item_to_manufacture}..!")
 		else:
@@ -1488,7 +1471,6 @@ def update_receive_status_c(mt_doc,dc_nos):
 				frappe.db.set_value("Delivery Note Item",x.name,"is_received",1)
 				frappe.db.set_value("Delivery Note Item",x.name,"dc_receipt_no",mt_doc.name)
 				frappe.db.set_value("Delivery Note Item",x.name,"dc_receipt_date",(getdate() if not mt_doc.dc_receipt_date else mt_doc.dc_receipt_date))
-			frappe.db.commit()
 	update_over_all_dn_status(mt_doc,"Not Hold")
 
 
