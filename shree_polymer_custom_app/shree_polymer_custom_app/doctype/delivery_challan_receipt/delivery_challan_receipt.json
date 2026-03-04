@@ -190,6 +190,22 @@
    "fieldname": "mixing_time",
    "fieldtype": "Time",
    "label": "Mixing Time"
+  },
+  {
+   "fieldname": "reference_id",
+   "fieldtype": "Data",
+   "label": "Reference ID (Bridge)",
+   "read_only": 1,
+   "hidden": 1,
+   "in_list_view": 0
+  },
+  {
+   "fieldname": "bridge_mix_barcode",
+   "fieldtype": "Data",
+   "label": "Bridge Mix Barcode",
+   "read_only": 1,
+   "hidden": 1,
+   "in_list_view": 0
   }
  ],
  "index_web_pages_for_search": 1,

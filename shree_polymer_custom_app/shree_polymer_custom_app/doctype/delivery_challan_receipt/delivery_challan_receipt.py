@@ -785,8 +785,19 @@ def make_stock_entry_final_batch(mt_doc,item_code,spp_settings,work_order_id,pur
 					if naming_status:
 						stock_entry.naming_series = naming_series
 			""" End """
-			d_spp_batch_no = get_spp_batch_date(bom[0].item)
-			bcode_resp = generate_barcode("C_"+d_spp_batch_no)
+			# BRIDGE ORIGIN CHECK:
+			# If this DCR was submitted by the Legacy Bridge (reference_id is set)
+			# and the Console has already generated a compound barcode (bridge_mix_barcode),
+			# use it directly — skip auto-generation via get_spp_batch_date().
+			# This keeps both systems in sync during the parallel-run transition.
+			if mt_doc.get("reference_id") and mt_doc.get("bridge_mix_barcode"):
+				d_spp_batch_no = mt_doc.bridge_mix_barcode.replace("C_", "")
+				bcode_resp = generate_barcode(mt_doc.bridge_mix_barcode)
+			else:
+				# Legacy desk flow — auto-generate as usual
+				d_spp_batch_no = get_spp_batch_date(bom[0].item)
+				bcode_resp = generate_barcode("C_"+d_spp_batch_no)
+
 			stock_entry.append("items",{
 				"item_code":bom[0].item,
 				"s_warehouse":None,
