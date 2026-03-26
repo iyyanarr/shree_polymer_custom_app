@@ -1289,8 +1289,7 @@ def validate_lot_number(batch_no):
 			if not check_lot_issue[0].mould_reference:
 				return {"status": "Failed", "message": f"The <b>Mould Referenece</b> not found in <b>Job Card - {check_lot_issue[0].job_card}</b>"}
 			else:
-				mould_ref = frappe.db.get_value(
-					"Asset", check_lot_issue[0].mould_reference, "item_code")
+				mould_ref = check_lot_issue[0].mould_reference
 				if mould_ref:
 					if check_lot_issue[0].no_of_running_cavities:
 						check_lot_issue[0].mould_reference = mould_ref

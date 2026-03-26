@@ -20,13 +20,7 @@ frappe.ui.form.on('Mould Specification', {
 							}
 						};
 					});
-					frm.set_query("mould_ref", function () {
-						return {
-							"filters": {
-								"item_group": r.message.mould_item_group
-							}
-						};
-					});
+
 					frm.set_query("compound_code", function () {
 						return {
 							"filters": {

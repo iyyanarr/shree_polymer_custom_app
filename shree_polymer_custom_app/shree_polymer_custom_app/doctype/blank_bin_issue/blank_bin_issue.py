@@ -46,7 +46,6 @@ def validate_blank_issue_barcode(barcode,scan_type,docname,production_item = Non
 					# 	frappe.response.status = 'success'
 					# 	frappe.response.message = job_card
 
-					job_card['mould_reference'] = frappe.db.get_value("Asset",{"name":job_card.get('mould_reference')},"item_code")
 					frappe.response.status = 'success'
 					frappe.response.message = job_card
 					""" End """

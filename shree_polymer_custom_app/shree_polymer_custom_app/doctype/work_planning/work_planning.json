@@ -68,7 +68,7 @@
    "fieldname": "mould",
    "fieldtype": "Link",
    "label": "Mould",
-   "options": "Item"
+   "options": "Asset"
   },
   {
    "fieldname": "add",

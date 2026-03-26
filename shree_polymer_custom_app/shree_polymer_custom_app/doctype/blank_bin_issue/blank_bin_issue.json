@@ -129,7 +129,7 @@
    "fieldname": "mould",
    "fieldtype": "Link",
    "label": "Mould",
-   "options": "Item",
+   "options": "Asset",
    "read_only": 1
   },
   {

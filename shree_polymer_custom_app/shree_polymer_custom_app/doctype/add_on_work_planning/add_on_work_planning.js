@@ -26,13 +26,7 @@ frappe.ui.form.on('Add On Work Planning', {
 							}
 						};
 					});
-					frm.set_query("mould", function () {
-						return {
-							"filters": {
-								"item_group": r.message.mould_item_group
-							}
-						};
-					});
+
 
 					let work_station_filter_val = []
 					if (r.message.work_station && r.message.work_station.length != 0) {
@@ -49,13 +43,7 @@ frappe.ui.form.on('Add On Work Planning', {
 					});
 
 					// Child doc link filters
-					frm.set_query('mould', 'items', () => {
-						return {
-							"filters": {
-								"item_group": r.message.mould_item_group
-							}
-						};
-					});
+
 					frm.set_query('item_produced', 'items', () => {
 						return {
 							"filters": {

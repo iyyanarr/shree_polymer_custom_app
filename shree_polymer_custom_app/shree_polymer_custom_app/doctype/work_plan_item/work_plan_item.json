@@ -31,7 +31,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Mould",
-   "options": "Item"
+   "options": "Asset"
   },
   {
    "fieldname": "item",

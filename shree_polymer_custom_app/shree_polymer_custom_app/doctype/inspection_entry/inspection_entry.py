@@ -785,7 +785,7 @@ def validate_lot_number(batch_no,docname,inspection_type):
 						if check_lot_issue[0].mould_reference:
 							# Get mould specification details including shell weight
 							mould_spec = frappe.db.get_value("Mould Specification",
-								{"mould_ref":frappe.db.get_value("Asset",check_lot_issue[0].mould_reference,"item_code"),
+								{"mould_ref":check_lot_issue[0].mould_reference,
 								 "spp_ref":check_lot_issue[0].production_item,"mould_status":"ACTIVE"},
 								["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
 							
@@ -872,7 +872,7 @@ def validate_lot_number(batch_no,docname,inspection_type):
 								return {"status":"Failed","message":f"Multiple BOM's found for Item to Produce - <b>{bom[0].item}</b>"}
 							""" Add UOM for rejection in No's """
 							if check_lot_issue[0].mould_reference:
-								item = frappe.db.get_value("Asset",check_lot_issue[0].mould_reference,"item_code")
+								item = check_lot_issue[0].mould_reference
 								if item:
 									# Get mould specification details including shell weight
 									mould_spec = frappe.db.get_value("Mould Specification",

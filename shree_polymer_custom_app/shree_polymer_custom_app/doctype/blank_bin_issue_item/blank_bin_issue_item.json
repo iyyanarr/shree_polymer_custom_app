@@ -81,7 +81,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Mould",
-   "options": "Item",
+   "options": "Asset",
    "read_only": 1
   },
   {
