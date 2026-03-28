@@ -279,14 +279,14 @@ frappe.ui.form.on('Add On Work Planning', {
 			frm.set_query("mould", function () {
 				return {
 					"filters": {
-						"name": ["in",mould_list]
+						"asset_name": ["in",mould_list]
 					}
 				};
 			});
 			frm.set_query('mould', 'items', () => {
 				return {
 					"filters": {
-						"name": ["in",mould_list]
+						"asset_name": ["in",mould_list]
 					}
 				};
 			});
@@ -297,14 +297,14 @@ frappe.ui.form.on('Add On Work Planning', {
 			frm.set_query("mould", function () {
 				return {
 					"filters": {
-						"name": ["in",mould_list]
+						"asset_name": ["in",mould_list]
 					}
 				};
 			});
 			frm.set_query('mould', 'items', () => {
 				return {
 					"filters": {
-						"name": ["in",mould_list]
+						"asset_name": ["in",mould_list]
 					}
 				};
 			});
