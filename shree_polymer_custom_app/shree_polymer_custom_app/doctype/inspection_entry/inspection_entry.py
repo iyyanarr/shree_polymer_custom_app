@@ -789,6 +789,15 @@ def validate_lot_number(batch_no,docname,inspection_type):
 								 "spp_ref":check_lot_issue[0].production_item,"mould_status":"ACTIVE"},
 								["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
 							
+							# If not found, it might be because the Job Card has an Asset but the spec has an Item Code
+							if not mould_spec and check_lot_issue[0].mould_reference:
+								mould_item_code = frappe.db.get_value("Asset", check_lot_issue[0].mould_reference, "item_code")
+								if mould_item_code:
+									mould_spec = frappe.db.get_value("Mould Specification",
+										{"mould_ref": mould_item_code,
+										 "spp_ref": check_lot_issue[0].production_item, "mould_status": "ACTIVE"},
+										["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
+							
 							if mould_spec and mould_spec.avg_blank_wtproduct_gms:
 								# Calculate total weight including shell weight if present
 								base_wt_per_pi_gms = float(mould_spec.avg_blank_wtproduct_gms)
@@ -878,6 +887,15 @@ def validate_lot_number(batch_no,docname,inspection_type):
 									mould_spec = frappe.db.get_value("Mould Specification",
 										{"mould_ref":item,"spp_ref":check_lot_issue[0].production_item,"mould_status":"ACTIVE"},
 										["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
+									
+									# If not found, it might be because the Job Card has an Asset but the spec has an Item Code
+									if not mould_spec and item:
+										mould_item_code = frappe.db.get_value("Asset", item, "item_code")
+										if mould_item_code:
+											mould_spec = frappe.db.get_value("Mould Specification",
+												{"mould_ref": mould_item_code,
+												 "spp_ref": check_lot_issue[0].production_item, "mould_status": "ACTIVE"},
+												["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
 									
 									if mould_spec and mould_spec.avg_blank_wtproduct_gms:
 										# Calculate total weight including shell weight if present
