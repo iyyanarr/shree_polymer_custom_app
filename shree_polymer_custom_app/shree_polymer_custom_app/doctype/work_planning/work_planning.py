@@ -222,7 +222,7 @@ def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item):
 			# Resolve Asset ID to asset_name (Short Name) if it's an Asset link
 			resolved_mould = frappe.db.get_value("Asset", mould_val, "asset_name") or mould_val
 			
-			jc.mould_reference = resolved_mould
+			jc.mould_reference = mould_val
 			mould_info = frappe.db.get_all("Mould Specification",filters={"mould_ref":resolved_mould,"spp_ref":production_mat_item,"mould_status":["in",["ACTIVE","SPARE","DEV"]],"docstatus":1},fields=["*"])
 			if mould_info:
 				jc.no_of_running_cavities = mould_info[0].noof_cavities
