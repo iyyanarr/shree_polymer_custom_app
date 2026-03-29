@@ -85,10 +85,14 @@ class DeflashingReceiptEntry(Document):
 					
 					if moulding_entry and moulding_entry.mould_reference:
 						# Fetch avg_blank_wtproduct_gms AND shell_weight from Mould Specification
+						# Resolve Asset ID to name for consistent Mould Specification lookup
+						mould_val = moulding_entry.mould_reference
+						resolved_mould = frappe.db.get_value("Asset", mould_val, "asset_name") or mould_val
+						
 						mould_spec = frappe.db.get_value(
 							"Mould Specification", 
 							{
-								"mould_ref": moulding_entry.mould_reference, 
+								"mould_ref": resolved_mould, 
 								"spp_ref": moulding_entry.item_to_produce, 
 								"mould_status": "ACTIVE"
 							}, 

@@ -783,10 +783,14 @@ def validate_lot_number(batch_no,docname,inspection_type):
 							return {"status":"Failed","message":f"Multiple BOM's found for Item to Produce - <b>{bom[0].item}</b>"}
 						""" Add UOM for rejection in No's """
 						if check_lot_issue[0].mould_reference:
+							# Resolve Asset ID to name for consistent Mould Specification lookup
+							mould_id = check_lot_issue[0].mould_reference
+							resolved_mould = frappe.db.get_value("Asset", mould_id, "asset_name") or mould_id
+
 							# Get mould specification details including shell weight
 							mould_spec = frappe.db.get_value("Mould Specification",
-								{"mould_ref":check_lot_issue[0].mould_reference,
-								 "spp_ref":check_lot_issue[0].production_item,"mould_status":"ACTIVE"},
+								{"mould_ref": resolved_mould,
+								 "spp_ref": check_lot_issue[0].production_item, "mould_status": "ACTIVE"},
 								["avg_blank_wtproduct_gms", "shell_weight"], as_dict=True)
 							
 							# If not found, it might be because the Job Card has an Asset but the spec has an Item Code

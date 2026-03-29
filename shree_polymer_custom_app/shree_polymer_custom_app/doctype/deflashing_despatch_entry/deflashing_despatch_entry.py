@@ -36,16 +36,15 @@ class DeflashingDespatchEntry(Document):
 						item.qty_in_nos = 0
 						continue
 					
-					if not moulding_entry.mould_reference:
-						frappe.msgprint(f"⚠️ Mould reference is empty for lot {item.lot_number}")
-						item.qty_in_nos = 0
-						continue
+					# Resolve Asset ID to name for consistent Mould Specification lookup
+					mould_val = moulding_entry.mould_reference
+					resolved_mould = frappe.db.get_value("Asset", mould_val, "asset_name") or mould_val
 					
 					# Fetch avg_blank_wtproduct_gms AND shell_weight from Mould Specification
 					mould_spec = frappe.db.get_value(
 						"Mould Specification",
 						{
-							"mould_ref": moulding_entry.mould_reference,
+							"mould_ref": resolved_mould,
 							"spp_ref": moulding_entry.item_to_produce,
 							"mould_status": "ACTIVE"
 						},
@@ -54,7 +53,7 @@ class DeflashingDespatchEntry(Document):
 					)
 					
 					if not mould_spec or not mould_spec.avg_blank_wtproduct_gms:
-						frappe.msgprint(f"⚠️ Average Blank Weight not found for mould {moulding_entry.mould_reference} and item {moulding_entry.item_to_produce} in lot {item.lot_number}")
+						frappe.msgprint(f"⚠️ Average Blank Weight not found for mould {resolved_mould} and item {moulding_entry.item_to_produce} in lot {item.lot_number}")
 						item.qty_in_nos = 0
 						continue
 					

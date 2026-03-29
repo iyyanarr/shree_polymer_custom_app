@@ -149,10 +149,12 @@ class MouldingProductionEntry(Document):
             for ins in ins_info:
                 total_rejected_qty_nos += flt(ins.total_rejected_qty, 3)
 
-        # Get Avg Blank Weight from Mould Specification
-        avg_blank_weight_kg = 0.0
+        # Resolve Asset ID to name for consistent Mould Specification lookup
+        mould_val = self.mould_reference
+        resolved_mould = frappe.db.get_value("Asset", mould_val, "asset_name") or mould_val
+        
         mould_spec = frappe.db.get_value("Mould Specification", 
-            {"mould_ref": self.mould_reference, "compound_code": self.compound, "mould_status": "ACTIVE"}, 
+            {"mould_ref": resolved_mould, "compound_code": self.compound, "mould_status": "ACTIVE"}, 
             "avg_blank_wtproduct_gms")
         
         if mould_spec:
@@ -716,10 +718,14 @@ def validate_shell(self):
             shell_item = shell_details[0].item_code
             total_shell_qty_in_nos = self.number_of_lifts * self.no_of_running_cavities
             
+            # Resolve Asset ID to name for consistent Mould Specification lookup
+            mould_val = self.mould_reference
+            resolved_mould = frappe.db.get_value("Asset", mould_val, "asset_name") or mould_val
+            
             # Use shell weight from Mould Specification if available
             shell_weight_gms = 0.0
             mould_spec = frappe.db.get_value("Mould Specification", 
-                {"mould_ref": self.mould_reference, "compound_code": self.compound, "mould_status": "ACTIVE"}, 
+                {"mould_ref": resolved_mould, "compound_code": self.compound, "mould_status": "ACTIVE"}, 
                 "shell_weight")
             
             if mould_spec:

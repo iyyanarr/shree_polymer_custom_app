@@ -1398,7 +1398,9 @@ def get_lot_details(lot_number, doctype=None, docname=None, mould_reference=None
 		bin_details = []
 		rejection_details = {}
 		blank_weight_kg = 0
-		mould_ref = mould_reference
+		# Resolve Asset ID to name for consistent Mould Specification lookup
+		mould_id = mould_reference
+		mould_ref = frappe.db.get_value("Asset", mould_id, "asset_name") or mould_id
 		
 		# Fetch bin details from source document if available
 		if docname and doctype:
