@@ -836,6 +836,7 @@ def make_stock_entry(self):
                     "uom": "Kg",
                     "conversion_factor_uom": 1,
                     "is_finished_item": 1,
+                    "allow_zero_valuation_rate": 1,
                     "transfer_qty": flt(flt(self.weight, 3), 3),
                     "qty": flt(flt(self.weight, 3), 3),
                     "use_serial_batch_fields": 1,
@@ -1089,6 +1090,7 @@ def append_source_details(stock_entry, self, work_order):
                 "uom": "Kg",
                 "conversion_factor_uom": 1,
                 "is_finished_item": 0,
+                "allow_zero_valuation_rate": 1,
                 "use_serial_batch_fields": 1,
                 "transfer_qty": flt(normal_consumption_qty, 3),
                 "qty": flt(normal_consumption_qty, 3),
@@ -1127,6 +1129,7 @@ def append_source_details(stock_entry, self, work_order):
             "conversion_factor_uom": 1,
             "is_finished_item": 0,
             "is_scrap_item": 1,  # Mark as scrap/waste material for tracking
+            "allow_zero_valuation_rate": 1,
             "transfer_qty": flt(total_purge_qty, 3),
             "qty": flt(total_purge_qty, 3),
             "use_serial_batch_fields": 1,  # Use batch fields for consumption items
@@ -1144,6 +1147,7 @@ def append_source_details(stock_entry, self, work_order):
             "uom": "Nos",
             "conversion_factor_uom": 1,
             "is_finished_item": 0,
+            "allow_zero_valuation_rate": 1,
             "transfer_qty": self.shell_qty_nos,
             "use_serial_batch_fields": 1,
             "qty": self.shell_qty_nos,
