@@ -141,7 +141,6 @@
    "reqd": 1
   },
   {
-   "fetch_from": "shift_type.job_card_naming_series",
    "fieldname": "shift_series",
    "fieldtype": "Data",
    "hidden": 1,
@@ -149,7 +148,6 @@
    "read_only": 1
   },
   {
-   "fetch_from": "shift_type.total_time",
    "fieldname": "shift_time",
    "fieldtype": "Time",
    "hidden": 1,

@@ -17,6 +17,7 @@
         "column_break_7",
         "mould_status",
         "noof_cavities",
+        "cure_time",
         "shell_weight",
         "pot_residue",
         "wtpiece_avg_gms",
@@ -58,6 +59,11 @@
             "fieldname": "noof_cavities",
             "fieldtype": "Data",
             "label": "No.Of Cavities"
+        },
+        {
+            "fieldname": "cure_time",
+            "fieldtype": "Int",
+            "label": "Cure Time (Secs)"
         },
         {
             "fieldname": "wtpiece_max_gms",

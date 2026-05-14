@@ -11,6 +11,12 @@
   "bom",
   "column_break_3",
   "mould",
+  "cure_time",
+  "no_of_running_cavities",
+  "bottom_plate_temp",
+  "top_plate_temp",
+  "low_pressure_setting",
+  "high_pressure_setting",
   "job_card",
   "lot_number"
  ],
@@ -62,6 +68,36 @@
    "in_standard_filter": 1,
    "label": "Bom",
    "options": "BOM"
+  },
+  {
+   "fieldname": "cure_time",
+   "fieldtype": "Int",
+   "label": "Cure Time"
+  },
+  {
+   "fieldname": "no_of_running_cavities",
+   "fieldtype": "Int",
+   "label": "No of Running Cavities"
+  },
+  {
+   "fieldname": "bottom_plate_temp",
+   "fieldtype": "Data",
+   "label": "Bottom Plate Temp"
+  },
+  {
+   "fieldname": "top_plate_temp",
+   "fieldtype": "Data",
+   "label": "Top Plate Temp"
+  },
+  {
+   "fieldname": "low_pressure_setting",
+   "fieldtype": "Data",
+   "label": "Low Pressure Setting"
+  },
+  {
+   "fieldname": "high_pressure_setting",
+   "fieldtype": "Data",
+   "label": "High Pressure Setting"
   }
  ],
  "index_web_pages_for_search": 1,
