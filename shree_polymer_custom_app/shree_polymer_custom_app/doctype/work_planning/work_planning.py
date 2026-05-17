@@ -26,7 +26,7 @@ class WorkPlanning(Document):
 				condt += f'"{each_item.item}",'
 			condt = condt[:-1]
 			# query = f"""  SELECT item,target_qty FROM `tabWork Plan Item Target` WHERE item IN ({condt}) AND target_qty != 0 """
-			query = f"""  SELECT item,target_qty FROM `tabWork Plan Item Target` WHERE item IN ({condt}) AND shift_type = "{self.shift_time}" AND target_qty != 0 """
+			query = f"""  SELECT item,target_qty FROM `tabWork Plan Item Target` WHERE item IN ({condt}) AND shift_type = "{self.shift_type}" AND target_qty != 0 """
 			result = frappe.db.sql(query,as_dict=1) 
 			unset_qty = result if result else []
 			unset_qtys = []
@@ -49,9 +49,11 @@ class WorkPlanning(Document):
 		exe_shift = frappe.db.get_value(self.doctype,{"date":getdate(self.date),"shift_series":self.shift_series,"name":["!=",self.name],"docstatus":1})
 		if exe_shift:
 			frappe.throw(f"The shift <b>{self.shift_type}</b> already scheduled in the plan <b>{exe_shift}</b>")
-		# exe_shift = frappe.db.get_value(self.doctype,{"date":getdate(self.date),"shift_number":self.shift_number,"name":["!=",self.name],"docstatus":1})
 		# if exe_shift:
 		# 	frappe.throw(f"The shift <b>{self.shift_number}</b> already scheduled in the plan <b>{exe_shift}</b>")
+	
+	def on_submit(self):
+		self.on_submit_value()
 
 	def on_submit_value(self):
 		valididate = validate_bom(self)
@@ -64,11 +66,9 @@ class WorkPlanning(Document):
 					frappe.db.commit()
 					return True
 				else:
-					self.reload()
-					self.on_cancel()
-					return False
+					frappe.throw("Work Order creation failed.")
 			else:
-				return False
+				frappe.throw("No items found in Work Planning.")
 			""" End """ 
 		else:
 			frappe.throw(valididate.get("message"))
@@ -128,7 +128,7 @@ class WorkPlanning(Document):
 				actual_weight = flt(spp_settings.target_qty,3) * flt(list(filter(lambda x: x.get('item') == item.item,doc_info.qty_wt_item))[0].get('qty'),3)
 				wo = frappe.new_doc("Work Order")
 				wo.naming_series = "MFG-WO-.YYYY.-"
-				wo.company = "SPP"
+				wo.company = "Shree Polymer Products"
 				wo.fg_warehouse = spp_settings.unit_2_warehouse
 				wo.use_multi_level_bom = 0
 				wo.skip_transfer = 1
@@ -153,16 +153,15 @@ class WorkPlanning(Document):
 				wo.save(ignore_permissions=True)
 				jo_card = update_job_cards(wo.name,actual_weight,doc_info,item,wo.production_item)
 				if not jo_card:
-					frappe.db.rollback()
-					return False
+					frappe.throw("Job Card creation failed for item {0}".format(item.item))
 			frappe.db.commit()
 			return True
 		except Exception as e:
 			frappe.db.rollback()
 			frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.work_planning.work_planning.create_work_order")
-			return False
+			frappe.throw(str(e))
 
-def validate_get_serial_no(self,type__,item = None,job_card = None):
+def validate_get_serial_no(self,type__,item = None,job_card = None, custom_serial = None):
 	all_serial_nos = []
 	no = 1
 	# serial_nos = frappe.db.get_all("Moulding Serial No",filters={"posted_date":getdate(self.date),'shift_no':self.shift_number},fields=['serial_no'])
@@ -170,19 +169,25 @@ def validate_get_serial_no(self,type__,item = None,job_card = None):
 	if serial_nos:
 		for s_no in serial_nos:
 			all_serial_nos.append(s_no.serial_no)
+	
+	if custom_serial:
+		no = custom_serial
+
 	while True:
-		if no not in all_serial_nos:
+		if no not in all_serial_nos or type__ == "Save":
 			if type__ == "Generate":
 				return no
 			elif type__ == "Save":
-				sl_no = frappe.new_doc("Moulding Serial No")
-				sl_no.posted_date = getdate(self.date)
-				sl_no.compound_code = item.get("item")
-				sl_no.serial_no = no
-				# sl_no.shift_no = self.shift_number
-				sl_no.shift_series = self.shift_series
-				sl_no.job_card_reference = job_card.name
-				sl_no.insert(ignore_permissions = True)
+				# Only insert if it doesn't already exist for this job card
+				if not frappe.db.exists("Moulding Serial No", {"job_card_reference": job_card.name}):
+					sl_no = frappe.new_doc("Moulding Serial No")
+					sl_no.posted_date = getdate(self.date)
+					sl_no.compound_code = item.get("item")
+					sl_no.serial_no = no
+					# sl_no.shift_no = self.shift_number
+					sl_no.shift_series = self.shift_series
+					sl_no.job_card_reference = job_card.name
+					sl_no.insert(ignore_permissions = True)
 				return
 		no += 1
 		
@@ -190,7 +195,10 @@ def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item):
 	try:
 		spp_settings = frappe.get_single("SPP Settings")
 		job_cards = frappe.db.get_all("Job Card",filters={"work_order":wo})
-		lot_number = get_spp_batch_date(doc_info)
+		
+		# Console-first Identity: Use provided lot_number if available
+		lot_number = item.get("lot_number") or get_spp_batch_date(doc_info)
+		
 		barcode = generate_barcode(lot_number)
 		for job_card in job_cards:
 			jc = frappe.get_doc("Job Card",job_card.name)
@@ -224,25 +232,35 @@ def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item):
 				jc.mould_reference = asset_id
 			mould_info = frappe.db.get_all("Mould Specification",filters={"mould_ref":mould_item_code,"spp_ref":production_mat_item,"mould_status":["in",["ACTIVE","SPARE","DEV"]],"docstatus":1},fields=["*"])
 			if mould_info:
-				jc.no_of_running_cavities = mould_info[0].noof_cavities
+				jc.no_of_running_cavities = item.get("no_of_running_cavities") or mould_info[0].noof_cavities
+				jc.cure_time = item.get("cure_time") or mould_info[0].cure_time
 				jc.blank_type = mould_info[0].blank_type
 				jc.blank_wt = mould_info[0].avg_blank_wtproduct_gms
 			press_info = frappe.db.get_all("Press Mould Specification",filters={"mould":mould_item_code,"press":item.get('work_station')},fields=["*"])
 			if press_info:
-				jc.bottom_plate_temp = press_info[0].bottom_plate_temp
-				jc.top_plate_temp = press_info[0].top_plate_temp
-				jc.low_pressure_setting = press_info[0].low_pressure_setting
-				jc.high_pressure_setting = press_info[0].high_pressure_setting
+				jc.bottom_plate_temp = item.get("bottom_plate_temp") or press_info[0].bottom_plate_temp
+				jc.top_plate_temp = item.get("top_plate_temp") or press_info[0].top_plate_temp
+				jc.low_pressure_setting = item.get("low_pressure_setting") or press_info[0].low_pressure_setting
+				jc.high_pressure_setting = item.get("high_pressure_setting") or press_info[0].high_pressure_setting
 			jc.save(ignore_permissions=True)
 			""" Update job card reference in child table """
 			frappe.db.set_value("Work Plan Item",item.name,{"job_card":jc.name,"lot_number":jc.batch_code})
 			""" End """
-			validate_get_serial_no(doc_info,"Save",item,job_card)
+			
+			# Extract serial from lot_number if it's external
+			custom_serial = None
+			if item.get("lot_number") and len(item.lot_number) >= 2:
+				try:
+					custom_serial = int(item.lot_number[-2:])
+				except:
+					pass
+			
+			validate_get_serial_no(doc_info,"Save",item,jc, custom_serial)
 		frappe.db.commit()
 		return True
 	except Exception:
 		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.work_planning.work_planning.update_job_cards")
-		return False
+		frappe.throw("Error in update_job_cards: " + frappe.get_traceback())
 
 def get_spp_batch_date(doc_info,compound=None):
 	serial_no = validate_get_serial_no(doc_info,"Generate")
@@ -330,7 +348,8 @@ def generate_barcode(compound):
 		new_image.paste(barcode_image, (0, margin))
 		# object to draw text
 		draw = ImageDraw.Draw(new_image)
-		new_image.save(str(frappe.local.site)+'/public/files/{filename}.png'.format(filename=barcode_text), 'PNG')
+		file_path = frappe.get_site_path('public', 'files', f"{barcode_text}.png")
+		new_image.save(file_path, 'PNG')
 		barcode = "/files/" + barcode_text + ".png"
 		return {"barcode":barcode,"barcode_text":barcode_text}
 	except Exception:
