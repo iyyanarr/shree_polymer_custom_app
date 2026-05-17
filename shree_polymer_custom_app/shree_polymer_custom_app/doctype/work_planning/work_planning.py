@@ -217,15 +217,17 @@ def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item):
 			# jc.shift_number = doc_info.shift_number
 			jc.shift_type = doc_info.shift_type
 			jc.shift_supervisor = doc_info.supervisor_id
-			asset_id = frappe.db.get_value("Asset",{"item_code":item.get('mould')})
+			mould_val = item.get("mould")
+			mould_item_code = frappe.db.get_value("Asset", mould_val, "item_code") or mould_val
+			asset_id = mould_val if frappe.db.exists("Asset", mould_val) else frappe.db.get_value("Asset", {"item_code": mould_val})
 			if asset_id:
-				jc.mould_reference = asset_id 
-			mould_info = frappe.db.get_all("Mould Specification",filters={"mould_ref":item.get("mould"),"spp_ref":production_mat_item,"mould_status":["in",["ACTIVE","SPARE","DEV"]],"docstatus":1},fields=["*"])
+				jc.mould_reference = asset_id
+			mould_info = frappe.db.get_all("Mould Specification",filters={"mould_ref":mould_item_code,"spp_ref":production_mat_item,"mould_status":["in",["ACTIVE","SPARE","DEV"]],"docstatus":1},fields=["*"])
 			if mould_info:
 				jc.no_of_running_cavities = mould_info[0].noof_cavities
 				jc.blank_type = mould_info[0].blank_type
 				jc.blank_wt = mould_info[0].avg_blank_wtproduct_gms
-			press_info = frappe.db.get_all("Press Mould Specification",filters={"mould":item.get("mould"),"press":item.get('work_station')},fields=["*"])
+			press_info = frappe.db.get_all("Press Mould Specification",filters={"mould":mould_item_code,"press":item.get('work_station')},fields=["*"])
 			if press_info:
 				jc.bottom_plate_temp = press_info[0].bottom_plate_temp
 				jc.top_plate_temp = press_info[0].top_plate_temp
