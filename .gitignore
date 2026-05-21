@@ -5,3 +5,5 @@
 tags
 node_modules
 __pycache__
+# Graphify analysis artifacts (one-off skill output, not source)
+graphify-out/
