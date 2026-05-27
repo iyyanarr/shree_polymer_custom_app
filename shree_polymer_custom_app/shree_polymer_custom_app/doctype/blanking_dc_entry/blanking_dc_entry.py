@@ -61,15 +61,24 @@ def create___asset_movement(self,spp_settings):
 	asset__mov.transaction_date = now()
 	asset__mov.purpose = "Transfer"
 	for x in self.items:
-		asset__mov.append("assets",{
-			"asset":x.bin_code,
-			"source_location":spp_settings.from_location,
-			"target_location": spp_settings.to_location,
-		})
+		append_asset_movement_row(asset__mov, x.bin_code, spp_settings)
+	if not asset__mov.assets:
+		return
 	asset__mov.insert(ignore_permissions=True)
 	ass__doc = frappe.get_doc("Asset Movement",asset__mov.name)
 	ass__doc.docstatus = 1
 	ass__doc.save(ignore_permissions=True)
+
+def append_asset_movement_row(asset__mov, asset, spp_settings):
+	source_location = frappe.db.get_value("Asset", asset, "location") or spp_settings.from_location
+	target_location = spp_settings.to_location
+	if source_location == target_location:
+		return
+	asset__mov.append("assets",{
+		"asset":asset,
+		"source_location":source_location,
+		"target_location": target_location,
+	})
 
 def make___rollback(self):
 	try:
@@ -261,11 +270,9 @@ def make___asset_movement(self,spp_settings):
 	asset__mov.transaction_date = now()
 	asset__mov.purpose = "Transfer"
 	for x in self.items:
-		asset__mov.append("assets",{
-			"asset":x.bin_code,
-			"source_location":spp_settings.from_location,
-			"target_location": spp_settings.to_location,
-		})
+		append_asset_movement_row(asset__mov, x.bin_code, spp_settings)
+	if not asset__mov.assets:
+		return
 	asset__mov.insert(ignore_permissions=True)
 	ass__doc = frappe.get_doc("Asset Movement",asset__mov.name)
 	ass__doc.docstatus = 1
