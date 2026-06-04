@@ -37,9 +37,11 @@ def get_datas(filters):
 	compound_query = "SUM((MS.wtlift_avg_gms/1000) * WPIT.target_qty)"
 	a_compound_query = "SUM((AMS.wtlift_avg_gms/1000) * AWPIT.target_qty)"
 	spp_settings = frappe.get_single("SPP Settings")
-	if spp_settings.extra__of_compound_required:
-		compound_query = f" (SUM((MS.wtlift_avg_gms/1000) * WPIT.target_qty)) + (((SUM((MS.wtlift_avg_gms/1000) * WPIT.target_qty))/100) * {spp_settings.extra__of_compound_required})"
-		a_compound_query = f" (SUM((AMS.wtlift_avg_gms/1000) * AWPIT.target_qty)) + (((SUM((AMS.wtlift_avg_gms/1000) * AWPIT.target_qty))/100) * {spp_settings.extra__of_compound_required})"
+	# Summary applies +10 pct points on top of SPP Settings.extra__of_compound_required (business rule).
+	extra_pct = (spp_settings.extra__of_compound_required or 0) + 10
+	if extra_pct:
+		compound_query = f" (SUM((MS.wtlift_avg_gms/1000) * WPIT.target_qty)) + (((SUM((MS.wtlift_avg_gms/1000) * WPIT.target_qty))/100) * {extra_pct})"
+		a_compound_query = f" (SUM((AMS.wtlift_avg_gms/1000) * AWPIT.target_qty)) + (((SUM((AMS.wtlift_avg_gms/1000) * AWPIT.target_qty))/100) * {extra_pct})"
 
 	query = f"""
 				SELECT DATE(WP.date) date,WP.shift_type shift,
