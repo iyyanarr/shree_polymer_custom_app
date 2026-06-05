@@ -23,7 +23,6 @@ def get_columns():
 	col__.append(_("Avg Lift Wt Kgs")+":Float:120")
 	col__.append(_("Target Lifts")+":Float : 95")
 	col__.append(_("Compound Req Kgs")+":Float : 150")
-	col__.append(_("Summary Compound Req Kgs")+":Float : 180")
 	return col__
 
 def get_datas(filters):
@@ -150,32 +149,7 @@ def get_datas(filters):
 
 				"""
 	response =  frappe.db.sql(query,as_dict=1)
-	_attach_summary_compound_req(response, spp_settings)
 	return response
-
-
-def _attach_summary_compound_req(rows, spp_settings):
-	# Re-aggregates the filtered rows per (date, shift, compound) at the Summary Report's buffer
-	# (+10pp on top of SPP Settings.extra__of_compound_required). Value lands on the FIRST row
-	# of each compound group only — keeps Frappe's auto grand-total honest (no double-count).
-	setting_pct = spp_settings.extra__of_compound_required or 0
-	detail_factor = 1 + setting_pct / 100.0
-	summary_factor = 1 + (setting_pct + 10) / 100.0
-	ratio = (summary_factor / detail_factor) if detail_factor else 1.0
-
-	group_totals = {}
-	for row in rows:
-		key = (row.get('date'), row.get('shift'), row.get('compound_ref'))
-		group_totals[key] = group_totals.get(key, 0.0) + flt(row.get('compound_req_kgs') or 0) * ratio
-
-	seen = set()
-	for row in rows:
-		key = (row.get('date'), row.get('shift'), row.get('compound_ref'))
-		if key in seen:
-			row['summary_compound_req_kgs'] = None
-		else:
-			seen.add(key)
-			row['summary_compound_req_kgs'] = flt(group_totals[key], 3)
 
 @frappe.whitelist()
 def get_filter_pressno(doctype, press_no, searchfield, start, page_len, filters):

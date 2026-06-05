@@ -71,16 +71,17 @@
 			<th>Avg Lift Wt (Kg)</th>
 			<th>Target Lifts</th>
 			<th>Compound Req (Kg)</th>
+			<th>Compound Sheeting Req (Kg)</th>
 		</tr>
 	</thead>
 	<tbody>
 		{% if not groups %}
-		<tr><td colspan="11" style="text-align:center; padding:20px;">No data for the selected filters.</td></tr>
+		<tr><td colspan="12" style="text-align:center; padding:20px;">No data for the selected filters.</td></tr>
 		{% endif %}
 
 		{% for g in groups %}
 		<tr class="group-head">
-			<td colspan="11">Compound: {{ g.compound_ref }}</td>
+			<td colspan="12">Compound: {{ g.compound_ref }}</td>
 		</tr>
 		{% for row in g.rows %}
 		<tr class="group">
@@ -95,11 +96,13 @@
 			<td class="num">{{ "%.3f"|format(row.avg_lift_wt_kgs or 0) }}</td>
 			<td class="num">{{ "%.0f"|format(row.target_lifts or 0) }}</td>
 			<td class="num">{{ "%.3f"|format(row.compound_req_kgs or 0) }}</td>
+			<td class="num">{{ "%.3f"|format(row.compound_sheeting_req or 0) }}</td>
 		</tr>
 		{% endfor %}
 		<tr class="subtotal">
 			<td colspan="10" style="text-align:right;">Subtotal — {{ g.compound_ref }}</td>
 			<td class="num">{{ "%.3f"|format(g.subtotal or 0) }}</td>
+			<td class="num">{{ "%.3f"|format(g.sheeting_subtotal or 0) }}</td>
 		</tr>
 		{% endfor %}
 
@@ -107,6 +110,7 @@
 		<tr class="grand-total">
 			<td colspan="10" style="text-align:right;">Grand Total</td>
 			<td class="num">{{ "%.3f"|format(grand_total or 0) }}</td>
+			<td class="num">{{ "%.3f"|format(sheeting_grand_total or 0) }}</td>
 		</tr>
 		{% endif %}
 	</tbody>

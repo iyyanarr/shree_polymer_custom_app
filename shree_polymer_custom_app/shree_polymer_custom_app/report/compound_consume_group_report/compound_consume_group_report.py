@@ -28,6 +28,7 @@ def get_columns():
 		_("Avg Lift Wt Kgs") + ":Float:120",
 		_("Target Lifts") + ":Float : 95",
 		_("Compound Req Kgs") + ":Float : 150",
+		_("Compound Sheeting Req") + ":Float : 180",
 	]
 
 
@@ -142,6 +143,7 @@ def get_raw_rows(filters):
 
 def get_grouped_data(filters):
 	raw = get_raw_rows(filters)
+	ratio = _summary_ratio()
 	out = []
 	current_compound = None
 	subtotal = 0.0
@@ -160,6 +162,7 @@ def get_grouped_data(filters):
 			"avg_lift_wt_kgs": None,
 			"target_lifts": None,
 			"compound_req_kgs": flt(subtotal, 3),
+			"compound_sheeting_req": flt(subtotal * ratio, 3),
 		})
 
 	for row in raw:
@@ -170,6 +173,7 @@ def get_grouped_data(filters):
 			emit_subtotal(current_compound)
 			current_compound = compound
 			subtotal = 0.0
+		row["compound_sheeting_req"] = flt(flt(row.get("compound_req_kgs") or 0) * ratio, 3)
 		out.append(row)
 		subtotal += flt(row.get("compound_req_kgs") or 0)
 
@@ -179,6 +183,16 @@ def get_grouped_data(filters):
 	return out
 
 
+def _summary_ratio():
+	# Ratio that converts a +setting% buffered value to +(setting+10)% — matches the buffer used by
+	# Compound Consume Summary Report. Drives the "Compound Sheeting Req" column shown alongside the
+	# raw "Compound Req Kgs" so planners see both the press requirement and the sheeting requirement.
+	setting_pct = frappe.db.get_single_value("SPP Settings", "extra__of_compound_required") or 0
+	detail_factor = 1 + setting_pct / 100.0
+	summary_factor = 1 + (setting_pct + 10) / 100.0
+	return (summary_factor / detail_factor) if detail_factor else 1.0
+
+
 @frappe.whitelist()
 def get_print_html(filters=None):
 	if isinstance(filters, str):
@@ -186,6 +200,7 @@ def get_print_html(filters=None):
 	filters = filters or {}
 
 	raw = get_raw_rows(filters)
+	ratio = _summary_ratio()
 
 	groups = []
 	current = None
@@ -197,7 +212,11 @@ def get_print_html(filters=None):
 		current["rows"].append(row)
 		current["subtotal"] += flt(row.get("compound_req_kgs") or 0)
 
+	for g in groups:
+		g["sheeting_subtotal"] = flt(g["subtotal"] * ratio, 3)
+
 	grand_total = sum(g["subtotal"] for g in groups)
+	sheeting_grand_total = flt(grand_total * ratio, 3)
 
 	report_doc = frappe.get_cached_doc("Report", "Compound Consume Group Report")
 	letter_head_name = report_doc.letter_head or "Purchase Order"
@@ -218,6 +237,7 @@ def get_print_html(filters=None):
 			"filters": filters,
 			"groups": groups,
 			"grand_total": flt(grand_total, 3),
+			"sheeting_grand_total": sheeting_grand_total,
 			"printed_on": nowdate(),
 		},
 	)
