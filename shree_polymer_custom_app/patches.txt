@@ -1,2 +1,3 @@
 shree_polymer_custom_app.patches.restore_batch_custom_permissions
 shree_polymer_custom_app.patches.add_performance_indexes_for_stock_queries
+shree_polymer_custom_app.patches.rename_compound_consume_group_report

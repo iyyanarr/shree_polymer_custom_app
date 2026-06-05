@@ -27,8 +27,8 @@ def get_columns():
 		_("Avg Blank Wt Kgs") + ":Float:150",
 		_("Avg Lift Wt Kgs") + ":Float:120",
 		_("Target Lifts") + ":Float : 95",
-		_("Compound Req Kgs") + ":Float : 150",
-		_("Compound Sheeting Req") + ":Float : 180",
+		_("Blanking Req Kgs") + ":Float : 150",
+		_("Sheeting Req Kgs") + ":Float : 180",
 	]
 
 
@@ -90,7 +90,7 @@ def _build_query(filters):
 				CASE
 					WHEN MS.wtlift_avg_gms = 0 THEN 0
 					ELSE {compound_query}
-				END AS compound_req_kgs
+				END AS blanking_req_kgs
 			FROM `tabWork Planning` WP
 				INNER JOIN `tabWork Plan Item` WPI ON WPI.parent = WP.name
 				INNER JOIN `tabBOM Item` BOMI ON BOMI.parent = WPI.bom
@@ -122,7 +122,7 @@ def _build_query(filters):
 				CASE
 					WHEN AMS.wtlift_avg_gms = 0 THEN 0
 					ELSE {a_compound_query}
-				END AS compound_req_kgs
+				END AS blanking_req_kgs
 			FROM `tabAdd On Work Planning` AWP
 				INNER JOIN `tabAdd On Work Plan Item` AWPI ON AWPI.parent = AWP.name
 				INNER JOIN `tabBOM Item` ABOMI ON ABOMI.parent = AWPI.bom
@@ -161,8 +161,8 @@ def get_grouped_data(filters):
 			"avg_blank_wt_kgs": None,
 			"avg_lift_wt_kgs": None,
 			"target_lifts": None,
-			"compound_req_kgs": flt(subtotal, 3),
-			"compound_sheeting_req": flt(subtotal * ratio, 3),
+			"blanking_req_kgs": flt(subtotal, 3),
+			"sheeting_req_kgs": flt(subtotal * ratio, 3),
 		})
 
 	for row in raw:
@@ -173,9 +173,9 @@ def get_grouped_data(filters):
 			emit_subtotal(current_compound)
 			current_compound = compound
 			subtotal = 0.0
-		row["compound_sheeting_req"] = flt(flt(row.get("compound_req_kgs") or 0) * ratio, 3)
+		row["sheeting_req_kgs"] = flt(flt(row.get("blanking_req_kgs") or 0) * ratio, 3)
 		out.append(row)
-		subtotal += flt(row.get("compound_req_kgs") or 0)
+		subtotal += flt(row.get("blanking_req_kgs") or 0)
 
 	if current_compound is not None:
 		emit_subtotal(current_compound)
@@ -185,8 +185,8 @@ def get_grouped_data(filters):
 
 def _summary_ratio():
 	# Ratio that converts a +setting% buffered value to +(setting+10)% — matches the buffer used by
-	# Compound Consume Summary Report. Drives the "Compound Sheeting Req" column shown alongside the
-	# raw "Compound Req Kgs" so planners see both the press requirement and the sheeting requirement.
+	# Compound Consume Summary Report. Drives the "Sheeting Req Kgs" column shown alongside the
+	# raw "Blanking Req Kgs" so planners see both the press requirement and the sheeting requirement.
 	setting_pct = frappe.db.get_single_value("SPP Settings", "extra__of_compound_required") or 0
 	detail_factor = 1 + setting_pct / 100.0
 	summary_factor = 1 + (setting_pct + 10) / 100.0
@@ -210,7 +210,7 @@ def get_print_html(filters=None):
 			current = {"compound_ref": compound, "rows": [], "subtotal": 0.0}
 			groups.append(current)
 		current["rows"].append(row)
-		current["subtotal"] += flt(row.get("compound_req_kgs") or 0)
+		current["subtotal"] += flt(row.get("blanking_req_kgs") or 0)
 
 	for g in groups:
 		g["sheeting_subtotal"] = flt(g["subtotal"] * ratio, 3)
@@ -218,14 +218,14 @@ def get_print_html(filters=None):
 	grand_total = sum(g["subtotal"] for g in groups)
 	sheeting_grand_total = flt(grand_total * ratio, 3)
 
-	report_doc = frappe.get_cached_doc("Report", "Compound Consume Group Report")
+	report_doc = frappe.get_cached_doc("Report", "Blanking And Sheeting Requirement")
 	letter_head_name = report_doc.letter_head or "Purchase Order"
 	letter_head_content = (
 		frappe.db.get_value("Letter Head", letter_head_name, "content") or ""
 	)
 
 	template_path = os.path.join(
-		os.path.dirname(__file__), "compound_consume_group_report.html"
+		os.path.dirname(__file__), "blanking_and_sheeting_requirement.html"
 	)
 	with open(template_path) as fh:
 		template = fh.read()

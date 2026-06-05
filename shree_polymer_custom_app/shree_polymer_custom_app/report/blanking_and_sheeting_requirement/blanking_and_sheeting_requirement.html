@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Compound Consume Group Report</title>
+<title>Blanking And Sheeting Requirement</title>
 <style>
 	@page { size: A4 landscape; margin: 12mm; }
 	body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #000; margin: 0; }
@@ -25,6 +25,14 @@
 	table.data thead th {
 		background: #eee; font-weight: 600; text-align: center; font-size: 11px;
 	}
+	/* Page-info row inside <thead> — repeats on every printed page (table-header-group). */
+	table.data thead tr.page-info th {
+		background: #fff; text-align: left; font-size: 15px; font-weight: 800;
+		padding: 8px 6px; letter-spacing: 0.4px;
+		border-top: 2px solid #000; border-bottom: 2px solid #000;
+	}
+	table.data thead tr.page-info .pi-pair { margin-right: 36px; display: inline-block; }
+	table.data thead tr.page-info .pi-label { font-weight: 900; margin-right: 4px; }
 	table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 	tr.group-head td {
 		background: #f4f4f4; font-weight: 700; font-size: 12px;
@@ -45,20 +53,26 @@
 
 <div class="letter-head">{{ letter_head or "" }}</div>
 
-<h1 class="report-title">Compound Consume Group Report</h1>
+<h1 class="report-title">Blanking And Sheeting Requirement</h1>
 
+{% set has_secondary_filters = filters.get("press_no") or filters.get("product_ref") or filters.get("mould_number") or filters.get("compound_ref") %}
+{% if has_secondary_filters %}
 <div class="filter-strip">
-	{% if filters.get("date") %}<span class="pair"><span class="label">Date:</span> {{ frappe.format(filters["date"], {"fieldtype": "Date"}) }}</span>{% endif %}
-	{% if filters.get("shift") %}<span class="pair"><span class="label">Shift:</span> {{ filters["shift"] }}</span>{% endif %}
 	{% if filters.get("press_no") %}<span class="pair"><span class="label">Press:</span> {{ filters["press_no"] }}</span>{% endif %}
 	{% if filters.get("product_ref") %}<span class="pair"><span class="label">Product Ref:</span> {{ filters["product_ref"] }}</span>{% endif %}
 	{% if filters.get("mould_number") %}<span class="pair"><span class="label">Mould No:</span> {{ filters["mould_number"] }}</span>{% endif %}
 	{% if filters.get("compound_ref") %}<span class="pair"><span class="label">Compound Ref:</span> {{ filters["compound_ref"] }}</span>{% endif %}
-	{% if not filters %}<span class="pair">(no filters)</span>{% endif %}
 </div>
+{% endif %}
 
 <table class="data">
 	<thead>
+		<tr class="page-info">
+			<th colspan="12">
+				<span class="pi-pair"><span class="pi-label">Date:</span>{{ frappe.format(filters["date"], {"fieldtype": "Date"}) if filters.get("date") else "All Dates" }}</span>
+				<span class="pi-pair"><span class="pi-label">Shift:</span>{{ filters["shift"] or "All Shifts" }}</span>
+			</th>
+		</tr>
 		<tr>
 			<th>Date</th>
 			<th>Shift</th>
@@ -70,8 +84,8 @@
 			<th>Avg Blank Wt (Kg)</th>
 			<th>Avg Lift Wt (Kg)</th>
 			<th>Target Lifts</th>
-			<th>Compound Req (Kg)</th>
-			<th>Compound Sheeting Req (Kg)</th>
+			<th>Blanking Req (Kg)</th>
+			<th>Sheeting Req (Kg)</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -95,8 +109,8 @@
 			<td class="num">{{ "%.3f"|format(row.avg_blank_wt_kgs or 0) }}</td>
 			<td class="num">{{ "%.3f"|format(row.avg_lift_wt_kgs or 0) }}</td>
 			<td class="num">{{ "%.0f"|format(row.target_lifts or 0) }}</td>
-			<td class="num">{{ "%.3f"|format(row.compound_req_kgs or 0) }}</td>
-			<td class="num">{{ "%.3f"|format(row.compound_sheeting_req or 0) }}</td>
+			<td class="num">{{ "%.3f"|format(row.blanking_req_kgs or 0) }}</td>
+			<td class="num">{{ "%.3f"|format(row.sheeting_req_kgs or 0) }}</td>
 		</tr>
 		{% endfor %}
 		<tr class="subtotal">

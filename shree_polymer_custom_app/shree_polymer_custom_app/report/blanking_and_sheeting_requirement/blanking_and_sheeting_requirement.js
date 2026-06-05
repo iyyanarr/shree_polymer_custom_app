@@ -2,7 +2,7 @@
 // For license information, please see license.txt
 /* eslint-disable */
 
-frappe.query_reports["Compound Consume Group Report"] = {
+frappe.query_reports["Blanking And Sheeting Requirement"] = {
 	"filters": [
 		{
 			"fieldname": "date",
@@ -23,7 +23,7 @@ frappe.query_reports["Compound Consume Group Report"] = {
 			"label": __("Press"),
 			get_query: function () {
 				return {
-					"query": "shree_polymer_custom_app.shree_polymer_custom_app.report.compound_consume_group_report.compound_consume_group_report.get_filter_pressno",
+					"query": "shree_polymer_custom_app.shree_polymer_custom_app.report.blanking_and_sheeting_requirement.blanking_and_sheeting_requirement.get_filter_pressno",
 					"filters": {}
 				};
 			}
@@ -35,7 +35,7 @@ frappe.query_reports["Compound Consume Group Report"] = {
 			"label": __("Product Ref"),
 			get_query: function () {
 				return {
-					"query": "shree_polymer_custom_app.shree_polymer_custom_app.report.compound_consume_group_report.compound_consume_group_report.get_filter_product_ref",
+					"query": "shree_polymer_custom_app.shree_polymer_custom_app.report.blanking_and_sheeting_requirement.blanking_and_sheeting_requirement.get_filter_product_ref",
 					"filters": {}
 				};
 			}
@@ -47,7 +47,7 @@ frappe.query_reports["Compound Consume Group Report"] = {
 			"label": __("Mould Number"),
 			get_query: function () {
 				return {
-					"query": "shree_polymer_custom_app.shree_polymer_custom_app.report.compound_consume_group_report.compound_consume_group_report.get_filter_mould_number",
+					"query": "shree_polymer_custom_app.shree_polymer_custom_app.report.blanking_and_sheeting_requirement.blanking_and_sheeting_requirement.get_filter_mould_number",
 					"filters": {}
 				};
 			}
@@ -59,7 +59,7 @@ frappe.query_reports["Compound Consume Group Report"] = {
 			"label": __("Compound Ref"),
 			get_query: function () {
 				return {
-					"query": "shree_polymer_custom_app.shree_polymer_custom_app.report.compound_consume_group_report.compound_consume_group_report.get_filter_compound_ref",
+					"query": "shree_polymer_custom_app.shree_polymer_custom_app.report.blanking_and_sheeting_requirement.blanking_and_sheeting_requirement.get_filter_compound_ref",
 					"filters": {}
 				};
 			}
@@ -70,7 +70,7 @@ frappe.query_reports["Compound Consume Group Report"] = {
 		report.page.add_inner_button(__("Print Report"), function () {
 			const filters = report.get_filter_values(true);
 			frappe.call({
-				method: "shree_polymer_custom_app.shree_polymer_custom_app.report.compound_consume_group_report.compound_consume_group_report.get_print_html",
+				method: "shree_polymer_custom_app.shree_polymer_custom_app.report.blanking_and_sheeting_requirement.blanking_and_sheeting_requirement.get_print_html",
 				args: { filters: filters },
 				freeze: true,
 				freeze_message: __("Preparing print..."),
