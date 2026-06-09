@@ -183,14 +183,14 @@ def get_grouped_data(filters):
 	return out
 
 
+SHEETING_PCT_OVER_BLANKING = 30  # business rule: sheeting requirement is 30% above the blanking requirement
+
+
 def _summary_ratio():
-	# Ratio that converts a +setting% buffered value to +(setting+10)% — matches the buffer used by
-	# Compound Consume Summary Report. Drives the "Sheeting Req Kgs" column shown alongside the
-	# raw "Blanking Req Kgs" so planners see both the press requirement and the sheeting requirement.
-	setting_pct = frappe.db.get_single_value("SPP Settings", "extra__of_compound_required") or 0
-	detail_factor = 1 + setting_pct / 100.0
-	summary_factor = 1 + (setting_pct + 10) / 100.0
-	return (summary_factor / detail_factor) if detail_factor else 1.0
+	# Sheeting requirement = Blanking requirement × 1.30 (i.e., 30% extra on top of the press/blanking
+	# value to cover mixing + sheet-trim losses). Fixed business rule — does NOT derive from
+	# SPP Settings.extra__of_compound_required (which only governs the blanking buffer).
+	return 1.0 + (SHEETING_PCT_OVER_BLANKING / 100.0)
 
 
 @frappe.whitelist()
