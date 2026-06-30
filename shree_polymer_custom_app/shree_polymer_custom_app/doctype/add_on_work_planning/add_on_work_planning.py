@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate,flt
+from frappe.utils import getdate,flt,add_to_date
 from frappe.utils.data import get_time, now
 
 class AddOnWorkPlanning(Document):
@@ -124,7 +124,8 @@ class AddOnWorkPlanning(Document):
 				frappe.throw("Value not found for no.of times to add qty in SPP Settings")
 			if not spp_settings.default_time:
 				frappe.throw("Value not found for default time in SPP Settings")
-			for item in doc_info.items:
+			base_time = now()
+			for time_offset, item in enumerate(doc_info.items):
 				# bom = list(filter(lambda x: x.get('item') == item.item,doc_info.bom_wt_item))[0].get('bom')
 				bom = frappe.db.sql(""" SELECT B.name,B.item FROM `tabBOM Item` BI INNER JOIN `tabBOM` B ON BI.parent = B.name WHERE  B.item=%(item_code)s AND B.is_default=1 AND B.is_active=1 """,{"item_code":item.item},as_dict=1)
 				actual_weight = flt(spp_settings.target_qty,3) * flt(list(filter(lambda x: x.get('item') == item.item,doc_info.qty_wt_item))[0].get('qty'),3)
@@ -151,7 +152,7 @@ class AddOnWorkPlanning(Document):
 				wo.planned_start_date = getdate(doc_info.date)
 				wo.docstatus = 1
 				wo.save(ignore_permissions=True)
-				jo_card = update_job_cards(wo.name,actual_weight,doc_info,item,wo.production_item)
+				jo_card = update_job_cards(wo.name,actual_weight,doc_info,item,wo.production_item,time_offset_mins=time_offset,base_time=base_time)
 				if not jo_card:
 					frappe.db.rollback()
 					return False
@@ -186,15 +187,19 @@ def validate_get_serial_no(self,type__,item = None,job_card = None):
 				return
 		no += 1
 
-def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item):
+def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item,time_offset_mins=0,base_time=None):
 	try:
 		job_cards = frappe.db.get_all("Job Card",filters={"work_order":wo})
 		lot_number = get_spp_batch_date(doc_info)
 		barcode = generate_barcode(lot_number)
+		_base = base_time or now()
+		_from = add_to_date(_base, minutes=time_offset_mins)
+		_to = add_to_date(_base, minutes=time_offset_mins + 1)
 		for job_card in job_cards:
 			jc = frappe.get_doc("Job Card",job_card.name)
 			jc.append("time_logs",{
-				"from_time":now(),
+				"from_time":_from,
+				"to_time":_to,
 				"completed_qty":flt(actual_weight,3),
 				"time_in_mins":1
 			})
