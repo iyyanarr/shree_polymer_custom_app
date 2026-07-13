@@ -187,6 +187,53 @@ def validate_get_serial_no(self,type__,item = None,job_card = None):
 				return
 		no += 1
 
+def _next_free_slot(workstation, candidate_from, candidate_to, exclude_job_card=None):
+	"""Push [candidate_from, candidate_to) forward past any existing Job Card
+	Time Log on the same workstation it would overlap.
+
+	These time logs are administrative bookkeeping, not real machine-exclusive
+	scheduling (per production practice: when Add-On Work Planning reuses a
+	workstation, the job card timing is adjusted around whatever is already
+	booked there, rather than treated as a hard conflict). The stagger applied
+	across items WITHIN one Add-On WP batch only prevents collisions inside
+	that batch — it has no visibility into OTHER already-created job cards
+	(a regular Work Planning entry, or an earlier Add-On WP call) on the same
+	press. This checks across all of them and, if the target window is
+	occupied, moves the window to start right after the latest conflicting
+	booking ends. Capped iterations guard against a pathological chain of
+	back-to-back bookings.
+	"""
+	if not workstation:
+		return candidate_from, candidate_to
+
+	# Job Card Time Log has no workstation of its own — join to the parent
+	# Job Card for it.
+	for _ in range(20):
+		conflicts = frappe.db.sql(
+			"""SELECT jctl.to_time
+			   FROM `tabJob Card Time Log` jctl
+			   INNER JOIN `tabJob Card` jc ON jc.name = jctl.parent
+			   WHERE jc.workstation = %(workstation)s
+			     AND (%(exclude)s IS NULL OR jc.name != %(exclude)s)
+			     AND jctl.from_time < %(cand_to)s
+			     AND jctl.to_time > %(cand_from)s
+			   ORDER BY jctl.to_time DESC
+			   LIMIT 1""",
+			{
+				"workstation": workstation,
+				"exclude": exclude_job_card,
+				"cand_to": candidate_to,
+				"cand_from": candidate_from,
+			},
+			as_dict=True,
+		)
+		if not conflicts:
+			return candidate_from, candidate_to
+		candidate_from = conflicts[0].to_time
+		candidate_to = add_to_date(candidate_from, minutes=1)
+	return candidate_from, candidate_to
+
+
 def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item,time_offset_mins=0,base_time=None):
 	try:
 		job_cards = frappe.db.get_all("Job Card",filters={"work_order":wo})
@@ -197,9 +244,14 @@ def update_job_cards(wo,actual_weight,doc_info,item,production_mat_item,time_off
 		_to = add_to_date(_base, minutes=time_offset_mins + 1)
 		for job_card in job_cards:
 			jc = frappe.get_doc("Job Card",job_card.name)
+			# Also avoid colliding with any OTHER job card already booked on this
+			# same workstation (regular Work Planning JC, or an earlier Add-On WP
+			# call) — the per-item stagger above only separates items within THIS
+			# batch.
+			slot_from, slot_to = _next_free_slot(jc.workstation, _from, _to, exclude_job_card=jc.name)
 			jc.append("time_logs",{
-				"from_time":_from,
-				"to_time":_to,
+				"from_time":slot_from,
+				"to_time":slot_to,
 				"completed_qty":flt(actual_weight,3),
 				"time_in_mins":1
 			})
