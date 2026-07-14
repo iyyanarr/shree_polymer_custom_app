@@ -166,6 +166,15 @@ class MouldingProductionEntry(Document):
     def cmpr_balbin_get_cmp_qty(self):
         import json
         self.updated_batch_details = json.loads(self.batch_details)
+        # Reset before recomputing so this is idempotent across multiple validate
+        # passes. validate() runs on both insert and submit; when a caller does
+        # doc.insert() then doc.submit() on the SAME in-memory object (the bridge
+        # does exactly this), the un-reset "+=" accumulated compound_available_qty
+        # twice (e.g. 0.9 -> 1.8), which then HALVED the recomputed consumed qty in
+        # validate_comsumption_details (live: MLDPE-32460 consumed 0.255 vs the
+        # 0.51 Console sent). The native form submits via two separate requests so
+        # it never doubled and never surfaced this. Reset makes it correct for both.
+        self.compound_available_qty = 0
         for is__bc in self.updated_batch_details:
             if is__bc.get('is_balance_bin'):
                 self.compound_available_qty += is__bc.get('consumed__qty')
