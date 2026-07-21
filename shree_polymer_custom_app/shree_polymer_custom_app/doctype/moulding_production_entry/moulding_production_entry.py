@@ -1124,12 +1124,18 @@ def append_source_details(stock_entry, self, work_order):
         stock_entry.append("items", {
             "item_code": self.compound,  # Same compound item
             "s_warehouse": work_order.source_warehouse,
-            "t_warehouse": None,  # Consumed as scrap (not transferred) - avoids batch bundle issues
+            # Consumed as scrap (not transferred). NOTE: is_scrap_item must stay 0 —
+            # erpnext >= 15.116 (validate_warehouse) treats Manufacture rows with
+            # is_scrap_item=1 as OUTPUTS: it blanks s_warehouse and demands a
+            # t_warehouse ("Target warehouse is mandatory for row N"), which both
+            # fails this insert and would invert the movement (purge arriving in a
+            # warehouse instead of leaving the source). Purge IS consumption —
+            # keep it a plain consume row (same net stock effect as before).
+            "t_warehouse": None,
             "stock_uom": "Kg",
             "uom": "Kg",
             "conversion_factor_uom": 1,
             "is_finished_item": 0,
-            "is_scrap_item": 1,  # Mark as scrap/waste material for tracking
             "transfer_qty": flt(total_purge_qty, 3),
             "qty": flt(total_purge_qty, 3),
             "use_serial_batch_fields": 1,  # Use batch fields for consumption items
