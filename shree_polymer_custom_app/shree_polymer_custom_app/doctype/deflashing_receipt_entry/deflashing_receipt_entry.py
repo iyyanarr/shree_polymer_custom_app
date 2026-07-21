@@ -242,8 +242,14 @@ class DeflashingReceiptEntry(Document):
 				submit_inspection_entry(self,exe__stentry,spp_settings.scrap_warehouse)
 				update_dc_status(self)
 			except Exception:
-				manual_rollback_entries(self,"Something went wrong not able to submit stock entries..!")
+				# Log the REAL traceback FIRST. manual_rollback_entries() ends in
+				# frappe.throw(), so it never returns — with the log_error after it
+				# (as before), the actual failure inside the try was never recorded,
+				# leaving only the generic "Deflashing Receipt Entry Stock submission
+				# failed..!" surfaced to the bridge/Console. That masked a persistent
+				# Incoming-Inspection legacy failure whose root cause was invisible.
 				frappe.log_error(title="Deflashing Receipt Entry stock submission failed",message=frappe.get_traceback())
+				manual_rollback_entries(self,"Something went wrong not able to submit stock entries..!")
 		else:
 			frappe.throw("Stock Entry Reference not found in <b>Deflashing Receipt Entry</b>")
 
