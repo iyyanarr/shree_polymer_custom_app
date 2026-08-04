@@ -120,7 +120,7 @@ class CompoundInspection(Document):
 					frappe.throw(f"The <b>SG - {self.sg_observed}</b> is not in specified range <b>{self.sg_min} - {self.sg_max}</b>.<br>Please Scan <b>Quality Approver</b> before submit..!")
 				elif self.no_enough_ts2:
 					frappe.throw(f"The <b>TS2 - {self.ts2_observed}</b> is not in specified range <b>{self.ts2_min} - {self.ts2_max}</b>.<br>Please Scan <b>Quality Approver</b> before submit..!")
-				elif self.self.no_enough_tc90:
+				elif self.no_enough_tc90:
 					frappe.throw(f"The <b>TC90 - {self.tc_90_observed}</b> is not in specified range <b>{self.tc_90_min} - {self.tc_90_max}</b>.<br>Please Scan <b>Quality Approver</b> before submit..!")
 			else:
 				self.check_quality_approver_reading()
