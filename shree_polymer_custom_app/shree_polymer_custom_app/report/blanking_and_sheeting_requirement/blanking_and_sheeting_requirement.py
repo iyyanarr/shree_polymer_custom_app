@@ -209,6 +209,7 @@ def get_print_html(filters=None):
 		if current is None or current["compound_ref"] != compound:
 			current = {"compound_ref": compound, "rows": [], "subtotal": 0.0}
 			groups.append(current)
+		row["sheeting_req_kgs"] = flt(flt(row.get("blanking_req_kgs") or 0) * ratio, 3)
 		current["rows"].append(row)
 		current["subtotal"] += flt(row.get("blanking_req_kgs") or 0)
 
