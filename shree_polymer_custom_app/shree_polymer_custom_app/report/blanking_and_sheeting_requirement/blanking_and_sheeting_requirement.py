@@ -32,6 +32,16 @@ def get_columns():
 	]
 
 
+# Presses are stored as free text ("P1 : TUNGYU - 100 Ton"), so a plain sort gives
+# P1, P10, P11, P2 ... Order on the digits after the P instead, and park any
+# non-numeric station (e.g. "Dot Marker") after the numbered presses.
+PRESS_ORDER_SQL = """
+		CASE WHEN press_no REGEXP '^P[0-9]+' THEN 0 ELSE 1 END,
+		CAST(REGEXP_SUBSTR(press_no, '[0-9]+') AS UNSIGNED),
+		press_no
+"""
+
+
 def _build_query(filters):
 	condition = ""
 	acondition = ""
@@ -133,7 +143,7 @@ def _build_query(filters):
 					AND AWPIT.shift_type = AWP.shift_time
 			WHERE AWP.docstatus = 1 {acondition}
 		) combined
-		ORDER BY compound_ref, date, shift, press_no
+		ORDER BY {PRESS_ORDER_SQL}, compound_ref, date, shift
 	"""
 
 
@@ -141,44 +151,67 @@ def get_raw_rows(filters):
 	return frappe.db.sql(_build_query(filters), as_dict=1)
 
 
+def _group_by_press(raw, ratio):
+	"""Split the rows into press blocks, in the natural press order the query
+	already applied, and annotate every row with its sheeting requirement."""
+	groups = []
+	current = None
+
+	for row in raw:
+		row["sheeting_req_kgs"] = flt(flt(row.get("blanking_req_kgs") or 0) * ratio, 3)
+		press = row.get("press_no")
+		if current is None or current["press_no"] != press:
+			current = {"press_no": press, "rows": [], "subtotal": 0.0}
+			groups.append(current)
+		current["rows"].append(row)
+		current["subtotal"] += flt(row.get("blanking_req_kgs") or 0)
+
+	# Subtotals stay at full precision so the grand total is the sum of the raw
+	# values, not of pre-rounded ones; callers round for display.
+	for g in groups:
+		g["sheeting_subtotal"] = g["subtotal"] * ratio
+
+	return groups
+
+
+def _compound_summary(raw, ratio):
+	"""Per-compound totals across every press. The table itself runs press by
+	press for the shop floor, so this keeps the mixing room's compound
+	quantities available in one place."""
+	totals = {}
+	for row in raw:
+		compound = row.get("compound_ref")
+		totals[compound] = totals.get(compound, 0.0) + flt(row.get("blanking_req_kgs") or 0)
+
+	return [
+		{
+			"compound_ref": compound,
+			"blanking_req_kgs": flt(total, 3),
+			"sheeting_req_kgs": flt(total * ratio, 3),
+		}
+		for compound, total in sorted(totals.items())
+	]
+
+
 def get_grouped_data(filters):
 	raw = get_raw_rows(filters)
 	ratio = _summary_ratio()
 	out = []
-	current_compound = None
-	subtotal = 0.0
 
-	def emit_subtotal(label):
+	for g in _group_by_press(raw, ratio):
+		out.extend(g["rows"])
 		out.append({
-			"date": None,
-			"shift": None,
-			"id": None,
-			"press_no": None,
-			"product_ref": None,
-			"mould_no": None,
-			"compound_ref": f"Total — {label}",
-			"blank_type": None,
-			"avg_blank_wt_kgs": None,
-			"avg_lift_wt_kgs": None,
-			"target_lifts": None,
-			"blanking_req_kgs": flt(subtotal, 3),
-			"sheeting_req_kgs": flt(subtotal * ratio, 3),
+			"press_no": f"Total — {g['press_no']}",
+			"blanking_req_kgs": flt(g["subtotal"], 3),
+			"sheeting_req_kgs": flt(g["sheeting_subtotal"], 3),
 		})
 
-	for row in raw:
-		compound = row.get("compound_ref")
-		if current_compound is None:
-			current_compound = compound
-		if compound != current_compound:
-			emit_subtotal(current_compound)
-			current_compound = compound
-			subtotal = 0.0
-		row["sheeting_req_kgs"] = flt(flt(row.get("blanking_req_kgs") or 0) * ratio, 3)
-		out.append(row)
-		subtotal += flt(row.get("blanking_req_kgs") or 0)
-
-	if current_compound is not None:
-		emit_subtotal(current_compound)
+	for c in _compound_summary(raw, ratio):
+		out.append({
+			"compound_ref": f"Compound Total — {c['compound_ref']}",
+			"blanking_req_kgs": c["blanking_req_kgs"],
+			"sheeting_req_kgs": c["sheeting_req_kgs"],
+		})
 
 	return out
 
@@ -202,19 +235,8 @@ def get_print_html(filters=None):
 	raw = get_raw_rows(filters)
 	ratio = _summary_ratio()
 
-	groups = []
-	current = None
-	for row in raw:
-		compound = row.get("compound_ref")
-		if current is None or current["compound_ref"] != compound:
-			current = {"compound_ref": compound, "rows": [], "subtotal": 0.0}
-			groups.append(current)
-		row["sheeting_req_kgs"] = flt(flt(row.get("blanking_req_kgs") or 0) * ratio, 3)
-		current["rows"].append(row)
-		current["subtotal"] += flt(row.get("blanking_req_kgs") or 0)
-
-	for g in groups:
-		g["sheeting_subtotal"] = flt(g["subtotal"] * ratio, 3)
+	groups = _group_by_press(raw, ratio)
+	compound_summary = _compound_summary(raw, ratio)
 
 	grand_total = sum(g["subtotal"] for g in groups)
 	sheeting_grand_total = flt(grand_total * ratio, 3)
@@ -237,6 +259,7 @@ def get_print_html(filters=None):
 			"letter_head": letter_head_content,
 			"filters": filters,
 			"groups": groups,
+			"compound_summary": compound_summary,
 			"grand_total": flt(grand_total, 3),
 			"sheeting_grand_total": sheeting_grand_total,
 			"printed_on": nowdate(),
