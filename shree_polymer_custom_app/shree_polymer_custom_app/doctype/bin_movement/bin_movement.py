@@ -23,11 +23,20 @@ def make_bin_release_movement(self):
 				frappe.db.set_value("Item Bin Mapping",bin__.ibm_id,"is_retired",1)
 				frappe.db.sql(""" UPDATE `tabBlank Bin Issue Item` set is_completed = 1 where bin=%(bin)s and is_completed=0 """,{"bin":bin__.bin_id})
 				frappe.db.commit()
-	except Exception:
+	except Exception as e:
 		frappe.log_error(title="make_bin_release_movement failed",message=frappe.get_traceback())
-		frappe.get_doc(self.doctype,self.docname).db_set("docstatus", 0)
+		# self.docname does not exist on a Document - it is self.name. This line
+		# raised AttributeError inside the handler, so EVERY failure here was
+		# reported to the operator as
+		#     'BinMovement' object has no attribute 'docname'
+		# and the real cause (e.g. "Asset BLB -00039 does not belong to the
+		# location U2 - Ambattur") was only ever visible in the Error Log.
+		frappe.get_doc(self.doctype,self.name).db_set("docstatus", 0)
 		frappe.db.commit()
 		self.reload()
+		# Re-raise the real reason. Swallowing it left the entry silently reset
+		# to draft while the operator was told nothing useful.
+		frappe.throw(str(e))
 
 def make_asset_movement(spp_settings,x):
 	asset__mov = frappe.new_doc("Asset Movement")
