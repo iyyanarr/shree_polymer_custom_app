@@ -200,6 +200,12 @@ class MouldingProductionEntry(Document):
                         resp_ = make_stock_entry(self)
                         if resp_.get('status') == 'failed':
                             rollback_entries(self, resp_.get('message'))
+                            # rollback_entries() resets docstatus to 0 and
+                            # commits, but Frappe only aborts a submit when
+                            # on_submit() raises. Without this throw, the
+                            # submit continues and this MPE ends up
+                            # docstatus=1 — "Success" — with no Stock Entry.
+                            frappe.throw(resp_.get('message') or "Stock Entry creation failed")
                         else:
                             frappe.db.set_value(
                                 self.doctype, self.name, "batch_details", self.updated_batch_details)
