@@ -3,6 +3,48 @@
 
 # import frappe
 import unittest
+from unittest.mock import patch, MagicMock
+
+from shree_polymer_custom_app.shree_polymer_custom_app.doctype.moulding_production_entry import (
+    moulding_production_entry as mpe_module,
+)
+
+
+class TestMouldingProductionEntryOnSubmit(unittest.TestCase):
+    """Isolates the on_submit() control-flow defect: when make_stock_entry()
+    reports status 'failed', on_submit() calls rollback_entries() (which
+    resets docstatus back to 0 and commits) but never re-raises — every
+    OTHER failure branch in on_submit() calls frappe.throw(), this one alone
+    falls through silently. Frappe only rolls back a submit when an
+    exception propagates out of on_submit(); since none does here, the
+    submit completes and the MPE ends up docstatus=1 with no Stock Entry.
+
+    The full legacy chain (Job Card, Work Order, Blank Bin Issue, Item Bin
+    Mapping, Inspection Entry) is out of scope for a unit test — this repo
+    has no working fixtures for it (see the TODO stubs below, unchanged
+    since creation). This test isolates the exact control-flow bug by
+    mocking the four preceding validators to 'success' and make_stock_entry
+    to 'failed', which is the one branch the real bug lives in.
+    """
+
+    def test_on_submit_raises_when_make_stock_entry_fails(self):
+        fake_self = MagicMock()
+        fake_self.doctype = "Moulding Production Entry"
+        fake_self.name = "TEST-MPE-001"
+        fake_self.scan_lot_number = "TESTLOT01"
+
+        with patch.object(mpe_module, "validate_cavity", return_value={"status": "success"}), \
+             patch.object(mpe_module, "validate_mat_qty", return_value={"status": "success"}), \
+             patch.object(mpe_module, "validate_comsumption_details", return_value={"status": "success"}), \
+             patch.object(mpe_module, "validate_actual_warehouse_stock", return_value={"status": "success"}), \
+             patch.object(mpe_module.frappe.db, "get_value", return_value={"stock_entry_reference": "SE-X", "name": "INS-X"}), \
+             patch.object(mpe_module, "make_stock_entry", return_value={"status": "failed", "message": "Stock Entry Creation Failed"}), \
+             patch.object(mpe_module, "rollback_entries") as mock_rollback:
+
+            with self.assertRaises(Exception):
+                mpe_module.MouldingProductionEntry.on_submit(fake_self)
+
+            mock_rollback.assert_called_once()
 
 class TestMouldingProductionEntry(unittest.TestCase):
 	"""
