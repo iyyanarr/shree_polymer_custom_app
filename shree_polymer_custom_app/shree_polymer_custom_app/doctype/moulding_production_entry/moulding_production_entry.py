@@ -1036,6 +1036,20 @@ def submit_inspection_stock_entries_from_moulding(self, moulding_stock_entry):
 
 def update_bins(self, resp__s, spp_settings):
     for c__bin in resp__s:
+        # A consumption row with no bin is compound booked directly against its
+        # batch, not compound carried in a physical blank bin. Operators used to
+        # express this by raising a throwaway "dummy" Blanking DC + Blank Bin
+        # Issue purely so the shortfall had a bin to sit in; the qty is now
+        # booked against the batch itself, so no bin travels with it.
+        #
+        # Everything below this loop body assumes a bin exists: the two UPDATEs
+        # key on item_bin_mapping_name / blank_bin_issue_item_name (both absent
+        # here, so they match nothing), and the branch then falls through to
+        # make_asset_movement() for asset `None` — which raises while trying to
+        # move a trolley that does not exist. Skip: there is no bin to release
+        # and no asset to send back to blanking.
+        if not c__bin.get('bin'):
+            continue
         if c__bin.get('is__consumed') and c__bin.get('is_balance_bin'):
             frappe.db.sql(
                 f""" UPDATE `tabBlank Bin Issue Item` set is_completed=1 where name = '{c__bin.get('blank_bin_issue_item_name')}' """)
