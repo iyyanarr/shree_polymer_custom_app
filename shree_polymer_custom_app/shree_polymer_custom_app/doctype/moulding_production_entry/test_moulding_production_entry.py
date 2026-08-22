@@ -46,6 +46,76 @@ class TestMouldingProductionEntryOnSubmit(unittest.TestCase):
 
             mock_rollback.assert_called_once()
 
+class TestUpdateBinsBinlessRows(unittest.TestCase):
+    """update_bins() must tolerate a consumption row that carries no bin.
+
+    Compound booked directly against its batch (rather than carried in a
+    physical blank bin) has no bin, no Item Bin Mapping and no Blank Bin Issue
+    Item. Before the guard, such a row fell into the consumed/not-balance
+    branch, whose two UPDATEs matched nothing and which then called
+    make_asset_movement() for asset `None` — moving a trolley that does not
+    exist. Nothing to release, nothing to move: the row must be skipped.
+    """
+
+    def _spp_settings(self):
+        settings = MagicMock()
+        settings.from_location = "Blanking"
+        return settings
+
+    def test_binless_consumed_row_is_skipped_entirely(self):
+        binless = {
+            "is__consumed": 1,
+            "is_balance_bin": 0,
+            "spp_batch_number": "26G27X24-1",
+            "batch_no__": "C_6023/26/08/08/013",
+            "consumed__qty": 1.445,
+            # no "bin", no item_bin_mapping_name, no blank_bin_issue_item_name
+        }
+
+        with patch.object(mpe_module, "frappe") as mock_frappe, \
+             patch.object(mpe_module, "make_asset_movement") as mock_move:
+            mock_frappe.db.sql.return_value = []
+            mpe_module.update_bins(MagicMock(), [binless], self._spp_settings())
+
+        mock_move.assert_not_called()
+        mock_frappe.db.sql.assert_not_called()
+
+    def test_normal_bin_row_still_releases_and_moves(self):
+        with_bin = {
+            "is__consumed": 1,
+            "is_balance_bin": 0,
+            "bin": "BLB -00138",
+            "item_bin_mapping_name": "IBM-001",
+            "blank_bin_issue_item_name": "BBII-001",
+            "job_card": "PO-JOB100044",
+        }
+
+        # last_mov empty -> the bin is not at from_location, so it must travel back
+        with patch.object(mpe_module, "frappe") as mock_frappe, \
+             patch.object(mpe_module, "make_asset_movement") as mock_move:
+            mock_frappe.db.sql.return_value = []
+            mpe_module.update_bins(MagicMock(), [with_bin], self._spp_settings())
+
+        mock_move.assert_called_once()
+        self.assertTrue(mock_frappe.db.sql.called)
+
+    def test_mixed_rows_only_the_binless_one_is_skipped(self):
+        rows = [
+            {"is__consumed": 1, "is_balance_bin": 0, "bin": "BLB -00138",
+             "item_bin_mapping_name": "IBM-001",
+             "blank_bin_issue_item_name": "BBII-001"},
+            {"is__consumed": 1, "is_balance_bin": 0, "spp_batch_number": "26G27X24-1"},
+        ]
+
+        with patch.object(mpe_module, "frappe") as mock_frappe, \
+             patch.object(mpe_module, "make_asset_movement") as mock_move:
+            mock_frappe.db.sql.return_value = []
+            mpe_module.update_bins(MagicMock(), rows, self._spp_settings())
+
+        # exactly one asset movement: the real bin's, never the bin-less row's
+        self.assertEqual(mock_move.call_count, 1)
+
+
 class TestMouldingProductionEntry(unittest.TestCase):
 	"""
 	Test cases for Moulding Production Entry - NEW FLOW (Single-Stage Submission)
