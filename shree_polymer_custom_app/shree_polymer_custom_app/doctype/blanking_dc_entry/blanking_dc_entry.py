@@ -19,6 +19,7 @@ class BlankingDCEntry(Document):
 				x.net_weight = x.gross_weight - x.bin_weight
 		else:
 			frappe.throw("Please scan and add items.")
+		refuse_bins_that_are_not_free(self)
 
 	def on_submit(self):
 		""" For restrict F-product creation 'hided' on 31/2/23"""
@@ -38,7 +39,16 @@ class BlankingDCEntry(Document):
 		try:
 			create___asset_movement(self,spp_settings)
 		except Exception:
-			make___rollback(self)	
+			# Clean up what this DC wrote, then RAISE. Swallowing the error here
+			# is what left legacy with 96 orphan draft DCs and stray bin mappings
+			# between 14 Aug and 9 Sep 2026: the bridge saw a clean return, ran its
+			# own check, and reported "No Item Bin Mapping created" -- a symptom,
+			# not the cause. Raising lets the caller's transaction unwind the
+			# insert as well, so nothing is left behind, and the real reason
+			# (usually ERPNext's "Asset does not belong to the location") reaches
+			# whoever submitted.
+			make___rollback(self)
+			raise
 		""" End """
 		self.reload()
 		""" end """
@@ -74,11 +84,15 @@ def create___asset_movement(self,spp_settings):
 def make___rollback(self):
 	try:
 		for x in self.items:
-			frappe.db.delete('Item Bin Mapping',{'compound':x.get('scanned_item'),"qty":x.net_weight,'is_retired':'0',"blanking__bin":x.bin_code,'spp_batch_number':x.spp_batch_number})
+			# A mapping is identified by bin + batch. The old filter also matched
+			# exact qty, so any row whose qty had since moved survived as a ghost
+			# active mapping on a bin the DC never actually issued.
+			frappe.db.delete('Item Bin Mapping',{'is_retired':0,"blanking__bin":x.bin_code,'spp_batch_number':x.spp_batch_number})
 		bl_dc = frappe.get_doc("Blanking DC Entry", self.name)
 		bl_dc.db_set("docstatus", 0)
-		frappe.db.commit()
-		frappe.msgprint("Something went wrong,make <b>Asset Movement</b>..!")
+		# No commit: the caller (bridge request or Desk) is about to roll the
+		# whole transaction back on the re-raised error. Committing here made the
+		# half-cleaned state durable and produced the orphan drafts.
 	except Exception:
 		frappe.msgprint('Something went wrong not able to rollback..!')
 		frappe.log_error(title='make___rollback error',message = frappe.get_traceback())
@@ -858,3 +872,62 @@ def generate_barcode(compound):
 	new_image.save(str(frappe.local.site)+'/public/files/{filename}.png'.format(filename=barcode_text), 'PNG')
 	barcode = "/files/" + barcode_text + ".png"
 	return {"barcode":barcode,"barcode_text":barcode_text}
+
+
+def refuse_bins_that_are_not_free(doc):
+	"""Refuse to issue a bin that is still committed elsewhere, and say to what.
+
+	Three states make a bin unavailable, checked in the order they occur on the
+	floor. Each was seen on production (14 Aug -> 9 Sep 2026) producing a DC that
+	ERPNext later rejected two steps downstream with a message nobody saw:
+
+	1. The bin's asset is not at the DC's from-location: its last cycle was never
+	   released (Bin Movement never ran, usually because that moulding entry is
+	   still a draft), so ERPNext's Asset Movement would throw
+	   "does not belong to the location".
+	2. The bin still carries an un-retired Item Bin Mapping: issuing new compound
+	   on top creates two active mappings, and the moulding check reads whichever
+	   one MariaDB returns first.
+	3. The bin is still on an open Blank Bin Issue: another lot owns it.
+
+	Bins that came back through Blank Bin Inward are exempt -- that path re-uses
+	an existing mapping by design and never creates one.
+	"""
+	if doc.get("from_blank_bin_inward"):
+		return
+	spp_settings = frappe.get_single("SPP Settings")
+	for x in (doc.items or []):
+		if not x.bin_code:
+			continue
+		location = frappe.db.get_value("Asset", x.bin_code, "location")
+		if spp_settings.from_location and location != spp_settings.from_location:
+			frappe.throw(
+				"Bin <b>{0}</b> is at <b>{1}</b>, not <b>{2}</b>: it was never released "
+				"from its last lot. Release it (Bin Movement) before issuing it again."
+				.format(x.bin_code, location or "no location", spp_settings.from_location)
+			)
+		held = frappe.db.get_value(
+			"Item Bin Mapping", {"blanking__bin": x.bin_code, "is_retired": 0},
+			["compound", "spp_batch_number"], as_dict=True,
+		)
+		if held:
+			frappe.throw(
+				"Bin <b>{0}</b> still holds <b>{1}</b> batch <b>{2}</b>. "
+				"Release it before issuing new compound."
+				.format(x.bin_code, held.compound, held.spp_batch_number)
+			)
+		open_issue = frappe.db.sql(
+			"""SELECT p.name, p.scan_production_lot
+			   FROM `tabBlank Bin Issue Item` i
+			   INNER JOIN `tabBlank Bin Issue` p ON p.name = i.parent
+			   WHERE i.bin = %(bin)s AND i.is_completed = 0 AND p.docstatus = 1
+			   ORDER BY p.creation DESC LIMIT 1""",
+			{"bin": x.bin_code}, as_dict=True,
+		)
+		if open_issue:
+			frappe.throw(
+				"Bin <b>{0}</b> is still issued to lot <b>{1}</b> (Blank Bin Issue {2}). "
+				"Complete or release that lot first."
+				.format(x.bin_code, open_issue[0].scan_production_lot, open_issue[0].name)
+			)
+
