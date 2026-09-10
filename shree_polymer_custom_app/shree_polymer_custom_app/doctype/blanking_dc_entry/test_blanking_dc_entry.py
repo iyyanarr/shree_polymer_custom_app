@@ -98,13 +98,42 @@ class TestBlankingDCRefusesOccupiedBin(FrappeTestCase):
 		self.assertIn(BIN, msg)
 		self.assertIn("26OLD-1", msg, "must name the batch still in the bin")
 
-	def test_refuses_a_bin_still_issued_to_a_lot_and_names_the_lot(self):
+	def test_accepts_an_empty_bin_even_with_an_open_blank_bin_issue(self):
+		"""An empty bin is free, whatever its paperwork says.
+
+		The open-Blank-Bin-Issue refusal shipped in #13 could only ever fire on
+		an EMPTY bin: the "still holds compound" check above throws first
+		whenever the bin actually has material. So it never protected the case
+		it named ("another lot owns it") — it just stranded bins whose issue was
+		never closed. Only a Bin Movement or an MPE sets is_completed, so
+		releasing a bin by retiring its Item Bin Mapping leaves the issue open
+		for good: 164 bins were stuck that way on prod.
+
+		Worse, Ops commits the stock before the Legacy leg runs, so a
+		Legacy-only refusal is permanent divergence rather than a safe block —
+		10 Blanking DC entries diverged in the two days after #13 shipped
+		(e.g. BDC-2026-01064: Ops MES-LOG-2026-21252 Success, Legacy Failed on
+		bin BLB -00208, and every retry failed identically).
+		"""
+		open_blank_bin_issue(BIN, lot="26TEST01")     # paperwork open, bin empty
+
+		doc = make_dc(BIN)
+		doc.insert(ignore_permissions=True)           # must not raise
+
+		self.assertEqual(doc.items[0].bin_code, BIN)
+
+	def test_still_refuses_when_the_bin_actually_holds_material(self):
+		"""The protection that matters is unchanged: material, not paperwork."""
+		frappe.get_doc({
+			"doctype": "Item Bin Mapping", "blanking__bin": BIN,
+			"compound": COMPOUND, "spp_batch_number": "26OLD-1",
+			"qty": 5.0, "is_retired": 0,
+		}).insert(ignore_permissions=True)
 		open_blank_bin_issue(BIN, lot="26TEST01")
+
 		with self.assertRaises(frappe.ValidationError) as cm:
 			make_dc(BIN).insert(ignore_permissions=True)
-		msg = str(cm.exception)
-		self.assertIn(BIN, msg)
-		self.assertIn("26TEST01", msg, "the supervisor must be told WHICH lot holds the bin")
+		self.assertIn("26OLD-1", str(cm.exception))
 
 	def test_blank_bin_inward_path_is_exempt(self):
 		"""Inward bins legitimately carry a mapping; that path never created one."""
