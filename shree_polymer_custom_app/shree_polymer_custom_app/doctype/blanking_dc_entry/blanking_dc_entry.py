@@ -888,7 +888,16 @@ def refuse_bins_that_are_not_free(doc):
 	2. The bin still carries an un-retired Item Bin Mapping: issuing new compound
 	   on top creates two active mappings, and the moulding check reads whichever
 	   one MariaDB returns first.
-	3. The bin is still on an open Blank Bin Issue: another lot owns it.
+	An open Blank Bin Issue is deliberately NOT checked. That refusal shipped in
+	#13 and could only ever fire on an empty bin -- check 2 above throws first
+	whenever the bin actually holds material -- so it never protected the case it
+	named, and instead stranded bins whose issue was never closed. Only a Bin
+	Movement or an MPE sets is_completed, so releasing a bin by retiring its
+	Item Bin Mapping leaves the issue open for good (164 bins on prod). It also
+	diverged the two systems: Ops commits the stock before the Legacy leg runs,
+	so a Legacy-only refusal is permanent, not a safe block -- 10 Blanking DC
+	entries broke that way in the two days after #13 shipped, each failing every
+	retry identically. Emptiness is the real test, and check 2 is it.
 
 	Bins that came back through Blank Bin Inward are exempt -- that path re-uses
 	an existing mapping by design and never creates one.
@@ -915,19 +924,5 @@ def refuse_bins_that_are_not_free(doc):
 				"Bin <b>{0}</b> still holds <b>{1}</b> batch <b>{2}</b>. "
 				"Release it before issuing new compound."
 				.format(x.bin_code, held.compound, held.spp_batch_number)
-			)
-		open_issue = frappe.db.sql(
-			"""SELECT p.name, p.scan_production_lot
-			   FROM `tabBlank Bin Issue Item` i
-			   INNER JOIN `tabBlank Bin Issue` p ON p.name = i.parent
-			   WHERE i.bin = %(bin)s AND i.is_completed = 0 AND p.docstatus = 1
-			   ORDER BY p.creation DESC LIMIT 1""",
-			{"bin": x.bin_code}, as_dict=True,
-		)
-		if open_issue:
-			frappe.throw(
-				"Bin <b>{0}</b> is still issued to lot <b>{1}</b> (Blank Bin Issue {2}). "
-				"Complete or release that lot first."
-				.format(x.bin_code, open_issue[0].scan_production_lot, open_issue[0].name)
 			)
 
