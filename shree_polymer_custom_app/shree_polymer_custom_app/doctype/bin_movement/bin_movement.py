@@ -20,7 +20,24 @@ def make_bin_release_movement(self):
 			if bin__.asset_movement:
 				make_asset_movement(spp_settings,bin__)
 			if  bin__.bin_released:
-				frappe.db.set_value("Item Bin Mapping",bin__.ibm_id,"is_retired",1)
+				# Retire EVERY live mapping on this bin, not just the scanned one.
+				# validate_bin reports compound_resp[0] — the FIRST of however many
+				# live rows a bin carries — so releasing a bin that holds two batches
+				# cleared one and left the other, and the next Blanking DC refused it
+				# as "still holds". Live 11 Sep 2026: BLB -00233 was released twice,
+				# three minutes apart, and BOTH mappings were still live afterwards;
+				# its Blanking DC failed 28 seconds after the second release.
+				#
+				# A bin holding two batches is legitimate, not corruption — 4 of the
+				# 7 doubles on production are mirrored identically in Console. So the
+				# unit being released is the BIN, not one mapping row.
+				if bin__.bin_id:
+					frappe.db.sql(""" UPDATE `tabItem Bin Mapping` SET is_retired = 1
+						WHERE blanking__bin = %(bin)s AND is_retired = 0 """,{"bin":bin__.bin_id})
+				# Belt and braces: retire the scanned row too, in case its
+				# blanking__bin disagrees with the row's own bin_id.
+				if bin__.ibm_id:
+					frappe.db.set_value("Item Bin Mapping",bin__.ibm_id,"is_retired",1)
 				frappe.db.sql(""" UPDATE `tabBlank Bin Issue Item` set is_completed = 1 where bin=%(bin)s and is_completed=0 """,{"bin":bin__.bin_id})
 				frappe.db.commit()
 	except Exception as e:
