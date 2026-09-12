@@ -7,6 +7,31 @@ from frappe.utils import cint, cstr, duration_to_seconds, flt, update_progress_b
 import json
 from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series, delete_stock_entry_safely
 
+def compound_cutover_enabled():
+	"""Is this site running the compound chain cutover?
+
+	When on, Legacy no longer carries Master Batch / Final Batch Mixing or the
+	Compound Inspection. Compound enters once, as a Material Receipt created
+	when the inspection is approved in Console (bridge compound_receipt.py).
+
+	Three gates on this screen assume the old chain and must stand down:
+	  - check_compound_inspection : there is no Compound Inspection to find
+	  - validate_qi               : there is no Quality Inspection either
+	  - validate_spp_batch_no     : must accept ONLY Material Receipt, so the
+	                                stock left behind by the old chain cannot
+	                                be drawn on (the factory froze it)
+
+	Read from site_config so each environment decides for itself, matching the
+	bridge's own flag:
+
+	    bench --site <site> set-config spp_compound_cutover 1
+	"""
+	try:
+		return bool(frappe.conf.get("spp_compound_cutover"))
+	except Exception:
+		return False
+
+
 class MaterialTransfer(Document):
 	def validate(self):
 		if getdate(self.transfer_date) > getdate():
@@ -141,6 +166,11 @@ def get_cutbit_items(items):
 
 @frappe.whitelist()
 def validate_qi(self):
+	# No Quality Inspection is created on Legacy under the cutover — Console and
+	# Ops hold the inspection record. Demanding one here would block every row
+	# whose item carries a qc_template.
+	if compound_cutover_enabled():
+		return {"status": True, "message": ""}
 	message = ""
 	status = True
 	for x in self.batches:
@@ -221,6 +251,14 @@ def get_minxing_s_warehouses(doctype, txt, searchfield, start, page_len, filters
  
 @frappe.whitelist()
 def validate_spp_batch_no(batch_no,warehouse,t_warehouse,s_type,t_type):
+	# Under the cutover, compound reaches Legacy ONLY by Material Receipt. The
+	# old chain's Manufacture-sourced stock is deliberately frozen: accepting it
+	# here would let sheeting draw on the very stock the cutover exists to stop
+	# using, and both sources would feed the same warehouse at once.
+	if compound_cutover_enabled():
+		type_clause = "S.stock_entry_type = 'Material Receipt'"
+	else:
+		type_clause = "S.stock_entry_type = %(type)s OR S.stock_entry_type = 'Material Receipt'"
 	sheeting_condition = ""
 	spp_settings = frappe.get_single("SPP Settings")
 	cut_bit_items = []
@@ -237,8 +275,8 @@ def validate_spp_batch_no(batch_no,warehouse,t_warehouse,s_type,t_type):
 					  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
 					  INNER JOIN `tabItem` P ON P.name = SD.item_code
 					  WHERE SD.mix_barcode = %(mix_barcode)s AND SD.t_warehouse = %(t_warehouse)s 
-					  AND (S.stock_entry_type = %(type)s OR S.stock_entry_type ='Material Receipt') AND S.docstatus = 1  {sheeting_condition}
-					  ORDER BY S.creation DESC limit 1 """.format(sheeting_condition=sheeting_condition),{'cut_bit_warehouse':spp_settings.default_cut_bit_warehouse,'sheeting_condition':sheeting_condition,'mix_barcode':batch_no,'t_warehouse':warehouse,'type':s_type},as_dict=1)
+					  AND ({type_clause}) AND S.docstatus = 1  {sheeting_condition}
+					  ORDER BY S.creation DESC limit 1 """.format(sheeting_condition=sheeting_condition,type_clause=type_clause),{'cut_bit_warehouse':spp_settings.default_cut_bit_warehouse,'sheeting_condition':sheeting_condition,'mix_barcode':batch_no,'t_warehouse':warehouse,'type':s_type},as_dict=1)
 	
 	# If not found, try barcode_text
 	if not stock_details:
@@ -247,8 +285,8 @@ def validate_spp_batch_no(batch_no,warehouse,t_warehouse,s_type,t_type):
 						  INNER JOIN `tabStock Entry` S ON SD.parent = S.name
 						  INNER JOIN `tabItem` P ON P.name = SD.item_code
 						  WHERE SD.barcode_text = %(mix_barcode)s AND SD.t_warehouse = %(t_warehouse)s 
-						  AND (S.stock_entry_type = %(type)s OR S.stock_entry_type ='Material Receipt') AND S.docstatus = 1  {sheeting_condition}
-						  ORDER BY S.creation DESC limit 1 """.format(sheeting_condition=sheeting_condition),{'cut_bit_warehouse':spp_settings.default_cut_bit_warehouse,'sheeting_condition':sheeting_condition,'mix_barcode':batch_no,'t_warehouse':warehouse,'type':s_type},as_dict=1)
+						  AND ({type_clause}) AND S.docstatus = 1  {sheeting_condition}
+						  ORDER BY S.creation DESC limit 1 """.format(sheeting_condition=sheeting_condition,type_clause=type_clause),{'cut_bit_warehouse':spp_settings.default_cut_bit_warehouse,'sheeting_condition':sheeting_condition,'mix_barcode':batch_no,'t_warehouse':warehouse,'type':s_type},as_dict=1)
 	
 	# Check cut bit warehouse if Transfer Compound to Sheeting and not found
 	if t_type == "Transfer Compound to Sheeting Warehouse" and not stock_details:
@@ -310,6 +348,12 @@ def validate_spp_batch_no(batch_no,warehouse,t_warehouse,s_type,t_type):
 			return  {"status":False,"message":"Scanned batch <b>"+batch_no+"</b> not exist in the wareshouse<b> "+warehouse+"</b>"}
 
 def check_compound_inspection(batch_no,warehouse,s_type):
+	# Under the cutover there is no Compound Inspection on Legacy to find — the
+	# compound arrives already approved, as a Material Receipt. The receipt IS
+	# the evidence it passed, so demanding a document that will never exist
+	# would refuse every compound.
+	if compound_cutover_enabled():
+		return False
 	stock_details = frappe.db.sql(""" SELECT S.name stock__id,S.stock_entry_type,S.docstatus doc__status,SD.item_code
 									FROM `tabStock Entry Detail` SD
 									INNER JOIN `tabStock Entry` S ON SD.parent = S.name
