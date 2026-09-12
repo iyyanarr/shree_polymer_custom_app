@@ -1287,6 +1287,65 @@ def validate_operator(operator, supervisor=None):
     return {"status": "Failed", "message": "Employee not found."}
 
 
+
+@frappe.whitelist()
+def explain_missing_blank_bin_issue(lot_no):
+	"""Say WHY the Blank Bin Issue join found nothing.
+
+	The join above requires all of: a submitted Blank Bin Issue, an item with
+	is_completed = 0, and a job_card that resolves to the lot's Job Card. When
+	any one of those fails it returned the same sentence — "there is no entry
+	for Blank Bin Issue" — and the operator went looking for a document that
+	was very often sitting right there.
+
+	Live (11 Sep 2026): lot 26I11X01 was told no Blank Bin Issue existed while
+	PE-80280 sat submitted against bin BLB -00241, its item already flipped to
+	is_completed = 1 by an unrelated release. Same sentence, entirely different
+	problem, and nothing on the screen distinguished them.
+
+	Read-only. Returns the sentence to show; falls back to the original text if
+	anything here fails, because a diagnostic must never replace the answer.
+	"""
+	try:
+		rows = frappe.db.sql("""
+			SELECT B.name AS issue, BI.bin, BI.is_completed, B.docstatus, BI.job_card
+			FROM `tabBlank Bin Issue Item` BI
+			INNER JOIN `tabBlank Bin Issue` B ON B.name = BI.parent
+			WHERE B.scan_production_lot = %(lot_no)s
+			ORDER BY B.creation ASC
+		""", {"lot_no": lot_no}, as_dict=1)
+
+		if not rows:
+			return "There is no entry for Blank Bin Issue for the scanned lot number."
+
+		submitted = [r for r in rows if r.docstatus == 1]
+		if not submitted:
+			return ("The Blank Bin Issue for this lot has not been submitted "
+					"({0}). Submit it, then enter the production.".format(
+						", ".join(sorted({r.issue for r in rows}))))
+
+		completed = [r for r in submitted if r.is_completed]
+		open_rows = [r for r in submitted if not r.is_completed]
+
+		if open_rows and not [r for r in open_rows if r.job_card]:
+			return ("The Blank Bin Issue for this lot ({0}) is not linked to a Job "
+					"Card, so it cannot be matched to this lot. Report this lot — "
+					"re-scanning will not help.".format(
+						", ".join(sorted({r.issue for r in open_rows}))))
+
+		if completed and not open_rows:
+			return ("Every bin issued to this lot is already marked consumed "
+					"({0} on {1}). The Blank Bin Issue exists but has nothing "
+					"left to draw from — the bin was released or used elsewhere. "
+					"Report this lot; re-scanning will not help.".format(
+						", ".join(sorted({r.bin for r in completed if r.bin})),
+						", ".join(sorted({r.issue for r in completed}))))
+	except Exception:
+		frappe.log_error(title="explain_missing_blank_bin_issue failed",
+						 message=frappe.get_traceback())
+
+	return "There is no entry for Blank Bin Issue for the scanned lot number."
+
 @frappe.whitelist()
 def validate_lot_number(batch_no):
 	try:
@@ -1319,7 +1378,7 @@ def validate_lot_number(batch_no):
 							WHERE BI.is_completed = 0 AND JB.batch_code=%(lot_no)s 
 							AND B.docstatus = 1 ORDER BY B.creation ASC """, {"lot_no": batch_no}, as_dict=1)
 		if not check_lot_issue:
-			return {"status": "Failed", "message": "There is no entry for Blank Bin Issue for the scanned lot number."}
+			return {"status": "Failed", "message": explain_missing_blank_bin_issue(batch_no)}
 		else:
 			if not check_lot_issue[0].mould_reference:
 				return {"status": "Failed", "message": f"The <b>Mould Referenece</b> not found in <b>Job Card - {check_lot_issue[0].job_card}</b>"}
