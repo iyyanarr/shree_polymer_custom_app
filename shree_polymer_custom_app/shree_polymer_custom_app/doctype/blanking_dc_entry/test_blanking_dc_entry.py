@@ -68,7 +68,7 @@ def open_blank_bin_issue(bin_name, lot):
 	return doc
 
 
-class TestBlankingDCRefusesOccupiedBin(FrappeTestCase):
+class TestBlankingDCRecordsOccupiedBin(FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		free_bin(BIN)
@@ -78,25 +78,56 @@ class TestBlankingDCRefusesOccupiedBin(FrappeTestCase):
 		doc.insert(ignore_permissions=True)
 		self.assertEqual(doc.docstatus, 0)
 
-	def test_refuses_a_bin_that_never_came_back(self):
-		"""Asset still at the TO location: its last cycle was never released."""
-		free_bin(BIN, location=TO_LOC)
-		with self.assertRaises(frappe.ValidationError) as cm:
-			make_dc(BIN).insert(ignore_permissions=True)
-		msg = str(cm.exception)
-		self.assertIn(BIN, msg)
-		self.assertIn(TO_LOC, msg)
+	def test_accepts_a_bin_that_never_came_back_and_records_it(self):
+		"""Asset still at the TO location: its last cycle was never released.
 
-	def test_refuses_a_bin_that_still_holds_compound(self):
+		That is the NORMAL state at shift change here. The moulding entry for the
+		previous lot is routinely not posted until after the next shift has already
+		taken the bin, so the Asset location lags reality by a shift. The bin in the
+		operator's hands is empty; only the record says otherwise.
+
+		Refusing it (shipped #13, 9 Sep) did not protect anything, because Ops has
+		already committed the stock by the time the Legacy leg runs -- the refusal
+		is permanent divergence, not a block. It stranded 19 bins across 8 DCs on
+		12 Sep 2026, and spiked to 19 failures in 36 DCs on 10 Sep.
+		"""
+		free_bin(BIN, location=TO_LOC)
+		doc = make_dc(BIN)
+		doc.insert(ignore_permissions=True)          # must not raise
+		self.assertEqual(doc.items[0].bin_code, BIN)
+
+	def test_accepts_a_bin_that_still_holds_compound_and_records_it(self):
+		"""A bin carrying a live mapping is accepted, and the fact is recorded.
+
+		Two live mappings on one bin is a LEGITIMATE state here -- 4 of the 7
+		doubled bins on production are mirrored identically in Console. The hazard
+		#13 named was that "the moulding check reads whichever one MariaDB returns
+		first", which is a non-deterministic read in the MPE lookup. Forbidding a
+		real state to work around a missing ORDER BY somewhere else is the wrong
+		trade, and it is the trade that jammed the line.
+		"""
 		frappe.get_doc({
 			"doctype": "Item Bin Mapping", "compound": COMPOUND, "qty": 4.0, "is_retired": 0,
 			"blanking__bin": BIN, "spp_batch_number": "26OLD-1",
 		}).insert(ignore_permissions=True)
-		with self.assertRaises(frappe.ValidationError) as cm:
-			make_dc(BIN).insert(ignore_permissions=True)
-		msg = str(cm.exception)
-		self.assertIn(BIN, msg)
-		self.assertIn("26OLD-1", msg, "must name the batch still in the bin")
+
+		doc = make_dc(BIN)
+		doc.insert(ignore_permissions=True)          # must not raise
+		self.assertEqual(doc.items[0].bin_code, BIN)
+
+	def test_an_occupied_bin_is_written_to_the_error_log(self):
+		"""Dropping the block must not drop the signal -- we still need to measure
+		how often a bin is taken before its last lot was posted."""
+		frappe.get_doc({
+			"doctype": "Item Bin Mapping", "compound": COMPOUND, "qty": 4.0, "is_retired": 0,
+			"blanking__bin": BIN, "spp_batch_number": "26OLD-1",
+		}).insert(ignore_permissions=True)
+		before = frappe.db.count("Error Log")
+
+		make_dc(BIN).insert(ignore_permissions=True)
+
+		self.assertGreater(frappe.db.count("Error Log"), before,
+			"a bin that was not free must still be recorded")
 
 	def test_accepts_an_empty_bin_even_with_an_open_blank_bin_issue(self):
 		"""An empty bin is free, whatever its paperwork says.
@@ -122,8 +153,14 @@ class TestBlankingDCRefusesOccupiedBin(FrappeTestCase):
 
 		self.assertEqual(doc.items[0].bin_code, BIN)
 
-	def test_still_refuses_when_the_bin_actually_holds_material(self):
-		"""The protection that matters is unchanged: material, not paperwork."""
+	def test_material_plus_open_paperwork_is_still_accepted(self):
+		"""Neither material nor paperwork blocks the DC any more.
+
+		The protection moves to a pre-flight that runs BEFORE Ops commits, so the
+		operator is told at the blanking station and nothing diverges. Until that
+		ships, recording beats refusing: a refusal here cannot stop the Ops write
+		that already happened.
+		"""
 		frappe.get_doc({
 			"doctype": "Item Bin Mapping", "blanking__bin": BIN,
 			"compound": COMPOUND, "spp_batch_number": "26OLD-1",
@@ -131,9 +168,9 @@ class TestBlankingDCRefusesOccupiedBin(FrappeTestCase):
 		}).insert(ignore_permissions=True)
 		open_blank_bin_issue(BIN, lot="26TEST01")
 
-		with self.assertRaises(frappe.ValidationError) as cm:
-			make_dc(BIN).insert(ignore_permissions=True)
-		self.assertIn("26OLD-1", str(cm.exception))
+		doc = make_dc(BIN)
+		doc.insert(ignore_permissions=True)          # must not raise
+		self.assertEqual(doc.items[0].bin_code, BIN)
 
 	def test_blank_bin_inward_path_is_exempt(self):
 		"""Inward bins legitimately carry a mapping; that path never created one."""
