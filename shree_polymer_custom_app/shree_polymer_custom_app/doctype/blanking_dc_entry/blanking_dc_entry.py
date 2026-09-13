@@ -19,7 +19,7 @@ class BlankingDCEntry(Document):
 				x.net_weight = x.gross_weight - x.bin_weight
 		else:
 			frappe.throw("Please scan and add items.")
-		refuse_bins_that_are_not_free(self)
+		record_bins_that_are_not_free(self)
 
 	def on_submit(self):
 		""" For restrict F-product creation 'hided' on 31/2/23"""
@@ -874,55 +874,75 @@ def generate_barcode(compound):
 	return {"barcode":barcode,"barcode_text":barcode_text}
 
 
-def refuse_bins_that_are_not_free(doc):
-	"""Refuse to issue a bin that is still committed elsewhere, and say to what.
+def record_bins_that_are_not_free(doc):
+	"""Record a bin that the system still thinks is committed. Do NOT refuse it.
 
-	Three states make a bin unavailable, checked in the order they occur on the
-	floor. Each was seen on production (14 Aug -> 9 Sep 2026) producing a DC that
-	ERPNext later rejected two steps downstream with a message nobody saw:
+	This refused the DC from #13 (9 Sep 2026) until it was found to be the thing
+	jamming the line. Two states were checked:
 
-	1. The bin's asset is not at the DC's from-location: its last cycle was never
-	   released (Bin Movement never ran, usually because that moulding entry is
-	   still a draft), so ERPNext's Asset Movement would throw
-	   "does not belong to the location".
-	2. The bin still carries an un-retired Item Bin Mapping: issuing new compound
-	   on top creates two active mappings, and the moulding check reads whichever
-	   one MariaDB returns first.
-	An open Blank Bin Issue is deliberately NOT checked. That refusal shipped in
-	#13 and could only ever fire on an empty bin -- check 2 above throws first
-	whenever the bin actually holds material -- so it never protected the case it
-	named, and instead stranded bins whose issue was never closed. Only a Bin
-	Movement or an MPE sets is_completed, so releasing a bin by retiring its
-	Item Bin Mapping leaves the issue open for good (164 bins on prod). It also
-	diverged the two systems: Ops commits the stock before the Legacy leg runs,
-	so a Legacy-only refusal is permanent, not a safe block -- 10 Blanking DC
-	entries broke that way in the two days after #13 shipped, each failing every
-	retry identically. Emptiness is the real test, and check 2 is it.
+	  1. the bin's Asset is not at the DC's from-location
+	  2. the bin still carries an un-retired Item Bin Mapping
+
+	Both describe a bin whose PREVIOUS moulding entry has not been posted yet --
+	which on this floor is the normal state at shift change, not an error. The
+	moulding entry routinely lags the shift, so the next shift releases the bin by
+	hand and takes it for the new lot. The bin in the operator's hands is empty;
+	only the record lags, by about one shift.
+
+	Refusing it protected nothing, for a reason #14 already wrote down: Ops
+	commits the stock BEFORE the Legacy leg runs, so a Legacy-only refusal is
+	permanent divergence rather than a safe block. Measured on production:
+
+	  10 Sep 2026   19 of 36 Blanking DCs failed the Legacy leg
+	  12 Sep 2026   8 DCs failed, stranding 19 bins across both systems
+	                every one retried identically until the bins were repaired
+	                by hand on 13 Sep
+
+	Check 2's stated hazard was that "the moulding check reads whichever mapping
+	MariaDB returns first". That is a non-deterministic read in the MPE lookup,
+	and two live mappings on one bin is a LEGITIMATE state here -- 4 of the 7
+	doubled bins on production are mirrored identically in Console. Forbidding a
+	real state to work around a missing ORDER BY elsewhere is the wrong trade.
+
+	The protection belongs in a PRE-FLIGHT that runs before Ops commits, so the
+	operator is told at the blanking station and nothing diverges. Until that
+	ships, record and continue: the signal is worth keeping, the block is not.
 
 	Bins that came back through Blank Bin Inward are exempt -- that path re-uses
 	an existing mapping by design and never creates one.
 	"""
 	if doc.get("from_blank_bin_inward"):
 		return
-	spp_settings = frappe.get_single("SPP Settings")
-	for x in (doc.items or []):
-		if not x.bin_code:
-			continue
-		location = frappe.db.get_value("Asset", x.bin_code, "location")
-		if spp_settings.from_location and location != spp_settings.from_location:
-			frappe.throw(
-				"Bin <b>{0}</b> is at <b>{1}</b>, not <b>{2}</b>: it was never released "
-				"from its last lot. Release it (Bin Movement) before issuing it again."
-				.format(x.bin_code, location or "no location", spp_settings.from_location)
+	not_free = []
+	try:
+		spp_settings = frappe.get_single("SPP Settings")
+		for x in (doc.items or []):
+			if not x.bin_code:
+				continue
+			location = frappe.db.get_value("Asset", x.bin_code, "location")
+			if spp_settings.from_location and location != spp_settings.from_location:
+				not_free.append(
+					"{0}: asset at {1}, not {2} - its last lot was never released"
+					.format(x.bin_code, location or "no location", spp_settings.from_location)
+				)
+			held = frappe.db.get_value(
+				"Item Bin Mapping", {"blanking__bin": x.bin_code, "is_retired": 0},
+				["compound", "spp_batch_number"], as_dict=True,
 			)
-		held = frappe.db.get_value(
-			"Item Bin Mapping", {"blanking__bin": x.bin_code, "is_retired": 0},
-			["compound", "spp_batch_number"], as_dict=True,
-		)
-		if held:
-			frappe.throw(
-				"Bin <b>{0}</b> still holds <b>{1}</b> batch <b>{2}</b>. "
-				"Release it before issuing new compound."
-				.format(x.bin_code, held.compound, held.spp_batch_number)
+			if held:
+				not_free.append(
+					"{0}: still mapped to {1} batch {2}"
+					.format(x.bin_code, held.compound, held.spp_batch_number)
+				)
+		if not_free:
+			frappe.log_error(
+				title="Blanking DC took a bin the system still held",
+				message="DC {0}\n\n{1}\n\nAccepted anyway: the moulding entry for the "
+						"previous lot has most likely not been posted yet. Refusing here "
+						"cannot help - Ops has already committed the stock."
+						.format(doc.name or "(unsaved)", "\n".join(not_free)),
 			)
+	except Exception:
+		# Recording must never be the thing that stops a DC.
+		pass
 
