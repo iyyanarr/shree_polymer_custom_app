@@ -4,6 +4,10 @@
 import frappe
 from frappe.model.document import Document
 from shree_polymer_custom_app.shree_polymer_custom_app.api import get_stock_entry_naming_series, delete_stock_entry_safely
+from shree_polymer_custom_app.shree_polymer_custom_app.bin_mapping import (
+	draw_down_bin_mapping,
+	resolve_live_bin_mapping,
+)
 
 class CutBitTransfer(Document):
 
@@ -191,14 +195,23 @@ def create_stock_entry(mt_doc):
 	frappe.db.commit()
 	for x in mt_doc.items:
 		if frappe.db.get_value("Item",x.item_code,"item_group")== spp_settings.blanking_item_group:
-			check_item_bin = frappe.db.get_all("Item Bin Mapping",filters={"compound":x.item_code,"is_retired":0},fields=['name','qty'])
-			if check_item_bin:
-				if check_item_bin[0].qty == x.qty:
-					frappe.db.set_value("Item Bin Mapping",check_item_bin[0].name,"is_retired",1)
-				else:
-					if check_item_bin[0].qty > x.qty:
-						frappe.db.set_value("Item Bin Mapping",check_item_bin[0].name,"qty",check_item_bin[0].qty-x.qty)
-				frappe.db.commit()
+			# Draw down the mapping of the bin THIS transfer was scanned against.
+			#
+			# The old filter was {"compound": x.item_code, "is_retired": 0} with no
+			# bin and no ORDER BY, then took row [0] -- so it retired or decremented
+			# an arbitrary live mapping belonging to some other bin. The bin was
+			# available the whole time: it is scanned into scan_clip__bin.
+			#
+			# 162 successful legacy cut-bit transfers ran 05-12 Sep 2026 against
+			# compounds spread across many bins at once (C_6122 in 45 live bins,
+			# C_70103 in 19, C_69221 in 16), so a C_6122 cut-bit had roughly a
+			# 1-in-45 chance of touching the bin it was actually about.
+			mapping = resolve_live_bin_mapping(
+				mt_doc.get("scan_clip__bin"), compound=x.item_code,
+				spp_batch_number=x.get("spp_batch_no"),
+			)
+			draw_down_bin_mapping(mapping, x.qty)
+			frappe.db.commit()
 	
 @frappe.whitelist()
 def get_process_based_employess(doctype, txt, searchfield, start, page_len, filters):
