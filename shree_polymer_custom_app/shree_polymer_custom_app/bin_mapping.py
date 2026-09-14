@@ -42,33 +42,50 @@ def resolve_bin_asset(scanned):
 
 
 def resolve_live_bin_mapping(scanned_bin, compound=None, spp_batch_number=None):
-    """The live Item Bin Mapping for THIS bin, or None.
+    """The live Item Bin Mapping this operation must act on, or None.
 
-    Narrowed hardest-first: bin, then compound, then batch. Ordered by creation
-    so the answer is deterministic rather than whatever MariaDB returns.
+    Narrowed hardest-first, using whatever the caller actually has:
 
-    Returns None when the bin cannot be resolved, and the caller must then do
-    NOTHING. Touching an arbitrary bin is worse than skipping the update: the
-    bin that would have been hit belongs to a different lot entirely.
+        bin + compound + batch   most precise
+        compound + batch         when no bin is available
+        (compound alone)         REFUSED - that is the bug this replaces
+
+    Ordered by creation so the answer is deterministic rather than whatever
+    MariaDB happens to return first.
+
+    A bin is NOT always available. Bridge-created Cut Bit Transfers leave
+    scan_clip__bin empty - verified on production, CBT-25185 and CBT-25186
+    (12 Sep 2026, transfer_from="Blanking", scan_clip__bin=None) - so requiring
+    one would silently stop the draw-down those entries are supposed to do.
+    Their item rows do carry spp_batch_no, which narrows to the bins holding one
+    sheeting batch (3 for 26I08X23-1) instead of every bin holding the compound
+    (46 for C_6122).
+
+    Returns None when nothing narrower than the compound is available. The
+    caller must then do NOTHING: drawing down an arbitrary bin is worse than
+    skipping, because the bin hit belongs to a different lot entirely.
     """
+    filters = {"is_retired": 0}
     asset = resolve_bin_asset(scanned_bin)
-    if not asset:
-        return None
-    filters = {"blanking__bin": asset, "is_retired": 0}
+    if asset:
+        filters["blanking__bin"] = asset
     if compound:
         filters["compound"] = compound
     if spp_batch_number:
-        exact = frappe.db.get_all(
-            "Item Bin Mapping", filters=dict(filters, spp_batch_number=spp_batch_number),
-            fields=["name", "qty"], order_by="creation desc", limit_page_length=1,
-        )
-        if exact:
-            return exact[0]
+        filters["spp_batch_number"] = spp_batch_number
+
+    # Compound alone is exactly the defect being removed - never fall back to it.
+    if "blanking__bin" not in filters and "spp_batch_number" not in filters:
+        return None
+
     rows = frappe.db.get_all(
         "Item Bin Mapping", filters=filters, fields=["name", "qty"],
         order_by="creation desc", limit_page_length=1,
     )
-    return rows[0] if rows else None
+    if rows:
+        return rows[0]
+    # A bin was named but holds nothing matching: do not widen the search.
+    return None
 
 
 def draw_down_bin_mapping(mapping, qty):

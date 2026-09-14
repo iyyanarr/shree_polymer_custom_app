@@ -46,21 +46,33 @@ class TestResolveLiveBinMapping(unittest.TestCase):
         resolve_live_bin_mapping("BLB 045", compound="C_6122")
         self.assertIn("creation", self.frappe.db.get_all.call_args[1]["order_by"])
 
-    def test_the_batch_is_preferred_when_given(self):
+    def test_the_batch_narrows_it_too(self):
         self.frappe.db.get_all.return_value = [{"name": "ibm-exact", "qty": 5.0}]
         r = resolve_live_bin_mapping("BLB 045", compound="C_6122", spp_batch_number="26I08X19-1")
         self.assertEqual(r["name"], "ibm-exact")
-        self.assertEqual(
-            self.frappe.db.get_all.call_args_list[0][1]["filters"]["spp_batch_number"],
-            "26I08X19-1")
+        f = self.frappe.db.get_all.call_args[1]["filters"]
+        self.assertEqual(f["spp_batch_number"], "26I08X19-1")
+        self.assertEqual(f["blanking__bin"], "BLB -00045")
 
-    def test_an_unresolvable_bin_returns_None_so_the_caller_does_NOTHING(self):
-        """Better to skip than to draw down a stranger's bin."""
+    def test_NO_BIN_still_works_when_the_batch_is_known(self):
+        """Bridge-created cut-bit transfers leave scan_clip__bin empty - verified
+        on production, CBT-25185/25186. Requiring a bin would silently stop the
+        draw-down those entries exist to do."""
         self.frappe.db.get_value.return_value = None
-        self.assertIsNone(resolve_live_bin_mapping("BLB 999", compound="C_6122"))
+        self.frappe.db.get_all.return_value = [{"name": "ibm-1", "qty": 2.5}]
+        r = resolve_live_bin_mapping(None, compound="C_6122", spp_batch_number="26I08X23-1")
+        self.assertIsNotNone(r)
+        f = self.frappe.db.get_all.call_args[1]["filters"]
+        self.assertNotIn("blanking__bin", f)
+        self.assertEqual(f["spp_batch_number"], "26I08X23-1")
+
+    def test_COMPOUND_ALONE_is_refused(self):
+        """The whole defect: no bin and no batch must mean no write."""
+        self.frappe.db.get_value.return_value = None
+        self.assertIsNone(resolve_live_bin_mapping(None, compound="C_6122"))
         self.frappe.db.get_all.assert_not_called()
 
-    def test_no_scan_returns_None(self):
+    def test_no_scan_and_no_batch_returns_None(self):
         self.assertIsNone(resolve_live_bin_mapping(None, compound="C_6122"))
         self.assertIsNone(resolve_live_bin_mapping("", compound="C_6122"))
 
