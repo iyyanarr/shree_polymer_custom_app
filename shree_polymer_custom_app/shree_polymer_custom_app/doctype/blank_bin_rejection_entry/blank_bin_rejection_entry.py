@@ -3,6 +3,10 @@
 
 import frappe
 from frappe.model.document import Document
+from shree_polymer_custom_app.shree_polymer_custom_app.bin_mapping import (
+	draw_down_bin_mapping,
+	resolve_live_bin_mapping,
+)
 from frappe.utils import cint, cstr, duration_to_seconds, flt,add_to_date, update_progress_bar,format_time, formatdate, getdate, nowdate,now
 
 class BlankBinRejectionEntry(Document):
@@ -142,15 +146,17 @@ def make_stock_entry(self):
 		sl_no.compound_code = self.compound_code
 		sl_no.serial_no = serial_no
 		sl_no.insert(ignore_permissions = True)
-		check_item_bin = frappe.db.get_all("Item Bin Mapping",filters={"compound":self.item,"is_retired":0},fields=['name','qty'])
-		if check_item_bin:
-			if self.quantity == check_item_bin[0].qty:
-				frappe.db.set_value("Item Bin Mapping",check_item_bin[0].name,"is_retired",1)
-				frappe.db.commit()
-			if check_item_bin[0].qty > self.quantity:
-				new_qty = check_item_bin[0].qty - self.quantity
-				frappe.db.set_value("Item Bin Mapping",check_item_bin[0].name,"qty",new_qty)
-				frappe.db.commit()
+		# Draw down THIS bin's mapping. The old filter was {"compound": self.item,
+		# "is_retired": 0} with no bin and no ORDER BY, so a rejection could retire
+		# or decrement a completely unrelated bin that happened to hold the same
+		# compound. bin_code is a field on this very document -- the bin was known
+		# all along. Same defect as cut_bit_transfer; see bin_mapping.py.
+		mapping = resolve_live_bin_mapping(
+			self.bin_code or self.scan_bin, compound=self.item,
+			spp_batch_number=self.get("batch_code"),
+		)
+		draw_down_bin_mapping(mapping, self.quantity)
+		frappe.db.commit()
 	except Exception as e:
 		frappe.log_error(message=frappe.get_traceback(),title="shree_polymer_custom_app.shree_polymer_custom_app.doctype.blank_bin_inward_entry.blank_bin_inward_entry.make_stock_entry")
 		frappe.db.rollback()
