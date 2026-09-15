@@ -1271,6 +1271,28 @@ def delete_stock_entry_safely(stock_entry_name):
 		return
 
 	try:
+		# 0. A SUBMITTED entry cannot be deleted -- frappe.delete_doc(force=1) does
+		# NOT bypass that check, it raises "Submitted Record cannot be deleted. You
+		# must cancel it first", the except below swallows it into Error Log, and
+		# the rollback silently does nothing: the caller is left with its stock
+		# consumed and its parent document still at docstatus=0. Seven Moulding
+		# Production Entries stranded that way between 12 and 15 Sep 2026.
+		#
+		# Cancelling is what actually reverses the ledger, and it has to happen
+		# BEFORE the UPDATEs below null out batch_no / serial_and_batch_bundle --
+		# the cancel needs those intact to reverse the stock.
+		se_doc = frappe.get_doc("Stock Entry", stock_entry_name)
+		if se_doc.docstatus == 1:
+			try:
+				se_doc.cancel()
+			except Exception:
+				# Could not reverse the stock. Say so loudly and stop: deleting now
+				# would strand the ledger entries this entry created.
+				frappe.log_error(
+					title="delete_stock_entry_safely: cancel failed, stock NOT reversed",
+					message="%s\n%s" % (stock_entry_name, frappe.get_traceback()))
+				return
+
 		# 1. Broad Identification of linked entities
 		details = frappe.get_all("Stock Entry Detail", 
 			filters={"parent": stock_entry_name}, 

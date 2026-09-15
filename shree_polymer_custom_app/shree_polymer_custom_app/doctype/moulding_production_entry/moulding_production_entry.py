@@ -1060,12 +1060,7 @@ def update_bins(self, resp__s, spp_settings):
                           'job_card': c__bin.get('job_card'), "name": c__bin.get('item_bin_mapping_name')})
             frappe.db.sql(
                 f""" UPDATE `tabBlank Bin Issue Item` set is_completed=1 where name = '{c__bin.get('blank_bin_issue_item_name')}' """)
-            last_mov = frappe.db.sql(
-                f" SELECT AMI.target_location FROM `tabAsset Movement` AM INNER JOIN `tabAsset Movement Item` AMI ON AM.name = AMI.parent WHERE AMI.asset = '{c__bin.get('bin')}' ORDER BY AMI.creation DESC LIMIT 1 ", as_dict=1)
-            if last_mov:
-                if not last_mov[0].target_location == spp_settings.from_location:
-                    make_asset_movement(spp_settings, c__bin)
-            else:
+            if _bin_move_needed(spp_settings, c__bin.get('bin')):
                 make_asset_movement(spp_settings, c__bin)
 
 
@@ -1181,6 +1176,38 @@ def append_source_details(stock_entry, self, work_order):
             "docstatus": 0
         })
     return batch_details
+
+
+def _bin_move_needed(spp_settings, bin_asset):
+    """Does this bin still have to be sent back to blanking?
+
+    make_asset_movement() hardcodes source=to_location (U2), target=from_location
+    (U3), and ERPNext validates that against the ASSET's own `location` field. So
+    read that field -- the one it enforces -- rather than the newest Asset
+    Movement Item, which is a different source and can disagree with it.
+
+    It does disagree: a bulk reconciliation on 2026-09-11 (system1@padmasteel.in,
+    transaction_date 10:50:49) submitted movements taking bins U3 -> U2 without
+    the assets' own location following. The old guard read "last target = U2, not
+    home, so bring it back"; ERPNext read "this asset is not at U2" and refused
+    with "Asset BLB -00087 does not belong to the location U2 - Ambattur",
+    stranding the whole Moulding Production Entry. Seen on BLB -00087, -00209,
+    -00221 and -00091.
+
+    Fails OPEN -- when the location cannot be established the move is attempted,
+    exactly as before. Same rule as the bridge's _asset_move_needed (#74), which
+    fixed this for the Bin Movement leg; the MPE leg kept the old one.
+    """
+    try:
+        home = getattr(spp_settings, "from_location", None)
+        if not home or not bin_asset:
+            return True
+        location = frappe.db.get_value("Asset", bin_asset, "location")
+        if not location:
+            return True
+        return location != home
+    except Exception:
+        return True
 
 
 def make_asset_movement(spp_settings, x):
