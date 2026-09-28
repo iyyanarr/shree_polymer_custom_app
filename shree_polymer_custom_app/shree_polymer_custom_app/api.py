@@ -853,17 +853,19 @@ def delete_batches(batch_ids):
 		return False,"Not able to delete batches"
 	
 def find_material_trns_entry(lot_no):
-	query = f""" SELECT 
+	query = f""" SELECT
 					SE.stock_entry_type,SED.valuation_rate,SED.amount,SED.source_ref_document,
 					SED.creation,SED.mix_barcode,SED.t_warehouse,SED.item_code,SED.spp_batch_number,
 					IBSB.qty,IBSB.stock_uom,SED.batch_no
-				FROM 
-					`tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE ON SE.name = SED.parent 
-					LEFT JOIN `tabItem Batch Stock Balance` IBSB ON IBSB.batch_no = SED.batch_no 
-					AND IBSB.warehouse = SED.t_warehouse 
-				WHERE 
-					SE.docstatus = 1 AND SED.spp_batch_number = '{lot_no}' 
-					AND SED.t_warehouse IS NOT NULL AND SE.stock_entry_type = 'Material Receipt' LIMIT 1 """
+				FROM
+					`tabStock Entry Detail` SED INNER JOIN `tabStock Entry` SE ON SE.name = SED.parent
+					LEFT JOIN `tabItem Batch Stock Balance` IBSB ON IBSB.batch_no = SED.batch_no
+					AND IBSB.warehouse = SED.t_warehouse
+					INNER JOIN `tabItem` I ON I.name = SED.item_code
+				WHERE
+					SE.docstatus = 1 AND SED.spp_batch_number = '{lot_no}'
+					AND SED.t_warehouse IS NOT NULL AND SE.stock_entry_type = 'Material Receipt'
+					AND I.item_group NOT IN ('Compound','Batch','Master Batch') LIMIT 1 """
 	result__ = frappe.db.sql(query,as_dict = 1)
 	if result__:
 		if result__[0].qty:
@@ -931,16 +933,18 @@ def get_details_by_lot_no(lot_no,st_type = None,source_doctype = None,ware__hous
 					# 				SE.docstatus = 1 AND SED.spp_batch_number = '{lot_no}' {spp_warehouse_condition} 
 					# 				AND SED.t_warehouse IS NOT NULL {condition} {condition__} LIMIT 1 """
 					""" Query 2 """
-					query = f""" SELECT 
+					query = f""" SELECT
 									SED.parent as st_entry_id,SED.valuation_rate,SED.amount,
 									SED.source_ref_document,SED.creation, SED.mix_barcode,SED.t_warehouse,
 									SED.item_code,SED.spp_batch_number,IBSB.qty,IBSB.stock_uom,SED.batch_no
-								FROM 
-									`tabStock Entry Detail` SED 
+								FROM
+									`tabStock Entry Detail` SED
 									INNER JOIN `tabItem Batch Stock Balance` IBSB ON IBSB.batch_no = SED.batch_no AND
-																						IBSB.warehouse = SED.t_warehouse 
-								WHERE 
-									SED.docstatus = 1 AND SED.spp_batch_number = '{lot_no}' {spp_warehouse_condition} 
+																						IBSB.warehouse = SED.t_warehouse
+									INNER JOIN `tabItem` I ON I.name = SED.item_code
+								WHERE
+									SED.docstatus = 1 AND SED.spp_batch_number = '{lot_no}' {spp_warehouse_condition}
+									AND I.item_group NOT IN ('Compound','Batch','Master Batch')
 									{condition} {condition__} LIMIT 1 """
 				
 					# end
