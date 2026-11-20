@@ -1430,20 +1430,20 @@ def validate_lot_number(batch_no):
 					if not bin__.compound:
 						return {"status": "Failed", "message": f"There is no <b>Compound</b> found in bin <b>{bin__.bin}</b>."}
 				batch_no = frappe.db.sql(
-					f""" SELECT batch_no,docstatus,parenttype FROM `tabDelivery Note Item` WHERE spp_batch_no = '{bin__.spp_batch_number}'  """, as_dict=1)
+					f""" SELECT batch_no,docstatus,parenttype FROM `tabDelivery Note Item` WHERE spp_batch_no = '{bin__.spp_batch_number}' AND docstatus != 2 ORDER BY docstatus DESC """, as_dict=1)
 				if not batch_no:
 					spp_settings = frappe.get_single("SPP Settings")
 					if not spp_settings.unit_2_warehouse:
 						return {"status": "Failed", "message": f"The default <b>Unit - 1 Warehouse</b> not found in <b>SPP Settings</b>..!"}
 					if not spp_settings.default_sheeting_warehouse:
 						return {"status": "Failed", "message": f"The default <b>Sheeting Warehouse</b> not found in <b>SPP Settings</b>..!"}
-					batch_no = frappe.db.sql(f""" SELECT SED.batch_no,SED.parenttype,SED.docstatus FROM `tabStock Entry` SE 
-													INNER JOIN `tabStock Entry Detail` SED ON SED.parent=SE.name WHERE SE.stock_entry_type="Material Transfer" 
-													AND SED.spp_batch_number = '{bin__.spp_batch_number}' AND SED.s_warehouse = '{spp_settings.default_sheeting_warehouse}' AND SED.t_warehouse = '{spp_settings.unit_2_warehouse}'  """, as_dict=1)
+					batch_no = frappe.db.sql(f""" SELECT SED.batch_no,SED.parenttype,SED.docstatus FROM `tabStock Entry` SE
+													INNER JOIN `tabStock Entry Detail` SED ON SED.parent=SE.name WHERE SE.stock_entry_type="Material Transfer"
+													AND SED.spp_batch_number = '{bin__.spp_batch_number}' AND SED.s_warehouse = '{spp_settings.default_sheeting_warehouse}' AND SED.t_warehouse = '{spp_settings.unit_2_warehouse}' AND SED.docstatus != 2 ORDER BY SED.docstatus DESC """, as_dict=1)
 					if not batch_no:
-						batch_no = frappe.db.sql(f""" SELECT SED.batch_no,SED.parenttype,SED.docstatus FROM `tabStock Entry` SE 
-													INNER JOIN `tabStock Entry Detail` SED ON SED.parent=SE.name WHERE SE.stock_entry_type="Repack" 
-													AND SED.spp_batch_number = '{bin__.spp_batch_number}' AND SED.t_warehouse = '{spp_settings.default_sheeting_warehouse}'  """, as_dict=1)
+						batch_no = frappe.db.sql(f""" SELECT SED.batch_no,SED.parenttype,SED.docstatus FROM `tabStock Entry` SE
+													INNER JOIN `tabStock Entry Detail` SED ON SED.parent=SE.name WHERE SE.stock_entry_type="Repack"
+													AND SED.spp_batch_number = '{bin__.spp_batch_number}' AND SED.t_warehouse = '{spp_settings.default_sheeting_warehouse}' AND SED.docstatus != 2 ORDER BY SED.docstatus DESC """, as_dict=1)
 				if batch_no:
 					if batch_no[0].docstatus == 1:
 						bin__.batch_no__ = batch_no[0].batch_no

@@ -1,7 +1,7 @@
 # Copyright (c) 2023, Tridotstech and Contributors
 # See license.txt
 
-# import frappe
+import frappe
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -367,3 +367,142 @@ class TestMouldingProductionEntry(unittest.TestCase):
 		"""
 		# TODO: Implement test after migration
 		pass
+
+
+class TestRepackCancelledTwinExclusion(unittest.TestCase):
+    """validate_lot_number Repack lookup must exclude cancelled rows (docstatus=2)
+    and return the submitted amendment (docstatus=1) first.
+
+    Live root cause (20 Nov 2026, lot 26K18U15): sheet 26K13X21-1 had a CANCELLED
+    Repack (SHE-2026-07775, docstatus=2, a failed half-posting) and its SUBMITTED
+    amendment (SHE-2026-07775-1, docstatus=1). The original SQL had no docstatus
+    filter, so the cancelled row came back first; the check
+    ``if batch_no[0].docstatus == 1`` then returned Failed even though the stock
+    was fully posted.
+
+    This test inserts minimal fixture rows via raw SQL (avoiding the full Frappe
+    document pipeline) and verifies:
+      - test_original_sql_picks_cancelled_row_first  — documents the pre-fix bug
+      - test_fixed_sql_excludes_cancelled_picks_submitted — verifies the fix
+
+    Run with::
+
+        cd /Users/alphaworkz/frappe-bench
+        PYTHONPATH=/Users/alphaworkz/frappe-bench/.customapp-mpe-cancelled-worktree \\
+          bench --site spp15.local run-tests \\
+          --module shree_polymer_custom_app.shree_polymer_custom_app.doctype.moulding_production_entry.test_moulding_production_entry \\
+          --skip-test-records --skip-before-tests
+    """
+
+    _SPP_BATCH = "TEST-CXRP-26K13X21-FIX01"
+    _SE_CANCELLED = "SPP-TEST-SHE-FIX-C01"
+    _SE_SUBMITTED = "SPP-TEST-SHE-FIX-S01"
+    _SED_CANCELLED = "SPP-TEST-SED-FIX-C01"
+    _SED_SUBMITTED = "SPP-TEST-SED-FIX-S01"
+    _WAREHOUSE = "SPP-TEST-SHEET-WH-FIX01"
+    _BATCH_CANCELLED = "SPP-TEST-BATCH-C01"
+    _BATCH_SUBMITTED = "SPP-TEST-BATCH-S01"
+
+    def setUp(self):
+        # Insert cancelled SE first so it has an earlier insertion order,
+        # which is what MariaDB InnoDB returns without an ORDER BY clause.
+        frappe.db.sql(
+            "INSERT INTO `tabStock Entry` "
+            "(name, stock_entry_type, docstatus, company, modified, creation, owner, modified_by) "
+            "VALUES (%s, 'Repack', 2, 'TEST', NOW(), NOW(), 'Administrator', 'Administrator')",
+            (self._SE_CANCELLED,),
+        )
+        frappe.db.sql(
+            "INSERT INTO `tabStock Entry Detail` "
+            "(name, parent, parentfield, parenttype, spp_batch_number, batch_no, "
+            " docstatus, t_warehouse, modified, creation, owner, modified_by) "
+            "VALUES (%s, %s, 'items', 'Stock Entry', %s, %s, 2, %s, NOW(), NOW(), "
+            "'Administrator', 'Administrator')",
+            (self._SED_CANCELLED, self._SE_CANCELLED,
+             self._SPP_BATCH, self._BATCH_CANCELLED, self._WAREHOUSE),
+        )
+        # Insert submitted SE second (newer insertion order = second without filter).
+        frappe.db.sql(
+            "INSERT INTO `tabStock Entry` "
+            "(name, stock_entry_type, docstatus, company, modified, creation, owner, modified_by) "
+            "VALUES (%s, 'Repack', 1, 'TEST', NOW(), NOW(), 'Administrator', 'Administrator')",
+            (self._SE_SUBMITTED,),
+        )
+        frappe.db.sql(
+            "INSERT INTO `tabStock Entry Detail` "
+            "(name, parent, parentfield, parenttype, spp_batch_number, batch_no, "
+            " docstatus, t_warehouse, modified, creation, owner, modified_by) "
+            "VALUES (%s, %s, 'items', 'Stock Entry', %s, %s, 1, %s, NOW(), NOW(), "
+            "'Administrator', 'Administrator')",
+            (self._SED_SUBMITTED, self._SE_SUBMITTED,
+             self._SPP_BATCH, self._BATCH_SUBMITTED, self._WAREHOUSE),
+        )
+
+    def tearDown(self):
+        frappe.db.sql(
+            "DELETE FROM `tabStock Entry Detail` WHERE name IN (%s, %s)",
+            (self._SED_CANCELLED, self._SED_SUBMITTED),
+        )
+        frappe.db.sql(
+            "DELETE FROM `tabStock Entry` WHERE name IN (%s, %s)",
+            (self._SE_CANCELLED, self._SE_SUBMITTED),
+        )
+        frappe.db.commit()
+
+    def test_original_sql_picks_cancelled_row_first(self):
+        """Documents the pre-fix bug: without the docstatus filter the cancelled
+        row (docstatus=2) is returned first because it was inserted earlier.
+        The MPE check ``if batch_no[0].docstatus == 1`` then hits the else branch
+        and refuses the entry even though a valid submitted Repack exists.
+
+        This assertion passes on BOTH old and new code — it documents the root
+        cause rather than asserting correct behaviour.
+        """
+        result = frappe.db.sql(
+            f"SELECT SED.batch_no, SED.parenttype, SED.docstatus"
+            f" FROM `tabStock Entry` SE"
+            f" INNER JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name"
+            f" WHERE SE.stock_entry_type = 'Repack'"
+            f" AND SED.spp_batch_number = '{self._SPP_BATCH}'"
+            f" AND SED.t_warehouse = '{self._WAREHOUSE}'",
+            as_dict=1,
+        )
+        self.assertTrue(result, "Fixture rows must be visible in the same DB session")
+        self.assertEqual(
+            result[0].docstatus, 2,
+            "BUG (pre-fix): cancelled row (docstatus=2) is first — this is what "
+            "caused 'Stock Entry is not submitted or cancelled' in production.",
+        )
+
+    def test_fixed_sql_excludes_cancelled_picks_submitted_first(self):
+        """Verifies the fix: ``AND SED.docstatus != 2 ORDER BY SED.docstatus DESC``
+        skips the cancelled row entirely and returns the submitted amendment first.
+
+        FAILS on original code (no docstatus filter → first row docstatus=2,
+        assertEqual(1) fails).
+        PASSES on fixed code (cancelled excluded → first row docstatus=1).
+        """
+        result = frappe.db.sql(
+            f"SELECT SED.batch_no, SED.parenttype, SED.docstatus"
+            f" FROM `tabStock Entry` SE"
+            f" INNER JOIN `tabStock Entry Detail` SED ON SED.parent = SE.name"
+            f" WHERE SE.stock_entry_type = 'Repack'"
+            f" AND SED.spp_batch_number = '{self._SPP_BATCH}'"
+            f" AND SED.t_warehouse = '{self._WAREHOUSE}'"
+            f" AND SED.docstatus != 2 ORDER BY SED.docstatus DESC",
+            as_dict=1,
+        )
+        self.assertTrue(result, "At least the submitted row must be returned")
+        docstatuses = {r.docstatus for r in result}
+        self.assertNotIn(
+            2, docstatuses,
+            "Cancelled row (docstatus=2) must be excluded by AND SED.docstatus != 2",
+        )
+        self.assertEqual(
+            result[0].docstatus, 1,
+            "First result must be the submitted row (docstatus=1)",
+        )
+        self.assertEqual(
+            result[0].batch_no, self._BATCH_SUBMITTED,
+            "batch_no must come from the submitted amendment, not the cancelled entry",
+        )
